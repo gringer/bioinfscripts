@@ -55,7 +55,7 @@ use Math::Trig;
 use Geo::ShapeFile;
 use SVG;
 
-my $progVersion = 1.83;
+my $progVersion = 1.84;
 
 sub usage {
   print(STDERR qq{usage: ./perlshaper.pl <shapefile(s)> [options] > output.svg
@@ -214,7 +214,8 @@ sub project {
       if(($options->{"zoomed"}) ||
          ($options->{"projection"} eq "orthographic")){
         # zoomed and orthographic projections don't get additional points added
-        push(@output, 0);
+        ### removed to fix latitude/longitide lines not printing
+        # push(@output, 0);
       } else {
         # add additional points on the border edge
         my ($minLong, $maxLong) = ($options->{"minLong"}, $options->{"maxLong"});
