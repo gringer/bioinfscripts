@@ -1805,11 +1805,6 @@ __END__
 
 =over 4
 
-=item * Horizontal lines appear between map edge limits on full-world location maps
-
-=item * Map simplification is extremely slow for shapes with lots of
-points (e.g. world location map)
-
 =item * The zoom box needs a defined centre to work properly
 
 =back
