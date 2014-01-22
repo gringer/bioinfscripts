@@ -1,111 +1,174 @@
 #!/usr/bin/perl
 
-# perlshaper.pl -- convert shapefile data to SVG format, for use in
-# wikimedia maps.
-
-# This code is designed with wikimedia in mind, so defaults should
-# produce SVG images that follow the general map conventions (see
-# http://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions). In
-# particular, the expected input format is that of Natural Earth
-# files (http://www.naturalearthdata.com).
-
-# Author: David Eccles (gringer) 2010-2013 <programming@gringer.org>
-
-#  -- Begin GPL license blurb --
-
-# Copyright 2010-2013 David Eccles (gringer)
-
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-#  -- End GPL license blurb --
-
-# The most recent version of this code can be found at
-# http://en.wikipedia.org/wiki/User:Gringer/perlshaper
-
-# Just as a head's up, latitude lines are horizontal in the typical
-# projection of the world, while longitude lines are
-# vertical. Latitude is usually represented by a number (in degrees)
-# in the range -90..90, while longitude is usually represented by a
-# number (in degrees) in the range -180..180.
-#
-#  /---------\  --- latitude (Y)
-# | | | | | | |
-# |-|-|-|-|-|-|
-# | | | | | | |
-#  \---------/
-#     |
-#     \-- longitude (X)
-
 use warnings;
 use strict;
 
-use Math::Trig;
+use Pod::Usage; ## uses pod documentation in usage code
+use Getopt::Long qw(:config auto_version auto_help pass_through); # for option parsing
+
+use Math::Trig qw(asin_real acos_real pi);
 # http://search.cpan.org/~jasonk/Geo-ShapeFile-2.52/lib/Geo/ShapeFile.pm
 use Geo::ShapeFile;
 use SVG;
 
-my $progVersion = 1.84;
+use POSIX qw(fmod);
 
-sub usage {
-  print(STDERR qq{usage: ./perlshaper.pl <shapefile(s)> [options] > output.svg
-\n---- Basic Options ----
--help                 : Only display this help message
--type <string>        : Type of map (location|locator|area|world|orthographic)
--res <float>          : Resolution (in adjusted degrees)
--round <int>          : Round values to given number of decimal places
--centre <long>,<lat>  : Identify centre of map (by longitude/latitude)
--centre <ISO 3A-code> : Identify centre of map (by target country)
--data <file>          : Colour countries based on numerical data in file
-\n---- Advanced Options ----
--psize <float>        : Radius of small points
--colour <string>      : Change colour theme to a different map type
--proj <string>        : Change target projection
--landcol <string>     : Land colour
--seacol <string>      : Sea colour
--bordcol <string>     : Border colour
--sub <ISO 3A-code>    : Identify subject region
--pol <ISO 3A-code>    : Identify related political region
--only <ISO 3A-code>   : Only display specified shape(s)
--zoom <ISO 3A-code>   : Zoom to projected extents of shape(s)
--nokey                : Don't display heatmap key (if heatmap is used)
--[no]lines            : [don't] print lines of latitude and longitude
--v                    : Verbose output (also '-vv')
-});
-}
+our $VERSION = "1.94";
 
-# Transform a point from {[-180,180],[-90,90]} to
-# {[-0.5,0.5],[-0.5,0.5]} relative to the desired projection. This
-# replaces the proj4 transform function with something that will
-# always return a valid point. Orthographic transformations that
-# appear on the opposite side of the globe will be converted to a
-# point with the same angle, but sitting at the circle
-# edge. Adjustments need to be made post-transform (e.g. multiply by
-# SVG width, add to fit in 0..max range) to convert to SVG
-# coordinates.
+=head1 NAME
+
+perlshaper.pl - convert shapefile data to SVG format, for use in
+wikimedia maps.
+
+=head1 SYNOPSIS
+
+./perlshaper.pl <shapefile(s)> -type <mapType> [options] > output.svg
+
+
+=head2 Basic Options
+
+=over 2
+
+=item B<-help>
+
+Only display this help message
+
+=item B<-type> I<string>
+
+Type of map (location|locator|area|world|orthographic)
+
+=item B<-round> I<int>
+
+Round values (in SVG file) to given number of decimal places
+
+=item B<-centre> I<long>,I<lat>
+
+Identify centre of map (by longitude/latitude)
+
+=item B<-centre> I<ISO 3A-code>
+
+Identify centre of map (by target country)
+
+=item B<-data> I<file>
+
+Colour countries based on numerical data in file
+
+=back
+
+
+=head1 ARGUMENTS
+
+Most of the map-based variables used in the code can be customised to
+fit particular needs using command-line arguments.
+
+=head2 Advanced Options
+
+=over 2
+
+=item B<-psize> I<float>
+
+Radius of small points
+
+=item B<-colour> I<string>
+
+Change colour theme to a different map type
+
+=item B<-proj> I<string>
+
+Change target projection
+
+=item B<-landcol> I<string>
+
+Land colour
+
+=item B<-seacol> I<string>
+
+Sea colour
+
+=item B<-bordcol> I<string>
+
+Border colour
+
+=item B<-sub> I<ISO 3A-code>
+
+Identify subject region
+
+=item B<-pol> I<ISO 3A-code>
+
+Identify related political region
+
+=item B<-only> I<ISO 3A-code>
+
+Only display specified shape(s)
+
+=item B<-zoom> I<ISO 3A-code>
+
+Zoom to projected extents of shape(s)
+
+=item B<-zoom> I<minX,Y,maxX,Y>
+
+Zoom to projected extents
+
+=item B<-nokey>
+
+Don't display heatmap key (if heatmap is used)
+
+=item B<-[no]lines>
+
+[don't] print lines of latitude and longitude
+
+=item B<-v>
+
+Verbose output (also '-v -v')
+
+=back
+
+=head1 DESCRIPTION
+
+This code is designed with wikimedia in mind, so the default options
+should produce SVG images that follow the general map conventions (see
+http://en.wikipedia.org/wiki/Wikipedia:WikiProject_Maps/Conventions). In
+particular, the expected input format is that of Natural Earth files
+(http://www.naturalearthdata.com).
+
+Just as a head's up, latitude lines are horizontal in the typical
+projection of the world, while longitude lines are
+vertical. Latitude is usually represented by a number (in degrees)
+in the range -90..90, while longitude is usually represented by a
+number (in degrees) in the range -180..180.
+
+  /---------\  --- latitude (Y)
+ | | | | | | |
+ |-|-|-|-|-|-|
+ | | | | | | |
+  \---------/
+     |
+     \-- longitude (X)
+
+=head1 METHODS
+
+=cut
+
+=head2 transform(optionRef, point)
+
+Transform a point from {[-180,180],[-90,90]} to
+{[-0.5,0.5],[-0.5,0.5]} relative to the desired projection. This
+replaces the proj4 transform function with something that will
+always return a valid point. Orthographic transformations that
+appear on the opposite side of the globe will be converted to a
+point with the same angle, but sitting at the circle
+edge. Adjustments need to be made post-transform (e.g. multiply by
+SVG width, add to fit in 0..max range) to convert to SVG
+coordinates.
+
+=cut
 
 sub transform {
   my ($options, $inPoint) = @_;
   my $oldLong = $inPoint->[0];
   my $oldLat = $inPoint->[1];
   my $projection = $options->{"projection"};
-  my $lambda = ($oldLong - $options->{"centreLn"});
-  while($lambda <= -180){
-    $lambda += 360;
-  }
-  while($lambda > 180){
-    $lambda -= 360;
-  }
+  my $lambda = fmod(($oldLong - $options->{"centreLn"} + 540), 360) - 180;
   my $include = 1;
   my $phi = $oldLat;
   my $phi1 = $options->{"centreLt"};
@@ -144,7 +207,7 @@ sub transform {
     my $cphi1 = (2 / pi);
     $lambda = $lambda * pi / 180;
     # see http://en.wikipedia.org/wiki/Winkel_Tripel
-    my $alpha = acos(cos($phi) * cos($lambda / 2));
+    my $alpha = acos_real(cos($phi) * cos($lambda / 2));
     my $sincalpha = ($alpha == 0) ? 1 : (sin($alpha) / $alpha);
     $x = (($lambda * $cphi1) +
              (2 * cos($phi) * sin($lambda / 2) / $sincalpha)) / (4 + 2 * pi);
@@ -156,14 +219,18 @@ sub transform {
   return([$x, $y, $include]);
 }
 
-# Convert from standard equirectangular projection ("+proj=latlong
-# +datum=WGS84" in proj4-speak) to another projection. Natural Earth
-# Data uses this equirectangular format, where coordinates are
-# specified based on their latitude and longitude locations in
-# degrees.
+=head2 project(optionRef, pointRef)
 
-# This method attempts to fit the map into a rectangle (or square)
-# that fits in a 1100x550 box.
+Convert a set of points from standard equirectangular projection
+("+proj=latlong +datum=WGS84" in proj4-speak) to another
+projection. Natural Earth Data uses this equirectangular format, where
+coordinates are specified based on their latitude and longitude
+locations in degrees.
+
+This method attempts to fit the map into a rectangle (or square)
+that fits in a 1100x550 box.
+
+=cut
 
 sub project {
   my ($options, $pointRef) = @_;
@@ -186,6 +253,7 @@ sub project {
   my @output = ();
   my ($oldX, $oldY);
   my $oldLat;
+  my $maxDist2 = ($projWidth / 4) ** 2; # maximum distance between points
   foreach my $inPoint (@input) {
     my $newLong = 0;
     my $newLat = 0;
@@ -208,8 +276,8 @@ sub project {
     $oldX = $px if !defined($oldX);
     $oldY = $py if !defined($oldY);
     $oldLat = $newLat if !defined($oldLat);
-    my ($xd, $yd) = ($px - $oldX, $py - $oldY);
-    if (sqrt($xd * $xd + $yd * $yd) > $projWidth / 2) {
+    my $xd = $px - $oldX;
+    if (($xd * $xd) > $maxDist2) {
       # don't connect lines that have wrapped around the map (over half the image width)
       if(($options->{"zoomed"}) ||
          ($options->{"projection"} eq "orthographic")){
@@ -219,12 +287,14 @@ sub project {
       } else {
         # add additional points on the border edge
         my ($minLong, $maxLong) = ($options->{"minLong"}, $options->{"maxLong"});
-        my $oldEdgePoint = transform($options, [($px > $oldX) ? $minLong : $maxLong, $oldLat]);
-        my $newEdgePoint = transform($options, [($px > $oldX) ? $maxLong : $minLong, $newLat]);
-        $oldEdgePoint->[0] = $oldEdgePoint->[0] * $projWidth;
-        $newEdgePoint->[0] = $newEdgePoint->[0] * $projWidth;
-        $oldEdgePoint->[1] = $oldEdgePoint->[1] * -$projHeight;
-        $newEdgePoint->[1] = $newEdgePoint->[1] * -$projHeight;
+        my $oldEdgePoint =
+          transform($options, [($px > $oldX) ? $minLong : $maxLong, $oldLat]);
+        my $newEdgePoint =
+          transform($options, [($px > $oldX) ? $maxLong : $minLong, $newLat]);
+        $oldEdgePoint->[0] = $oldEdgePoint->[0] * $xScale * $projWidth;
+        $newEdgePoint->[0] = $newEdgePoint->[0] * $xScale * $projWidth;
+        $oldEdgePoint->[1] = $oldEdgePoint->[1] * $yScale * -$projHeight;
+        $newEdgePoint->[1] = $newEdgePoint->[1] * $yScale * -$projHeight;
         push(@output, $oldEdgePoint);
         push(@output, 0);
         push(@output, $newEdgePoint);
@@ -243,11 +313,18 @@ sub project {
   }
 }
 
-sub orthDist {
-  # calculates minimum distance between point (xP,yP) and line [(x1,y1) - (x2,y2)]
+=head2 orthDist2(point1, pointP, point2)
+
+calculates the square of the minimum distance between the point (xP,yP) and the line [(x1,y1) - (x2,y2)]
+
+The distance formula is from
+L<wolfram|http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html>
+with modifications for division by zero, and for points outside the line
+
+=cut
+
+sub orthDist2 {
   my ($point1, $pointP, $point2) = @_;
-  # distance formula from http://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
-  # with modifications for division by zero, and points outside the line
   my $x1 = $point1 -> [0];
   my $y1 = $point1 -> [1];
   my $xP = $pointP -> [0];
@@ -256,119 +333,102 @@ sub orthDist {
   my $y2 = $point2 -> [1];
   if (($x2 == $x1) && ($y2 == $y1)) {
     # exclude case where denominator is zero
-    my $p1Dist = sqrt(($x1-$xP)**2 + ($y1 - $yP)**2);
-    return($p1Dist);
+    my $dist2 = ($x1-$xP)**2 + ($y1 - $yP)**2;
+    return($dist2);
   }
-  my $dist = abs(($x2 - $x1)*($y1 - $yP) - ($x1 - $xP)*($y2 - $y1)) /
-    sqrt(($x2 - $x1)**2 + ($y2 - $y1)**2);
-  if ($dist == 0) {
+  my $dist2 = (($x2 - $x1)*($y1 - $yP) - ($x1 - $xP)*($y2 - $y1))**2 /
+    (($x2 - $x1)**2 + ($y2 - $y1)**2);
+  if ($dist2 == 0) {
     # on the line, but need to consider points outside the line
     # this fixes a problem where the equator line is clipped
-    my $p1Dist = sqrt(($x1-$xP)**2 + ($y1 - $yP)**2);
-    my $p2Dist = sqrt(($x2-$xP)**2 + ($y2 - $yP)**2);
-    my $p12Dist = sqrt(($x1-$x2)**2 + ($y1 - $y2)**2);
+    my $p1Dist = (($x1-$xP)**2 + ($y1 - $yP)**2);
+    my $p2Dist = (($x2-$xP)**2 + ($y2 - $yP)**2);
+    my $p12Dist = (($x1-$x2)**2 + ($y1 - $y2)**2);
     my $sigma = 0.0001;
     if (($p1Dist + $p2Dist) > ($p12Dist + $sigma)) {
       # point is outside the line, use smallest distance from line end points
-      $dist = ($p1Dist < $p2Dist) ? $p1Dist : $p2Dist;
+      $dist2 = ($p1Dist < $p2Dist) ? $p1Dist : $p2Dist;
     }
   }
-  return($dist);
+  return($dist2);
 }
 
-# Simplify curves to reduce number of points in SVG file.  This method
-# should keep points if they have already been included as part of the
-# simplifcation of another curve, so that shapes that overlap won't
-# have any gaps. This requires a global hash of already added points.
+=head2 distGr2(point1, point2, res2)
 
-# The linear simplifcation used here is the following algorithm:
-# http://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+Determines if the distance between the point (x1,y1) and the point
+(x2,y2) is greater than the square root of res2.
 
-# Note that this algorithm is somewhat slow O(n^2), and faster (but
-# less accurate) simplifcation algorithms exist. An 'accumulated
-# error' algorithm could be implemented if more speed is desired.
+=cut
+
+sub distGr2 {
+  my ($point1, $point2, $res2) = @_;
+  my $dx = $point2 -> [0] - $point1 -> [0];
+  my $dy = $point2 -> [1] - $point1 -> [1];
+  return(($dx * $dx + $dy * $dy) > ($res2));
+}
+
+
+=head2 simplify(optionRef, pointHash, pointRef)
+
+Simplify curves to reduce number of points in SVG file.  This method
+should keep points if they have already been included as part of the
+simplifcation of another curve, so that shapes that overlap won't
+have any gaps. This requires a global hash of already added points.
+
+This is a quick process based around resolving distance -- if points
+are closer than the resolution distance to another included point,
+then they are removed.
+
+=cut
 
 sub simplify {
   my ($options, $pointHash, $pointRef) = @_;
-  my @input = @{$pointRef};
-  my $res = $options->{"resolution"};
-  my @validPoints = ();
-  my %pointListHash = ();
-  if($res){
-    # round points to specified resolution
-    map {
-      if($_){
-        # note: ($x <=> 0) is the sign function
-        $_->[0] = int($_->[0] / $res + 0.5 * ($_->[0] <=> 0)) * $res;
-        $_->[1] = int($_->[1] / $res + 0.5 * ($_->[1] <=> 0)) * $res;
-      }
-    } @input;
+  if($options->{"roundDP"} == -1){
+    return @{$pointRef};
   }
-  foreach my $i (0..$#input) {
-    if ($input[$i]) {
-      push(@validPoints, $i);
+  my $formatString = "%0.".$options->{"roundDP"}."f";
+  my $dps = 10**$options->{"roundDP"};
+  my $last = undef;
+  my ($lastXRounded, $lastYRounded, $xRounded, $yRounded);
+  my @input = map {
+    if($_){
+      $xRounded = int($_->[0] * $dps);
+      $yRounded = int($_->[1] * $dps);
+      if(!defined($last) || $pointHash->{($xRounded, $yRounded)}){
+        $pointHash->{($xRounded,$yRounded)} = 1;
+        $last = $_;
+        $lastXRounded = $xRounded;
+        $lastYRounded = $yRounded;
+      } elsif(($xRounded != $lastXRounded) || ($yRounded != $lastYRounded)){
+        $pointHash->{($xRounded,$yRounded)} = 1;
+        $last = $_;
+        $lastXRounded = $xRounded;
+        $lastYRounded = $yRounded;
+      }
+    } else {
+      $last = undef;
     }
-  }
-  if (!(@validPoints) || (scalar(@validPoints) <= 2) || ($res == 0)) {
-    return(@input);
-  }
-  $pointListHash{$validPoints[0]} = 1;
-  $pointListHash{$validPoints[-1]} = 1;
-  my @pointList = sort {$a <=> $b} keys(%pointListHash);
-  foreach my $i (($pointList[0] + 1) .. ($pointList[-1] - 1)) {
-    # add in points already added from other curves
-    my $checkPoint = $input[$i];
-    if ($checkPoint) {
-      if ($pointHash->{$checkPoint}) {
-        $pointListHash{$i} = 1;
-      }
-    }
-  }
-  @pointList = sort {$a <=> $b} keys(%pointListHash);
-  my $added;
-  do {
-    $added = 0;
-    my @firstPoints = @pointList[0..($#pointList - 1)];
-    my @nextPoints = @pointList[1..$#pointList];
-    foreach my $ip (0..$#firstPoints) {
-      my $maxDist = 0;
-      my $maxPos = 0;
-      my $startPoint = $input[$firstPoints[$ip]];
-      my $endPoint = $input[$nextPoints[$ip]];
-      foreach my $ic (($firstPoints[$ip] + 1) .. ($nextPoints[$ip] - 1)) {
-        my $checkPoint = $input[$ic];
-        if ($checkPoint) {
-          my $pointDist = orthDist($startPoint, $checkPoint, $endPoint);
-          if ($pointDist > $maxDist) {
-            $maxDist = $pointDist;
-            $maxPos = $ic;
-          }
-        }
-      }
-      if (($maxDist) && ($maxDist >= $res)) {
-        $pointListHash{$maxPos} = 1;
-        $added++;
-      }
-    }
-    @pointList = sort {$a <=> $b} keys(%pointListHash);
-  } while ($added > 0);
-  return(@input[@pointList]);
+    $_;
+  } @{$pointRef};
+  return(@input);
 }
 
-sub intersect {
-}
+=head2 clip(optionRef, pointRef)
+
+clip the shape to the limits of the zoom box (if any). The
+algorithm used here is the Sutherland-Hodgman algorithm:
+http://en.wikipedia.org/wiki/Sutherland-Hodgman
+
+Note that this algorithm can leave some zero-width polygon
+sections in the resultant clip region.
+
+=cut
 
 sub clip {
-  # clip the shape to the limits of the zoom box (if any). The
-  # algorithm used here is the Sutherland-Hodgman algorithm:
-  # http://en.wikipedia.org/wiki/Sutherland-Hodgman
-
-  # Note that this algorithm can leave some zero-width polygon
-  # sections in the resultant clip region.
-  my ($options, $pointHash) = @_;
+  my ($options, $pointRef) = @_;
   my $xAdj = $options->{"xAdj"};
   my $yAdj = $options->{"yAdj"};
-  my @oldPoints = @{$pointHash};
+  my @oldPoints = @{$pointRef};
   # if all points have been previously excluded, clip them out
   if(!grep($_ && $_->[2], @oldPoints)){
     return((0) x scalar(@oldPoints));
@@ -432,10 +492,15 @@ sub clip {
   return(@oldPoints);
 }
 
+=head2 boundBox(pointList)
+
+Determines post-projection rectangular bounding box for a polygon
+(e.g. for determining if borders are useful, or zooming in to a
+particular region)
+
+=cut
+
 sub boundBox {
-  # Determines post-projection rectangular bounding box for a polygon
-  # (e.g. for determining if borders are useful, or zooming in to a
-  # particular region)
   my @input = @_;
   @input = grep($_, @input);
   my $minX = 0;
@@ -460,9 +525,13 @@ sub boundBox {
   return(($minX, $minY, $maxX, $maxY));
 }
 
+=head2 shapeNames(shapeData)
+
+retrieve shape name data from a shape database. For countries, three-letter ISO codes are preferred
+
+=cut
+
 sub shapeNames {
-  # retrieve shape name data from a shape database
-  # for countries, three-letter ISO codes are preferred
   my ($shapeData) = @_;
   my $outCountry = "";
   my $outSov = ""; # 'sovereignty' is easy to mis-spell, and 'sov' is shorter
@@ -510,18 +579,51 @@ sub shapeNames {
   return($outSov, $outCountry, $outRegion);
 }
 
+=head2 makeRelative(optionRef, pointRef)
+
+Creates relative point definitions (excluding the first point). This
+is used to reduce the SVG output file size.
+
+=cut
+
+sub makeRelative {
+  my ($options, $pointRef) = @_;
+  my $round = ($options->{"roundDP"} != -1);
+  my $dps = $round ? 10**$options->{"roundDP"} : 1;
+  my $xAdj = $round ? int($options->{"xAdj"} * $dps) : $options->{"xAdj"};
+  my $yAdj = $round ? int($options->{"yAdj"} * $dps) : $options->{"yAdj"};
+  my @points = map{$_->[0] *= $dps; $_->[1] *= $dps; $_} @{$pointRef};
+  my $lastX = 0;
+  my $lastY = 0;
+  foreach my $point (@points) {
+    my $nextX = $round ? int($point->[0] + $xAdj) : ($point->[0] + $xAdj);
+    my $nextY = $round ? int($point->[1] + $yAdj) : ($point->[1] + $yAdj);
+    $point->[0] = $nextX - $lastX;
+    $point->[1] = $nextY - $lastY;
+    $lastX = $nextX;
+    $lastY = $nextY;
+  }
+  map{$_->[0] /= $dps; $_->[1] /= $dps} @points;
+}
+
+=head2 chopPoly(optionRef, pointRef, joinEnds)
+
+Closes up lines in a polygon that contain discontinuous points -- this
+usually happens when part of a polygon goes outside the projection
+area. If I<joinEnds> is true, then the ends of the polygon are joined
+together.
+
+The input is a sequence of Geo::Points, and the output is a string
+that can be used as a path description in an SVG file
+
+=cut
+
 sub chopPoly {
-  # closes up lines in a polygon that contain discontinuous points
-  # this usually happens when part of a polygon goes outside the
-  # projection area
-  # input is a sequence of Geo::Points, output is a string that can be
-  # used as a path description in an SVG file
-  my ($options, $pointHash, $joinEnds) = @_;
-  my @oldPoints = @{$pointHash};
+  my ($options, $pointRef, $joinEnds) = @_;
+  my @oldPoints = @{$pointRef};
   if (!@oldPoints) {
     return (""); # nothing to process
   }
-  my $dp = $options->{"roundDP"};
   my $xAdj = $options->{"xAdj"};
   my $yAdj = $options->{"yAdj"};
   # trim off start and end undefined / missing points
@@ -563,37 +665,27 @@ sub chopPoly {
   if (!(@oldPoints) || !(@{$contigLists[0]})) {
     return ("");
   }
-  my $printfString = ($dp > -1) ? ("%.".$dp."g,%.".$dp."g") : ("%g,%g");
+  # note: %f rounds to decimal places, %g rounds to significant figures
+  #my $printfString = ($dp > -1) ? ("%.".$dp."f,%.".$dp."f") : ("%f,%f");
+  my $printfString = ("%s,%s");
 
   my @subPaths = ();
   foreach (@contigLists) {
     my @currentList = @{$_};
     if(scalar(@currentList) > 1){ # ignore single-point subpaths
+      makeRelative($options, \@currentList);
       my @pointStrs = map {
-        sprintf($printfString, ($_->[0] + $xAdj), ($_->[1] + $yAdj));
+        sprintf($printfString, ($_->[0]), ($_->[1]));
       } @currentList;
-      push(@subPaths, "M ".join(" ",@pointStrs).($joinEnds?" Z":""));
+      my $subPath = "M".join("l",@pointStrs).($joinEnds?"Z":"");
+      $subPath =~ s/l0,0(?=[^\.])//g; # remove 'no change' relative movements
+      push(@subPaths, $subPath);
     }
   }
   my $pointPath = join(" ", @subPaths);
 
   return($pointPath);
 }
-
-my $projOpts = {
-    "resolution" => 0,
-    "roundDP" => -1,
-    "projection" => "", # was sourceProj, targetProj
-    "centreLn" => "",  # projection centre X / longitude
-    "centreLt" => "",  # projection centre Y / latitude
-    "svgWidth" => "", # width of SVG file, excluding padding
-    "svgHeight" => "", # height of SVG file, excluding padding
-    "xAdj" => 0, # X adjustment to fit in SVG bounds
-    "yAdj" => 0,  # Y adjustment to fit in SVG bounds
-    "xScale" => "",  # Scale factor of points (for zoom box)
-    "yScale" => "",  # Scale factor of points (for zoom box)
-    "padding" => "" # amount of padding to add (for zoom box)
-};
 
 my $mapType = "";
 
@@ -609,7 +701,7 @@ my $borderColour = "";
 
 my $subLandColour = ""; # subject colour
 my $othLandColour = ""; # other lands of the same political unity
-my $coastColour = ""; # lake's coast, rivers, sea coasts
+my $coastColour = ""; # coast along lake, rivers, sea coasts
 my $polBordColour = ""; # Other minor political borders
 my $intBordColour = ""; # border colour for areas of interest
 
@@ -637,149 +729,77 @@ my @shpFileBases = ();
 
 my @commandLine = @ARGV;
 
-# Return codes
-# 0: success
-# 1: unknown command-line option
-# 2: file error
-# 3: projection error
+# set default options
+my $projOpts =
+  {
+   "roundDP" => -1,
+   "projection" => "", # map projection (equirectangular / orthographic)
+   "centreLn" => "",  # projection centre X / longitude
+   "centreLt" => "",  # projection centre Y / latitude
+   "svgWidth" => "", # width of SVG file, excluding padding
+   "svgHeight" => "", # height of SVG file, excluding padding
+   "xAdj" => 0, # X adjustment to fit in SVG bounds
+   "yAdj" => 0,  # Y adjustment to fit in SVG bounds
+   "xScale" => "",  # Scale factor of points (for zoom box)
+   "yScale" => "",  # Scale factor of points (for zoom box)
+    "padding" => "", # amount of padding to add (for zoom box)
+   "lines" => 1, # draw lines of latitude / longitude
+   "key" => 1, # print a key for the heatmap
+  };
 
-# extract command line arguments
+GetOptions($projOpts, 'lines!', 'key!', 'pointSize|psize=f', 'roundDP|round=i',
+           'centre|center=s',
+           'projection=s',
+           'zoomed|zoom=s@',
+           'colourTheme|color|colour=s', => \$colourTheme,
+           'v|verbose+', => \$debugLevel,
+           'mapType|type=s' => \$mapType,
+           'landcol=s' => \$landColour,
+           'seacol=s' => \$seaColour,
+           'bordcol=s' => \$borderColour,
+           'subjects|sub=s@' => sub { $subjectNames{$_} = 1},
+           'politicals|pol=s@' => sub { $politicalNames{$_} = 1},
+           'only=s@' => sub { $onlyNames{$_} = 1},
+           'data=s@' => \@dataFiles,
+           'man' => sub { pod2usage({-verbose => 3}) }
+          );
+
+# process remaining command line arguments (hopefully only shapefiles)
 while (@ARGV) {
   my $argument = shift @ARGV;
   if (((-f $argument) && ($argument =~ /\.shp$/)) ||
       (-f ($argument.".shp"))) { # file existence check
-    if ($argument =~ /\.shp$/) {
-      $argument =~ s/\.shp$//;
-    }
+    $argument =~ s/\.shp$//;
     printf(STDERR "Adding '%s.shp' to list of input files\n", $argument)
       if ($debugLevel > 0);
     push (@shpFileBases, $argument);
   } elsif (-f $argument) {
-    print(STDERR "Error: Invalid file extension for '$argument'. ".
-          "Please use files with '.shp' extension\n");
-    usage();
-    exit(2);
+    pod2usage({-exitVal => 2, -message => "Error: Invalid file extension for '$argument'. ".
+               "Please use files with '.shp' extension\n"});
   } else {
-    if ($argument eq "-help") {
-      # flag options [no arguments]
-      usage();
-      exit(0);
-    } elsif ($argument eq "-v") {
-      $debugLevel = 1;
-      print(STDERR "Enabling verbose output\n");
-    } elsif ($argument eq "-vv") {
-      $debugLevel = 2;
-      print(STDERR "Enabling very verbose output\n");
-    } elsif ($argument eq "-lines") {
-      $printLines = 3;          # true
-      print(STDERR "Printing lines of latitude and longitude\n");
-    } elsif ($argument eq "-nolines") {
-      $printLines = 0;          # false
-      print(STDERR "Printing lines of latitude and longitude\n");
-    } elsif ($argument eq "-nokey") {
-      $printKey = 0;            # false
-      print(STDERR "Will not display a key for the heatmap\n");
-    } elsif ($argument eq "-psize") {
-      # floating point options
-      $projOpts->{"pointSize"} = shift @ARGV;
-      printf(STDERR "Point size changed to %s\n",
-             $projOpts->{"pointSize"});
-    } elsif ($argument eq "-round") {
-      $projOpts->{"roundDP"} = shift @ARGV;
-      printf(STDERR "will round to %s decimal places\n",
-             $projOpts->{"roundDP"});
-    } elsif ($argument eq "-res") {
-      $projOpts->{"resolution"} = shift @ARGV;
-      printf(STDERR "Resolution changed to %s\n",
-             $projOpts->{"resolution"});
-    } elsif ($argument eq "-type") {
-      # string options
-      my $newArg = shift(@ARGV);
-      if ($newArg =~ /(location|locator|area|world|orthographic)/) {
-        $mapType = $newArg;
-      } else {
-        print(STDERR "Error: '$newArg' is not a valid map type. ".
-              "Only accepts '(location|locator|area|world|orthographic)'\n");
-        usage();
-        exit(1);
-      }
-      print(STDERR "Map type changed to '$mapType'\n");
-    } elsif ($argument =~ /^-colo(u)?r$/) {
-      $colourTheme = shift @ARGV;
-      print(STDERR "Colour theme changed to '$colourTheme'\n");
-    } elsif (($argument eq "-centre") || ($argument eq "-center")) {
-      my $newArg = shift(@ARGV);
-      if ($newArg =~ /,/) {
-        my @centre = split(/,/,$newArg,2);
-        $projOpts->{"centreLn"} = $centre[0];
-        $projOpts->{"centreLt"} = $centre[1];
-        printf(STDERR "Map centre changed to '%s,%s'\n",
-               $projOpts->{"centreLn"},
-               $projOpts->{"centreLt"});
-      } else {
-        $centreCountry = $newArg;
-        print(STDERR "Map centre changed to centre of country ".
-              "'$newArg' (if found)\n");
-      }
-    } elsif ($argument =~ /^-sub(ject)?/) {
-      my $newArg = shift @ARGV;
-      $subjectNames{$newArg} = 1;
-      print(STDERR "Adding '$newArg' as a map subject\n");
-    } elsif ($argument eq "-pol") {
-      my $newArg = shift @ARGV;
-      $politicalNames{$newArg} = 1;
-      print(STDERR "Adding '$newArg' as another politically-related area\n");
-    } elsif ($argument eq "-data") {
-      my $newArg = shift @ARGV;
-      push(@dataFiles, $newArg);
-      print(STDERR "Will extract numerical data from ".
-            "'$newArg' (assuming <ISO 3A-code>,<float>)\n");
-    } elsif ($argument eq "-only") {
-      my $newArg = shift @ARGV;
-      $onlyNames{$newArg} = 1;
-    } elsif ($argument eq "-zoom") {
-      my $newArg = shift @ARGV;
-      if ($newArg =~ /([0-9\.]+),([0-9\.]+),([0-9\.]+),([0-9\.]+)/) {
-        $projOpts->{"zoomed"} = 1;
-        $projOpts->{"manualZoom"} = 1;
-        $projOpts->{"minX"} = $1;
-        $projOpts->{"minY"} = $2;
-        $projOpts->{"maxX"} = $3;
-        $projOpts->{"maxY"} = $4;
-        printf(STDERR "Setting initial zoom box to (%s,%s)-(%s,%s)\n",
-               $projOpts->{"minX"},$projOpts->{"minY"},
-               $projOpts->{"maxX"},$projOpts->{"maxY"});
-      } else {
-        $zoomNames{$newArg} = 1;
-        $projOpts->{"zoomed"} = 1;
-        print(STDERR "Zooming map to include '$newArg'\n");
-      }
-    } elsif ($argument eq "-landcol") {
-      $landColour = shift @ARGV;
-      print(STDERR "Land colour changed to '$landColour'\n");
-    } elsif ($argument eq "-seacol") {
-      $seaColour = shift @ARGV;
-      print(STDERR "Sea colour changed to '$seaColour'\n");
-    } elsif ($argument eq "-bordcol") {
-      $borderColour = shift @ARGV;
-      print(STDERR "Border colour changed to '$borderColour'\n");
-    } elsif ($argument eq "-proj") {
-      $projOpts->{"projection"} = shift @ARGV;
-      printf(STDERR "Projection changed to '%s'\n",
-             $projOpts->{"projection"});
-    } else {
-      print(STDERR "Error: Unknown command-line option or non-existent file, ".
-            "'$argument'\n");
-      usage();
-      exit(1);
+    pod2usage({-exitVal => 1, -message => "Error: Unknown command-line option or non-existent file, ".
+            "'$argument'\n", -verbose => 0});
+  }
+}
+
+if($debugLevel > 0){
+  print(STDERR "Command-line options:\n");
+  foreach my $key (keys(%{$projOpts})){
+    if(ref($projOpts->{$key}) eq 'ARRAY'){
+      printf(STDERR "  %s: %s\n", $key, join("; ", @{$projOpts->{$key}}));
+    } elsif($projOpts->{$key} ne "") {
+      printf(STDERR "  %s: %s\n", $key, $projOpts->{$key});
     }
   }
 }
 
+if($projOpts->{"lines"}){
+  $projOpts->{"lines"} = 3;
+}
+
 if(scalar(@shpFileBases) == 0){
   print(STDERR "Error: No input files specified\n");
-  usage();
-  exit(2);
+  pod2usage(2);
 }
 
 if(keys(%onlyNames)){
@@ -787,8 +807,55 @@ if(keys(%onlyNames)){
   print(STDERR "  ".join("\n  ",keys(%onlyNames))."\n");
 }
 
+if(@dataFiles){
+  warn("Will extract numerical data (assuming <ISO 3A-code>,<float>) from the following files:\n");
+  foreach my $fName (@dataFiles){
+    warn("  $fName\n");
+  }
+}
 
-$mapType = "location" unless $mapType;
+if($projOpts->{"zoomed"}){
+  my @zoomArgs = @{$projOpts->{"zoomed"}};
+  foreach my $newArg (@zoomArgs){
+    if ($newArg =~ /([0-9\.\-]+),([0-9\.\-]+),([0-9\.\-]+),([0-9\.\-]+)/) {
+      $projOpts->{"manualZoom"} = 1;
+      $projOpts->{"minX"} = $1;
+      $projOpts->{"minY"} = $2;
+      $projOpts->{"maxX"} = $3;
+      $projOpts->{"maxY"} = $4;
+      printf(STDERR "Setting initial zoom box to (%s,%s)-(%s,%s)\n",
+             $projOpts->{"minX"},$projOpts->{"minY"},
+             $projOpts->{"maxX"},$projOpts->{"maxY"});
+    } else {
+      $zoomNames{$newArg} = 1;
+      print(STDERR "Zooming map to include '$newArg'\n");
+    }
+  }
+}
+
+
+if($mapType !~ /^(location|locator|area|world|orthographic)$/){
+  pod2usage({ -exitval => 1, -message => "Error: '".$projOpts->{"mapType"}.
+              "' is not a valid map type. ".
+              "Only accepts '(location|locator|area|world|orthographic)'",
+              -verbose => 0});
+}
+
+if($projOpts->{"centre"}){
+  my $newArg = $projOpts->{"centre"};
+  if ($newArg =~ /,/) {
+    my @centre = split(/,/,$newArg,2);
+    $projOpts->{"centreLn"} = $centre[0];
+    $projOpts->{"centreLt"} = $centre[1];
+    printf(STDERR "Map centre changed to '%s,%s'\n",
+           $projOpts->{"centreLn"},
+           $projOpts->{"centreLt"});
+  } else {
+    $centreCountry = $newArg;
+    print(STDERR "Map centre changed to centre of country ".
+          "'$newArg' (if found)\n");
+  }
+}
 
 if ($mapType =~ /^(location|locator|area)/) {
   $projOpts->{"projection"} = "equirectangular"
@@ -915,7 +982,7 @@ my %addedPoints = ();
 # centre of map is a feature, so hunt for it
 if ($centreCountry) {
   my ($minX, $minY, $maxX, $maxY);
-   foreach my $shpFileBase (@shpFileBases) {
+  foreach my $shpFileBase (@shpFileBases) {
     print(STDERR "Loading $shpFileBase to hunt for features... ")
       if ($debugLevel> 0);
     my $shp = new Geo::ShapeFile($shpFileBase)
@@ -932,13 +999,13 @@ if ($centreCountry) {
         foreach my $point (@shapePoints) {
           my $px = $point->X;
           my $py = $point->Y;
-          if(!defined($minX)){
+          if (!defined($minX)) {
             ($minX, $minY, $maxX, $maxY) = ($px, $py, $px, $py);
           }
-          if(($px - $minX) > 270){ # deal with pesky -180/180 wrapping issues
+          if (($px - $minX) > 270) { # deal with pesky -180/180 wrapping issues
             $px -= 360;
           }
-          if(($maxX - $px) > 270){
+          if (($maxX - $px) > 270) {
             $px += 360;
           }
           $minX = $px if($px < $minX);
@@ -947,10 +1014,10 @@ if ($centreCountry) {
           $maxY = $py if($py > $maxY);
         }
         my $midLong = ($minX + $maxX) / 2;
-        if($midLong > 180){
+        if ($midLong > 180) {
           $midLong -= 360;
         }
-        if($midLong < -180){
+        if ($midLong < -180) {
           $midLong += 360;
         }
         my $midLat = ($minY + $maxY) / 2;
@@ -970,23 +1037,13 @@ if ((!$projOpts->{"projection"}) ||
   printf(STDERR "Error: Unknown projection '%s'\n".
          "Should be one of: equirectangular, wintri, orthographic\n",
          $projOpts->{"projection"});
-  usage();
-  exit(3);
+  pod2usage(3);
 }
 
 if (($projOpts->{"centreLn"} eq "") ||
     ($projOpts->{"centreLt"} eq "")) {
   $projOpts->{"centreLn"} = 0;
   $projOpts->{"centreLt"} = 0;
-}
-
-if ($projOpts->{"manualZoom"}) {
-  # user specified zoom box, so convert to non-adjusted values
-  # TODO: make sure this is the right thing to do
-  $projOpts->{"minX"} -= $projOpts->{"xAdj"};
-  $projOpts->{"minY"} -= $projOpts->{"yAdj"};
-  $projOpts->{"maxX"} -= $projOpts->{"xAdj"};
-  $projOpts->{"maxY"} -= $projOpts->{"yAdj"};
 }
 
 # Determine projection extents, if necessary
@@ -1046,6 +1103,16 @@ $printLines = 0 if ($printLines eq "");
 
 # adjust SVG dimensions to fit in with zoom extents
 if ($projOpts->{"zoomed"}) {
+  if($projOpts->{"manualZoom"}){
+    warn("Detected a manual zoom\n") if $debugLevel > 0;
+    my @tmpPoints = (($projOpts->{"minX"},$projOpts->{"minY"}),
+                     ($projOpts->{"maxX"},$projOpts->{"maxY"}));
+    my @projectedPoints = project($projOpts, \@tmpPoints);
+    for my $i ([0..3]){
+      printf(STDERR "$i: %0.2f -> %0.2f\n", $tmpPoints[$i], $projectedPoints[$i])
+        if($debugLevel > 0);
+    }
+  }
   printf(STDERR "old SVG width: %0.2f\n", $projOpts->{"svgWidth"});
   printf(STDERR "old SVG height: %0.2f\n", $projOpts->{"svgHeight"});
   printf(STDERR "Zooming to projected region (%0.2f,%0.2f)-(%0.2f,%0.2f)\n",
@@ -1067,9 +1134,9 @@ if ($projOpts->{"zoomed"}) {
   $projOpts->{"yScale"} = $oldH / $height;
   my $relMagX = ($projOpts->{"svgWidth"} * $projOpts->{"xScale"}) / $oldW;
   my $relMagY = ($projOpts->{"svgHeight"} * $projOpts->{"yScale"}) / $oldH;
-  printf(STDERR "[Relative SVG magnification is (%0.3g,%0.3g)x]\n",
+  printf(STDERR "[Relative SVG magnification is (%0.3f,%0.3f)x]\n",
          $relMagX, $relMagY) if ($debugLevel > 0);
-  printf(STDERR "[SVG scale is (%0.3g,%0.3g)x]\n",
+  printf(STDERR "[SVG scale is (%0.3f,%0.3f)x]\n",
          $projOpts->{"xScale"}, $projOpts->{"yScale"}) if ($debugLevel > 0);
   # modify x/y adjust for new map boundaries plus a bit of padding
   $projOpts->{"padding"} = $projOpts->{"pointSize"} * 11;
@@ -1086,16 +1153,23 @@ $projOpts->{"maxX"} = $projOpts->{"minX"} + $projOpts->{"svgWidth"}
 $projOpts->{"maxY"} = $projOpts->{"minY"} + $projOpts->{"svgHeight"}
   + $projOpts->{"padding"} * 2;
 
+## pre-processed variables have been set up, so can now start writing to the SVG
+
 my $svg = SVG->new('height' => $projOpts->{"svgHeight"} + $projOpts->{"padding"} * 2 + 3,
-                   'width' => $projOpts->{"svgWidth"} + $projOpts->{"padding"} * 2 + 3);
+                   'width' => $projOpts->{"svgWidth"} + $projOpts->{"padding"} * 2 + 3,
+                   -indent => "  ",
+                  -nocredits => 1); # multi-line credits make Inkscape editing harder
 $svg->comment("Created using David Eccles' (gringer) perlshaper.pl script, ".
-              "version $progVersion, ".
+              "version $VERSION, ".
               "http://en.wikipedia.org/wiki/User:Gringer/perlshaper");
+$svg->comment("Generated using the Perl SVG Module V". $SVG::VERSION .
+              "by Ronan Oger [see http://www.roitsystems.com]"); # add in credit line
 $svg->comment("Command line: ".join(" ",@commandLine));
 
 # extract / colour based on data from files
 my $countryColours = "";
 my %countryValues = ();
+my %groupNames = ();
 my $minCValue = 100;
 my $maxCValue = 0;
 foreach my $dataFile (@dataFiles) {
@@ -1167,7 +1241,7 @@ text.heatmap{
 my $styleSheet = $svg->style('id' => 'mapStyle', 'type' => 'text/css');
 my $highlightWidth = $projOpts->{"pointSize"} * 2.5;
 my $riverWidth = $projOpts->{"pointSize"} / 2;
-$styleSheet->CDATA(qq|
+$styleSheet->CDATA( <<_EOCSS_
 /* Cascading Style Sheet (CSS) definitions for region colours */
 
 /* land: $landColour -- outside area (or default land colour)
@@ -1260,7 +1334,8 @@ circle.highlight{
  *   stroke: black;
  * }
  */
-|.$countryColours);
+_EOCSS_
+                    .$countryColours);
 
 # place sea layer beneath image
 
@@ -1296,7 +1371,7 @@ if (($mapType =~ /^(location|locator|area|world)/) &&
   my $maxLongVal;
   my $maxOffset = 0;
   for (my $longPoint = 180; $longPoint <= 540; $longPoint += 0.1) {
-    my $point = transform($projOpts, [$longPoint - 360, 0])
+    my $point = transform($projOpts, [$longPoint, 0])
       or die("cannot transform");
     if ($point->[2]) {
       if (!defined($minLongVal) || (($point -> [0]) < $minLongVal)) {
@@ -1313,16 +1388,16 @@ if (($mapType =~ /^(location|locator|area|world)/) &&
     $maxLong += 360;
   }
   my @linePoints = ();
-  for (my $latPoint = -90; $latPoint <= 90; $latPoint += 0.1) {
+  for (my $latPoint = -90; $latPoint <= 90; $latPoint += 1) { # left edge
     push(@linePoints, [$minLong - 360, $latPoint]);
   }
-  for (my $longPoint = $minLong; $longPoint < $maxLong; $longPoint += 0.1) {
+  for (my $longPoint = $minLong; $longPoint < $maxLong; $longPoint += 1) { # line across top
     push(@linePoints, [$longPoint - 360, 90]);
   }
-  for (my $latPoint = 90; $latPoint >= -90; $latPoint -= 0.1) {
+  for (my $latPoint = 90; $latPoint >= -90; $latPoint -= 1) { # right edge
     push(@linePoints, [$maxLong - 360, $latPoint]);
   }
-  for (my $longPoint = $maxLong; $longPoint > $minLong; $longPoint -= 0.1) {
+  for (my $longPoint = $maxLong; $longPoint > $minLong; $longPoint -= 1) { # line across bottom
     push(@linePoints, [$longPoint - 360, -90]);
   }
   while($minLong > 180){
@@ -1331,13 +1406,18 @@ if (($mapType =~ /^(location|locator|area|world)/) &&
   while($maxLong > 180){
     $maxLong -= 360;
   }
+  printf(STDERR " done (%s,%s)!\n", $minLong, $maxLong) if ($debugLevel> 0);
   $projOpts->{"minLong"} = $minLong;
   $projOpts->{"maxLong"} = $maxLong;
+  printf(STDERR "Drawing border points... ");
+  printf(STDERR "Projecting border points... ");
   @linePoints = project($projOpts, \@linePoints);
+  printf(STDERR "simplifying %d border points... ", scalar(@linePoints));
   @linePoints = simplify($projOpts, \%addedPoints, \@linePoints);
+  printf(STDERR "chopping border points... ");
   $seaPath = chopPoly($projOpts, \@linePoints, 1);
   $seaGroup->path('id' => 'pSeaBase', 'd' => $seaPath, 'class' => 'seabase');
-  printf(STDERR " done (%s,%s)!\n", $minLong, $maxLong) if ($debugLevel> 0);
+  printf(STDERR "done!\n");
 }
 
 # place sea -- a rectangle around the image for zoomed maps
@@ -1422,6 +1502,7 @@ foreach my $shpFileBase (@shpFileBases) {
     $sovGroup = $worldGroup->getElementByID($sovString);
     if (!$sovGroup) {
       $sovGroup = $worldGroup->group('id' => $sovString);
+      $groupNames{$sovGroup->{"id"}} = 1;
     }
     if ($sovName eq $countryName) {
       $countryGroup = $sovGroup;
@@ -1429,12 +1510,14 @@ foreach my $shpFileBase (@shpFileBases) {
       $countryGroup = $sovGroup->getElementByID($countryString);
       if (!$countryGroup) {
         $countryGroup = $sovGroup->group('id' => $countryString);
+        $groupNames{$countryGroup->{"id"}} = 1;
       }
     }
     if ($regionName) {          # a region inside a country
       $shapeGroup = $countryGroup->getElementByID($regionString);
       if (!$shapeGroup) {
         $shapeGroup = $countryGroup->group('id' => $regionString);
+        $groupNames{$shapeGroup->{"id"}} = 1;
       }
     } else {
       $shapeGroup = $countryGroup;
@@ -1699,3 +1782,62 @@ if (keys(%countryValues) && $printKey) {
 }
 
 print $svg->xmlify();
+
+__END__
+
+=head1 ERRORS
+
+=head2 Return codes
+
+=over 2
+
+=item B<0>: success
+
+=item B<1>: unknown command-line option
+
+=item B<2>: file error
+
+=item B<3>: projection error
+
+=back
+
+=head1 BUGS
+
+=over 4
+
+=item * Horizontal lines appear between map edge limits on full-world location maps
+
+=item * Map simplification is extremely slow for shapes with lots of
+points (e.g. world location map)
+
+=item * The zoom box needs a defined centre to work properly
+
+=back
+
+=head1 AUTHOR
+
+David Eccles (gringer) 2010-2013 <programming@gringer.org>
+
+=head1 LICENSE
+
+Copyright 2010-2013 David Eccles (gringer)
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
+=head1 AVAILABILITY
+
+The most recent version of this code can be found at
+
+http://en.wikipedia.org/wiki/User:Gringer/perlshaper
