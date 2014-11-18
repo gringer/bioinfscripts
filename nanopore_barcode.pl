@@ -23,7 +23,7 @@ the nanopore sequencer
 
 =item B<-length>
 
-Length of barcode to generate, excluding prefix/suffix (default 15)
+Length of barcode to generate, excluding prefix/suffix (default 24)
 
 =item B<-count>
 
@@ -59,7 +59,7 @@ added sequences.
 
 =cut
 
-my $length = 15;
+my $length = 24;
 my $count = 1;
 my $threshold = 0.2;
 my $prefix = "GGTGCTG";
