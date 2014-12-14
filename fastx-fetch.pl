@@ -29,7 +29,7 @@ if($idFileName){
   open(my $idFile, "<", $idFileName);
   while(<$idFile>){
     chomp;
-    s/^>//;
+    s/^[>@]//;
     $idsToGet{$_} = 1;
   }
   close($idFile);
