@@ -23,7 +23,7 @@ the nanopore sequencer
 
 =item B<-length>
 
-Length of barcode to generate (default 15)
+Length of barcode to generate, excluding prefix/suffix (default 24)
 
 =item B<-count>
 
@@ -32,6 +32,22 @@ Number of barcodes to generate (default 1)
 =item B<-threshold>
 
 Difference threshold for barcode inclusion (default 0.2)
+
+=item B<-prefix>
+
+Prefix sequence for barcode (default I<GGTGCTG>)
+
+=item B<-suffix>
+
+Suffix sequence for barcode (default I<TTAACCT>)
+
+=item B<-order>
+
+Order of base selection (default I<ATCG>)
+
+=item B<-baseprob>
+
+Base probability, excluding previous base (commma-separated, default I<0.45,0.30,0.25>)
 
 =back
 
@@ -43,14 +59,25 @@ added sequences.
 
 =cut
 
-my $length = 15;
+my $length = 24;
 my $count = 1;
 my $threshold = 0.2;
+my $prefix = "GGTGCTG";
+my $suffix = "TTAACCT";
+my $baseOrder = "ATCG";
+my $baseProb = "0.45,0.30,0.25";
 
 GetOptions('length=i' => \$length,
            'count=i'=> \$count,
            'threshold=f'=> \$threshold,
-) or pod2usage(1);
+           'prefix=s' => \$prefix,
+           'suffix=s' => \$suffix, 
+           'order=s' => \$baseOrder,
+           'baseprob=s' => \$baseProb,
+          ) or pod2usage(1);
+
+my @baseProbs = split(/,/,$baseProb);
+my @baseOrders = split(//, $baseOrder);
 
 my $lastBase = "";
 
@@ -71,20 +98,25 @@ my $sequence = "";
 my $seqNum = 0;
 
 while($seqNum < $count){
-    $sequence = "";
-    my $lastBase = "C";
-    for(my $i = 0; $i < $length; $i++){
-        my @nextBaseOptions = grep {$_ ne $lastBase} ("A","T","C");
-        my $nextBase = (rand() < 0.6) ?
-            $nextBaseOptions[0] : $nextBaseOptions[1];
-        $sequence .= $nextBase;
-        $lastBase = $nextBase;
+  $sequence = "";
+  my $lastBase = (length($prefix) == 0) ? "C" : substr($prefix,-1,1);
+  for(my $i = 0; $i < $length; $i++){
+    my @nextBaseOptions = grep {$_ ne $lastBase} @baseOrders;
+    my $prob = rand();
+    my $nextBase = $nextBaseOptions[2];
+    if($prob < $baseProbs[0]){
+      $nextBase = $nextBaseOptions[0];
+    } elsif($prob < $baseProbs[1]){
+      $nextBase = $nextBaseOptions[1];
     }
-    my $addedDiffCount =
-      grep {seqsDifferent($_,$sequence,$threshold)} @addedSeqs;
-    if(!@addedSeqs || ($addedDiffCount == scalar(@addedSeqs))){
-      $seqNum++;
-      printf(">Barcode_%03d\n%s\n", $seqNum, $sequence);
-      push(@addedSeqs, $sequence);
-    }
+    $sequence .= $nextBase;
+    $lastBase = $nextBase;
+  }
+  my $addedDiffCount =
+    grep {seqsDifferent($_,$sequence,$threshold)} @addedSeqs;
+  if(!@addedSeqs || ($addedDiffCount == scalar(@addedSeqs))){
+    $seqNum++;
+    printf(">Barcode_%03d\n%s\n", $seqNum, $prefix.$sequence.$suffix);
+    push(@addedSeqs, $sequence);
+  }
 }
