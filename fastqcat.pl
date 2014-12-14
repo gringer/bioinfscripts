@@ -7,13 +7,14 @@ my $seqID = "";
 my $qualID = "";
 my $seq = "";
 my $qual = "";
+my $minLen = 0;
 while(<>){
   chomp;
   chomp;
   if(!$inQual){
     if(/^@(.+)$/){
       my $newSeqID = $1;
-      if($seqID){
+      if($seqID && (length($seq) >= $minLen)){
         printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
       }
       $seq = "";
@@ -33,6 +34,6 @@ while(<>){
   }
 }
 
-if($seqID){
+if($seqID && (length($seq) >= $minLen)){
   printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
 }
