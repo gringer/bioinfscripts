@@ -93,7 +93,10 @@ my $cx = $svgWidth/2;
 my $cy = $svgHeight/2;
 
 printf("<svg xmlns:svg=\"http://www.w3.org/2000/svg\"
-  width=\"$svgWidth\" height=\"$svgHeight\">\n");
+   xmlns=\"http://www.w3.org/2000/svg\"
+   preserveAspectRatio=\"xMidYMid meet\"
+   viewBox=\"0 0 $svgWidth $svgHeight\"
+   version=\"1.1\">\n");
 printf(" <g fill=\"none\" ".
        "stroke-width=\"0.03\" stroke-linejoin=\"round\">\n");
 foreach my $zPos (sort {$a <=> $b} (keys(%lines))){
@@ -101,7 +104,7 @@ foreach my $zPos (sort {$a <=> $b} (keys(%lines))){
         my ($fx, $fy, $rest) = split(/[, ]/, $line, 3);
         my $colour = shift(@{$colours{$zPos}});
         $colour = "#$colour$colour$colour";
-        $fx += $cx; 
+        $fx += $cx;
         $fy += $cy;
         printf("  <path d=\"m%g,%g %s\" fill=\"%s\" stroke=\"%s\"/>\n",
                $fx, $fy, $rest, $colour, $colour);
