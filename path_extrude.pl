@@ -6,7 +6,7 @@ use Math::Trig qw(acos :radial :pi);
 use Getopt::Long qw(:config auto_version auto_help prefix_pattern=(--|-|\+|-\$));
 use Pod::Usage;
 
-our $VERSION = "2014.01.21.0";
+our $VERSION = "2014.12.16.0";
 
 =pod
 
@@ -65,6 +65,11 @@ The number of polygon points to generate (used with I<polyfn>)
 =item B<-$fn>
 
 The number of path points to generate (used with I<pathfn>)
+
+=item B<-[no]draw>
+
+Draw the path as well as generating the draw module/function (set by
+default, use 'nodraw' to disable)
 
 =back
 
@@ -244,7 +249,7 @@ my @polyPoints = ();
 my @pathPoints = ();
 my $pathFunction = ""; # function depending on t = 0 .. 2*pi
 
-my %options = ();
+my %options = (draw => 1);
 
 if(!(-t STDIN)){ # load options from standard input (if any)
   while(<STDIN>){
@@ -273,6 +278,7 @@ my $cmdLine = join(" ",@ARGV);
 GetOptions(\%options,
            "path|pathfn=s",
            "polygon|polygonfn=s",
+           "draw!",
            "fn=i",
            "pn=i",
           ) or pod2usage("Error in command line arguments\n");
@@ -387,9 +393,11 @@ push(@scadPoints, pointToText($pathPoints[0]));
 push(@scadPoints, pointToText($pathPoints[$#pathPoints]));
 grep {s/\],\[/\],\n            \[/g} @scadPoints;
 
-print("extruded_path();");
+if($options{draw}){
+  print("extruded_path();");
+}
 print("module extruded_path(){");
-print("  //generated using gringer's path extrude Perl script v$VERSION [http://www.thingiverse.com/thing:186660]");
+print("  //generated using gringer's path extrude Perl script v$VERSION [https://github.com/gringer/bioinfscripts/blob/master/path_extrude.pl]");
 print("  //command line: $cmdLine");
 print("  polyhedron(");
 print("    points = [".join(",\n              ", @scadPoints)."],");
