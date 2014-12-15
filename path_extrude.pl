@@ -3,10 +3,10 @@ use warnings;
 use strict;
 
 use Math::Trig qw(acos :radial :pi);
+use Getopt::Long qw(:config auto_version auto_help prefix_pattern=(--|-|\+|-\$));
+use Pod::Usage;
 
-$\ = $/;
-
-our $VERSION = "2013.11.20.0";
+our $VERSION = "2014.01.21.0";
 
 =pod
 
@@ -34,28 +34,42 @@ point as if it were a mid point, and the end faces are not generated.
 
 =head1 SYNOPSIS
 
-cat arguments.txt | ./path_extrude.pl > out.scad
+ ./path_extrude.pl -polygon <points/fn> -path <points/fn> [arguments] > out.scad
+ cat arguments.txt | ./path_extrude.pl > out.scad
 
-The input file is a line-delimited file of the form B<option> =
-B<value>. See L<ARGUMENTS> for details.
+Arguments are specified on the command line as B<-option>, or in a
+file piped to standard input as B<option> = B<value> (e.g. C<polygon =
+[[-1,-1],[-1,1],[1,1],[1,-1]]>).
 
-=head1 ARGUMENTS
 
-Arguments are specified in the input file as B<option> = B<value>
-(e.g. C<polygon = [[-1,-1],[-1,1],[1,1],[1,-1]]>).
+=head2 Basic Options
 
 =over 2
 
-B<polygon> A list of 2D polygon points in clockwise order
+=item B<-polygon>
 
-B<path> A list of 3D path points in the order of extrusion
+A list of 2D polygon points in clockwise order, or a function
+returning a 2-element array that depends on the parameter t = 0
+.. 2*pi
 
-B<pathfn> A function returning a 3-element array that depends on the
-parameter t = 0 .. 2*pi
+=item B<-path>
 
-B<$fn> The number of path points to generate (used with I<pathfn>)
+A list of 3D path points in the order of extrusion, or a function
+returning a 3-element array that depends on the parameter t = 0
+.. 2*pi
+
+=item B<-$pn>
+
+The number of polygon points to generate (used with I<polyfn>)
+
+=item B<-$fn>
+
+The number of path points to generate (used with I<pathfn>)
 
 =back
+
+
+=head1 SYNTAX
 
 Points are represented as an OpenSCAD array of arrays (i.e.
 [[x1,y1,z1],[x2,y2,z2],...] for 3D points).
@@ -226,58 +240,102 @@ sub pointToText{
   return sprintf("[%s".(",%s" x (@out-1))."]", @out);
 }
 
-my ($polyLine, $pathLine) = ("","");
 my @polyPoints = ();
 my @pathPoints = ();
-my $numPoints;
 my $pathFunction = ""; # function depending on t = 0 .. 2*pi
 
-while(<>){
-  if(/^poly(gon)?\s*=\s*(.*)$/i){
-    $polyLine = $2;
-  }
-  if(/^path\s*=\s*(.*)$/i){
-    $pathLine = $1;
-  }
-  if(/^pathf(unctio)?n\s*=\s*(.*)$/i){
-    $pathFunction = $2;
-  }
-  if(/^\$fn\s*=\s*(.*)$/){
-    $numPoints = $1;
+my %options = ();
+
+if(!(-t STDIN)){ # load options from standard input (if any)
+  while(<STDIN>){
+    if(/^\$?(\w+)\s*=\s*(.*)$/){
+      my $opt = $1;
+      my $arg = $2;
+      if($opt =~ /^poly$/){
+        $opt = "polygon";
+      }
+      $opt =~ s/function$/fn/;
+      $options{$opt} = $arg;
+    }
   }
 }
 
-# convert polygon into 2D point notation
-while($polyLine =~ s/\[?\[([^\]]+)\],?//){
+if($options{"pathfn"}){
+  $options{"path"} = $options{"pathfn"};
+}
+
+if($options{"polygonfn"}){
+  $options{"polygon"} = $options{"polygonfn"};
+}
+
+my $cmdLine = join(" ",@ARGV);
+
+GetOptions(\%options,
+           "path|pathfn=s",
+           "polygon|polygonfn=s",
+           "fn=i",
+           "pn=i",
+          ) or pod2usage("Error in command line arguments\n");
+
+if($options{"pn"}){
+  $options{"\$pn"} = $options{"pn"};
+}
+
+if($options{"fn"}){
+  $options{"\$fn"} = $options{"fn"};
+}
+
+if(!$options{"polygon"}){
+  pod2usage("Error: Polygon points (-polygon) must be supplied as an argument")
+}
+
+if(!$options{"path"}){
+  pod2usage("Error: Path points (-path) must be supplied as an argument")
+}
+
+# convert polygon into internal 2D point notation
+if($options{"polygon"} =~ /^\[.*\]$/){
+  while($options{"polygon"} =~ s/\[?\[([^\]]+)\],?//){
     my @point = split(/,/, $1);
     if(@point != 2){
-        die("Polygon points should be 2D points: [[x1,y1],[x2,y2],...]");
+      die("Polygon points should be 2D points: [[x1,y1],[x2,y2],...]");
     }
     push(@polyPoints, \@point);
+  }
+} else { # otherwise assume polygon function
+  if(!$options{"\$pn"}){
+    $options{"\$pn"} = 6; # default number of polygon points when unspecified
+  }
+  my $tInc = (2 * pi) / ($options{"\$pn"});
+  # end point is trickier because floating point equality is tricky
+  for(my $t = 0; $t < (2 * pi - $tInc/2); $t += $tInc){
+    my @point = eval($options{"polygon"});
+    if(@point != 2){
+        die("Polygon point function should return 2D points, f(t) = (x,y)");
+    }
+    grep{$_ = sprintf("%0.3f", $_); $_ = 0 if ($_ == 0) } @point; # round to 3 d.p.
+    push(@polyPoints, \@point);
+  }
 }
 
 # convert path into internal 3D point notation
-while($pathLine =~ s/\[?\[([^\]]+)\],?//){
+if($options{"path"} =~ /^\[.*\]$/){
+  while($options{"path"} =~ s/\[?\[([^\]]+)\],?//){
     my @point = split(/,/, $1);
     if(@point != 3){
-        die("Path points should be 3D points: [[x1,y1,z1],[x2,y2,z2],...]");
+      die("Path points should be 3D points: [[x1,y1,z1],[x2,y2,z2],...]");
     }
     push(@pathPoints, \@point);
-}
-
-if($pathFunction && !$numPoints){
-  $numPoints = 20; # default number of points when unspecified
-}
-
-
-if($pathFunction){
-    printf(STDERR "Processing function: %s\n", $pathFunction);
-  my $tInc = (2 * pi) / ($numPoints - 1);
+  }
+} else { # otherwise assume path function
+  if(!$options{"\$fn"}){
+    $options{"\$fn"} = 20; # default number of path points when unspecified
+  }
+  my $tInc = (2 * pi) / ($options{"\$fn"} - 1);
   # end point is trickier because floating point equality is tricky
   for(my $t = 0; $t < (2 * pi + $tInc/2); $t += $tInc){
-    my @point = eval($pathFunction);
+    my @point = eval($options{"path"});
     if(@point != 3){
-        print(STDERR @point);
         die("Path point function should return 3D points, f(t) = (x,y,z)");
     }
     grep{$_ = sprintf("%0.3f", $_); $_ = 0 if ($_ == 0) } @point; # round to 3 d.p.
@@ -285,13 +343,19 @@ if($pathFunction){
   }
 }
 
-if($numPoints && (@pathPoints != $numPoints)){
-  die("Path points specified, but count doesn't match \$fn");
+if($options{"\$fn"} && (@pathPoints != $options{"\$fn"})){
+  warn("Warning: path points specified, but count doesn't match \$fn\n");
+}
+
+if($options{"\$pn"} && (@polyPoints != $options{"\$pn"})){
+  warn("Warning: polygon points specified, but count doesn't match \$pn\n");
 }
 
 if(@pathPoints < 2){
-  die("Need at least two points along a path for extrusion");
+  pod2usage("Error: Need at least two points along a path for extrusion");
 }
+
+$\ = $/; # make printing a bit simpler by appending line breaks
 
 my ($rDiffNext, $rDiffLast) = (0, 0);
 
@@ -323,8 +387,12 @@ push(@scadPoints, pointToText($pathPoints[0]));
 push(@scadPoints, pointToText($pathPoints[$#pathPoints]));
 grep {s/\],\[/\],\n            \[/g} @scadPoints;
 
-print("polyhedron(");
-print("  points = [".join(",\n            ", @scadPoints)."],");
+print("extruded_path();");
+print("module extruded_path(){");
+print("  //generated using gringer's path extrude Perl script v$VERSION [http://www.thingiverse.com/thing:186660]");
+print("  //command line: $cmdLine");
+print("  polyhedron(");
+print("    points = [".join(",\n              ", @scadPoints)."],");
 
 my @trianglePoints = ();
 
@@ -360,7 +428,8 @@ if(!equal($pathPoints[0], $pathPoints[$#pathPoints])){
   }
 }
 
-print("  triangles = [".join(",\n               ", @trianglePoints)."]);");
+print("    triangles = [".join(",\n                 ", @trianglePoints)."]);");
+print("}");
 
 =head1 LICENSE
 
