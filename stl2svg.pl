@@ -87,10 +87,12 @@ while(<>){
     }
 }
 
-my $svgWidth = sprintf("%0.0f", ($maxX - $minX) * 1.05);
-my $svgHeight = sprintf("%0.0f", ($maxY - $minY) * 1.05);
-my $cx = $svgWidth/2;
-my $cy = $svgHeight/2;
+my $figWidth = ($maxX - $minX);
+my $figHeight = ($maxY - $minY);
+my $svgWidth = sprintf("%0.0f", $figWidth * 1.05);
+my $svgHeight = sprintf("%0.0f", $figHeight * 1.05);
+my $ox = $figWidth * 0.025 - $minX;
+my $oy = $figHeight * 0.025 - $minY;
 
 printf("<svg xmlns:svg=\"http://www.w3.org/2000/svg\"
    xmlns=\"http://www.w3.org/2000/svg\"
@@ -104,8 +106,8 @@ foreach my $zPos (sort {$a <=> $b} (keys(%lines))){
         my ($fx, $fy, $rest) = split(/[, ]/, $line, 3);
         my $colour = shift(@{$colours{$zPos}});
         $colour = "#$colour$colour$colour";
-        $fx += $cx;
-        $fy += $cy;
+        $fx += $ox;
+        $fy += $oy;
         printf("  <path d=\"m%g,%g %s\" fill=\"%s\" stroke=\"%s\"/>\n",
                $fx, $fy, $rest, $colour, $colour);
     }
