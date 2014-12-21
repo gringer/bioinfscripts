@@ -394,8 +394,6 @@ myparams = {
     "addFields"    : ('resultsExist','sessionID','blastCommand'),
     }
 
-#blastn -db db/3alln_smed -query /tmp/tmpGFk3hs -outfmt 5 -task blastn -evalue 10 -max_target_seqs 100 -word_size 11
-
 currentProgram = form.getfirst("selectProgram","blastn")
 currentTab = form.getfirst("selectTab","query")
 
