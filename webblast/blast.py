@@ -222,6 +222,14 @@ def getResults(parameters):
     formattedPreResult = ''
     formattedSummaryResult = ''
     formattedFullResult = ''
+    # sort out GBrowse pattern replacements
+    gbrowsePatterns = dict()
+    if('gbrowse_patterns' in parameters):
+        patternList = parameters['gbrowse_patterns'].split(';');
+        for pattern in patternList:
+            components = pattern.split(':',1)
+            gbrowsePatterns[components[0]] = components[1]
+    # find location of results files and error output
     reader = csv.reader(open(resultStorageName))
     for row in reader:
         sessionID = row[0]
@@ -271,16 +279,17 @@ def getResults(parameters):
                     coverage = float(abs(hsp.query_end - hsp.query_start)) / blast_record.query_length * 100
                     subjCoverage = float(abs(hsp.sbjct_end - hsp.sbjct_start)) / alignment.length * 100
                     # place appropriate hyperlinks into subject names
-                    if('v31' in subject):
-                        subject = (
-                            '<a href="/fgb2/gbrowse/smed/?name=%s:%d..%d&h_region=%s:%d..%d@cornsilk">%s</a>' %
-                            (subject,
-                             min(hsp.sbjct_start, hsp.sbjct_end),
-                             max(hsp.sbjct_start, hsp.sbjct_end),
-                             subject,
-                             min(hsp.sbjct_start, hsp.sbjct_end),
-                             max(hsp.sbjct_start, hsp.sbjct_end),
-                             subject))
+                    for subPattern in gbrowsePatterns:
+                        if(subPattern in subject):
+                            subject = (
+                                hyperDict[subPattern] %
+                                (subject,
+                                 min(hsp.sbjct_start, hsp.sbjct_end),
+                                 max(hsp.sbjct_start, hsp.sbjct_end),
+                                 subject,
+                                 min(hsp.sbjct_start, hsp.sbjct_end),
+                                 max(hsp.sbjct_start, hsp.sbjct_end),
+                                 subject))
                     alignmentText = '<a name="%d" href="#summary">**** Alignment %d ****</a>\n' % (
                         numAlignments, numAlignments)
                     alignmentText += 'query: %s\n' % query
@@ -390,6 +399,8 @@ myparams = {
 currentProgram = form.getfirst("selectProgram","blastn")
 currentTab = form.getfirst("selectTab","query")
 
+# get local site defaults
+loadDefaults('templates/site_defaults.csv', myparams)
 # get default values for this program
 loadDefaults('templates/%s_defaults.csv' % currentProgram, myparams)
 # overwrite default values with previous form values
@@ -407,7 +418,6 @@ if(myparams['program'] in ('blastn', 'blastx', 'tblastx')):
     myparams['inputType'] = 'nucleotide';
 if(myparams['program'] in ('blastp', 'tblastn')):
     myparams['inputType'] = 'protein';
-
 
 myparams['databases'] = getBlastDBs(myparams)
 myparams['request_uri'] = os.environ['REQUEST_URI']
