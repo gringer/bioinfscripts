@@ -12,7 +12,6 @@ import subprocess # for running external programs
 import csv # for parsing csv files (e.g. blast output)
 import time # for results file cleanup
 import tempfile # for blast results
-from os import environ # for getting called page name
 from Bio.Blast import NCBIXML # for XML parsing
 from decimal import Decimal # for scientific notation
 
@@ -411,7 +410,7 @@ if(myparams['program'] in ('blastp', 'tblastn')):
 
 
 myparams['databases'] = getBlastDBs(myparams)
-myparams['request_uri'] = environ['REQUEST_URI']
+myparams['request_uri'] = os.environ['REQUEST_URI']
 
 # remove stale results files
 cleanUpResultsFiles(myparams)
@@ -434,4 +433,3 @@ if('errors' in myparams):
     print('<h3>Errors:</h3><pre>%s</pre>' % myparams['errors']);
 printHiddenValues(form, myparams)
 printFile('templates/footer.html', myparams, False)
-
