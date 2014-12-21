@@ -282,7 +282,7 @@ def getResults(parameters):
                     for subPattern in gbrowsePatterns:
                         if(subPattern in subject):
                             subject = (
-                                hyperDict[subPattern] %
+                                gbrowsePatterns[subPattern] %
                                 (subject,
                                  min(hsp.sbjct_start, hsp.sbjct_end),
                                  max(hsp.sbjct_start, hsp.sbjct_end),
