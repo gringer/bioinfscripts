@@ -1,0 +1,2 @@
+site_name,SITE_<br>NAME
+gbrowse_patterns,mmus_mtDNA:<a href="/fgb2/gbrowse/mmus/?name=%s:%d..%d&h_region=%s:%d..%d@cornsilk">%s</a>

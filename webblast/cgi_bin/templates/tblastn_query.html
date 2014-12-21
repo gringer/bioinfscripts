@@ -1,0 +1,19 @@
+<h2>Query Database</h2>
+
+<select name="queryDB">
+  %(databases)
+</select>
+
+
+<h2>Target Sequence</h2>
+
+<p>Enter a <em>%(inputType)</em> sequence in FASTA format: </p>
+
+<textarea name="inputText" rows="10" cols="71" wrap="soft">%(inputText)</textarea>
+
+<div>
+  Or upload a file: <input type="file" name="inputFile" size="30" />
+</div>
+<button type="submit" class="blastbutton" name="runBlast" value="BLAST">
+  <p>BLAST</p>
+</button>

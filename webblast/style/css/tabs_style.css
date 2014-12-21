@@ -1,0 +1,55 @@
+#tabbar {
+   z-index: 1;
+   font-size: 93%;
+   position: fixed;
+   top: 5px;
+   width: auto;
+   height: 43px;
+   left: 175px;
+   right: 92px;
+   bottom: 26px;
+   padding: 0px;
+   margin: 0px;
+}
+
+#tabbar ul {
+   margin: 0;
+   padding:5px 5px;
+   list-style:none;
+}
+
+#tabbar button {
+    border-style: none;
+    background-color: transparent;
+}
+
+#tabbar p {
+   color: gray;
+   font-weight: bold;
+   margin: 2px;
+}
+
+#tabbar li {
+   display: block;
+   float:left;
+   border-radius: 5px 5px 0 0;
+   box-shadow: 1px -1px 1px rgba(0,0,0,0.5);
+   border: 1px solid black;
+   border-bottom: 1px solid white;
+   background: white;
+   margin: 5px 5px 0 0;
+   padding:0px 2px 0px 0px;
+}
+
+#tabbar .tabon p { 
+    color: black;
+}
+
+#tabbar .taboff {
+    border-bottom: 1px solid black;
+}
+
+#tabbar .tabdisabled {
+    background: rgba(192,192,192,1);
+    visibility: hidden;
+}

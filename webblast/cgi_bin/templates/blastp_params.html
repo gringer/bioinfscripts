@@ -1,0 +1,113 @@
+<h2>Program Parameters</h2>
+<!-- structure taken from NCBI blast, with extra help / default candy removed -->
+<fieldset>
+  <legend>General Parameters</legend>
+
+  <p>
+    <label for="numseq">Max target sequences</label>
+    <select name="MAX_NUM_SEQ" id="numseq"
+            alt = "Select the maximum number of aligned sequences to display">
+      <option value="%(MAX_NUM_SEQ)" selected="selected">%(MAX_NUM_SEQ)</option>
+      <option disabled="disabled">-----</option>
+      <option value="10">10</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+      <option value="250">250</option>
+      <option value="500">500</option>
+      <option value="1000">1000</option>
+      <option value="5000">5000</option>
+      <option value="10000">10000</option>
+      <option value="20000">20000</option>
+    </select>
+  </p>
+
+  <p>
+    <input type="checkbox" name="SHORT_QUERY_ADJUST" id="adjparam" checked="%(SHORT_QUERY_ADJUST)" />
+    <label for="adjparam">Automatically adjust parameters for short input sequences</label>
+  </p>
+
+  <p>
+    <label for="expect">Expect threshold</label>
+    <input name="EXPECT" id="expect" size="10" type="text" value="%(EXPECT)" />
+  </p>
+
+  <p>
+    <label for="wordsize">Word size</label>
+    <select name="WORD_SIZE" id="wordsize" defVal="11" >
+      <option value="%(WORD_SIZE)" selected="selected">%(WORD_SIZE)</option>
+      <option disabled="disabled">-----</option>
+      <option value="7">7</option>
+      <option value="11">11</option>
+      <option value="15">15</option>
+    </select>
+  </p>
+
+  <!-- <p> -->
+  <!--   <label for="hsp_range_max">Max matches in a query range</label> -->
+  <!--   <input name="HSP_RANGE_MAX" id="hsp_range_max" size="10" type="text" value="0" defVal="0" /> -->
+  <!-- </p> -->
+
+</fieldset>
+
+<fieldset>
+  <legend>Scoring Parameters</legend>
+  <p>
+    <label for="matrixName">Matrix</label>
+    <select name="MATRIX_NAME" id="matrixName" defVal="">
+      <option value="%(MATRIX_NAME)" selected="selected">%(MATRIX_NAME)</option>
+      <option disabled="disabled">-----</option>
+      <option value="PAM30">PAM30</option>
+      <option value="PAM70">PAM70</option>
+      <option value="BLOSUM80">BLOSUM80</option>
+      <option value="BLOSUM62">BLOSUM62</option>
+      <option value="BLOSUM45">BLOSUM45</option>
+    </select>
+  </p>
+
+  <p>
+    <label for="matchscores">Match/Mismatch Scores</label>
+    <select name="MATCH_SCORES" id="matchscores">
+      <option value="%(MATCH_SCORES)" selected="selected">%(MATCH_SCORES)</option>
+      <option disabled="disabled">-----</option>
+      <option value="1,-2">1,-2</option>
+      <option value="1,-3">1,-3</option>
+      <option value="1,-4">1,-4</option>
+      <option value="2,-3">2,-3</option>
+      <option value="4,-5">4,-5</option>
+      <option value="1,-1">1,-1</option>
+    </select>
+  </p>
+
+  <p>
+    <label for="gapcosts">Gap Costs</label>
+    <select name="GAPCOSTS" id="gapcosts" defVal="5 2" ><!-- default depends on MatchScores selected - doen in javascript -->
+      <option value="%(GAPCOSTS)" selected="selected">%(GAPCOSTS)</option>
+      <option disabled="disabled">-----</option>
+      <option value = "0 0">Linear</option>
+      <option value = "4 4">Existence:  4 Extension: 4</option>
+      <option value = "2 4">Existence:  2 Extension: 4</option>
+      <option value = "0 4">Existence:  0 Extension: 4</option>
+      <option value = "3 3">Existence:  3 Extension: 3</option>
+      <option value = "6 2">Existence:  6 Extension: 2</option>
+      <option value = "5 2">Existence:  5 Extension: 2</option>
+      <option value = "4 2">Existence: 4 Extension: 2</option>
+      <option value = "2 2">Existence:  2 Extension: 2</option>
+    </select>
+  </p>
+  <p>
+    <label for="compbasedstat">Compositional adjustments</label>
+    <select name="COMPOSITION_BASED_STATISTICS" id="compbasedstat" defVal="">
+      <option value="%(COMPOSITION_BASED_STATISTICS)" selected="selected">%(COMPOSITION_BASED_STATISTICS)</option>
+      <option disabled="disabled">-----</option>
+      <option value="0">No adjustment</option>
+      <option value="1">Composition-based statistics</option>
+      <option value="2">Conditional compositional score matrix adjustment</option>
+      <option value="3">Universal compositional score matrix adjustment</option>
+    </select>
+  </p>
+
+</fieldset>
+
+<button type="submit" class="blastbutton" name="runBlast" value="BLAST">
+  <p>BLAST</p>
+</button>

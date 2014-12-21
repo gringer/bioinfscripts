@@ -1,0 +1,71 @@
+<html><head>
+<link rel="stylesheet" href="../style/css/tabs_style.css" />
+<link rel="stylesheet" href="../style/css/side_menu.css" />
+<link rel="stylesheet" href="../style/css/main_area.css" />
+<title>MPI BLAST Search (%(program))</title>
+<script type="text/javascript" src="templates/sorttable.js"></script>
+</head><body>
+<form method="post" action="%(request_uri)" enctype="multipart/form-data">
+<div id="menu_area">
+<div id="logo_area">
+<img alt="Project Logo" id="logo" src="../style/project_logo.png"
+     width="100" height="100" />
+</div>
+<div id="menu">
+<h1>%(site_name) %(program)</h1>
+<ul class="rootMenu">
+<li>Other Program
+<ul>
+<li>
+  <button type="submit" class="programButton" name="selectProgram" value="blastn">
+    <p>blastn</p>
+  </button>
+</li>
+<li>
+  <button type="submit" class="programButton" name="selectProgram" value="blastp">
+    <p>blastp</p>
+  </button>
+</li>
+<li>
+  <button type="submit" class="programButton" name="selectProgram" value="blastx">
+    <p>blastx</p>
+  </button>
+</li>
+<li>
+  <button type="submit" class="programButton" name="selectProgram" value="tblastn">
+    <p>tblastn</p>
+  </button>
+</li>
+<li>
+  <button type="submit" class="programButton" name="selectProgram" value="tblastx">
+    <p>tblastx</p>
+  </button>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div id="tabarea">
+<div id="tabbar">
+<ul>
+<li id="t_query" class="%(class_query)">
+  <button type="submit" name="selectTab" value="query">
+    <p>Query</p>
+  </button>
+</li>
+<li id="t_params" class="%(class_params)">
+  <button type="submit" name="selectTab" value="params">
+    <p>Parameters</p>
+  </button>
+</li>
+<li id="t_results" class="%(class_results)">
+  <button type="submit" name="selectTab" value="results">
+    <p>Results</p>
+  </button>
+</li>
+</ul>
+</div>
+</div>
+<div id="contentarea">
+<div id="tabcontent">

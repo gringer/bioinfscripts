@@ -1,0 +1,106 @@
+#menu_area {
+   position: fixed;
+   padding:0;
+   margin:0;
+   left:0;
+   top:0;
+   width: 170px;
+   height: 100%;
+}
+
+#logo_area {
+   position: absolute;
+   padding:0;
+   left:0;
+   width: 130px;
+   height: 130px;
+   top: 0px;
+   color: black;
+   margin: 0px;
+   text-decoration: none;
+}
+
+#logo {
+   padding: 10px;
+}
+
+/* Menu Text */
+#menu {
+   color: black;
+   margin-top: 130px;
+   margin-left: 10px;
+   font-family: "Bitstream Vera Sans", Verdana, Helvetica, Arial, sans-serif;
+}
+
+/* Gives padding to sub menu items (because they have links <a>) */
+#menu a {background-color: transparent; padding: 7px; }
+
+/* Aligns menu better */
+#menu ul {top: 200px;  padding: 0; margin: 0; font-size: 1.05em; }
+
+/* Sub-menu background area - making it hidden */
+#menu > ul ul { display: none ; }
+
+/* Sub-Menu Area */
+#menu > ul li:hover > ul {
+   width:200px;
+   top: 1.25em;
+   margin-left: -115px;
+   margin-top: 12px;
+   display: block;
+   position: absolute;
+   left: 100%;
+}
+
+/* Main Menu selector emphasis */
+#menu > ul li:hover {
+   width:150px;
+   text-align: left;
+   z-index: 10000;
+   cursor: pointer;
+   background: url("menu_active.png");
+}
+
+/* Main Menu selector emphasis */
+#menu ul li ul li:hover {
+   width:100px;
+   text-align: left;
+   z-index: 10000;
+   cursor: pointer;
+}
+/* Pop-out menu colour */
+#menu > ul ul li {
+   width:200px;
+   cursor: pointer;
+   line-height: 1.05em;
+}
+
+/* Sub-menu selector area decleration */
+#menu > ul ul li:hover {
+   width:165px;
+}
+
+/* Sub-menu text */
+#menu > ul ul li a {
+   display: block;
+   color: black;
+   text-decoration: none;  }
+
+/* Menu text spacing */
+#menu ul li {
+   width:100%;
+   list-style-type: none;
+   position: relative;
+   line-height: 2.0em;
+}
+
+#menu { padding-left: 5px;}
+
+#menu p {
+    margin: 2px;
+}
+
+.programButton {
+    border-style: none;
+    background-color: transparent;
+}

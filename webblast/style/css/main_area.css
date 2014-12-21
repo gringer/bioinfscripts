@@ -1,0 +1,37 @@
+a {
+  text-decoration: none;
+  color: black;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+#tabcontent, #contentarea {
+   overflow: auto;
+   position: fixed;
+   top: 38px;
+   left: 173px;
+   right: 5px;
+   width: auto;
+   height: auto;
+   bottom: 5px;
+   padding: 8px;
+}
+
+#tabcontent {
+   margin-top: 15px;
+   margin-bottom: 15px;
+   margin-right: 15px;
+   margin-left: 7px;
+   background-attachment: scroll;
+}
+
+#contentarea {
+    border: 1px solid black;
+    /* border-radius: 5px; */
+    box-shadow: 2px -2px 4px rgba(0,0,0,0.5);
+    background: white;
+}
+
+#contentarea p { text-align: justify}
