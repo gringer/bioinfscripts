@@ -418,7 +418,8 @@ if(myparams['program'] in ('blastp', 'tblastn')):
     myparams['inputType'] = 'protein';
 
 myparams['databases'] = getBlastDBs(myparams)
-myparams['request_uri'] = os.environ['REQUEST_URI']
+if('REQUEST_URI' in os.environ):
+    myparams['request_uri'] = os.environ['REQUEST_URI']
 
 # remove stale results files
 cleanUpResultsFiles(myparams)
