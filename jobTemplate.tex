@@ -1,0 +1,195 @@
+\documentclass[10pt,a4paper,twoside]{letter}
+\usepackage{graphicx}
+\usepackage{fp}
+\usepackage{charter}
+
+% length changes to get header in the right place
+\setlength{\voffset}{1.5cm}
+\setlength{\headheight}{2cm}
+\setlength{\headsep}{0pt}
+
+\usepackage[margin=1cm,bottom=3cm]{geometry}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{lastpage} % provides the number of the last page
+\usepackage{framed}
+\usepackage{color}
+
+\pagestyle{fancy}
+
+\newcommand{\myHeader}{
+
+%% header section (including business logo, name, address)
+\begin{tabular}{llr}
+  \begin{minipage}[b]{0.4\textwidth}
+    \includegraphics[height=2cm]{@@@logoLocation@@@}
+  \end{minipage} &
+  \begin{minipage}[b]{0.55\textwidth}
+    \flushright%
+    {\Huge \textsc{gringene} Bioinformatics}\\
+    \vspace{6pt}%
+    {\Large bioinformatics@gringene.org}\\
+    \vspace{3pt}%
+    5 Debra Way, Karori, Wellington 6012\\
+    \vfill%
+  \end{minipage}%
+\end{tabular}
+
+\rule{\linewidth}{0.5mm}
+
+}
+
+\fancyhead{}
+\fancyhead[CO,CE]{\myHeader}
+\fancyfoot{}
+\fancyfoot[CO,CE]{Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\renewcommand*{\thefootnote}{\alph{footnote}}
+
+\definecolor{lightsalmon}{rgb}{1,0.63,0.48}
+
+
+\begin{document}
+
+%% Address section (client name / address, invoice type)
+
+\hspace{\fill}
+
+\begin{tabular}{lr}
+  \begin{minipage}[c]{0.55\textwidth}
+    @@@clientName@@@\\%%CLIENTNAME
+    @@@clientAddress@@@
+  \end{minipage} &
+  \begin{minipage}[c]{0.4\textwidth}
+    \begin{center}
+      \begin{framed}
+        \huge{\textbf{Draft Invoice}}\\%%DRAFTINVOICE
+        \Huge{\textbf{Tax Invoice}}\\%%ORIGINALINVOICE
+        \large{\textbf{Amended Tax Invoice}}\\%%AMENDEDINVOICE
+      \end{framed}
+    \end{center}
+  \end{minipage}%
+\end{tabular}
+
+\rule{\linewidth}{1pt}
+
+\leftskip=10pt
+
+\emph{\textbf{Note: This is a draft invoice and is not valid %%DRAFTINVOICE
+    for tax purposes. If you have received this in error, %%DRAFTINVOICE
+    please delete this draft invoice and inform the supplier.}}%%DRAFTINVOICE
+
+\emph{\textbf{Note: this is an amended invoice, replacing %%AMENDEDINVOICE
+    invoice \#@@@invNumber@@@ issued @@@invDate@@@.}}%%AMENDEDINVOICE
+
+\leftskip=0pt
+
+\rule{\linewidth}{1pt} %%DRAFTINVOICE
+\rule{\linewidth}{1pt} %%AMENDEDINVOICE
+
+\leftskip=10pt
+
+Summary of work by David Eccles for \emph{@@@clientBusinessName@@@}
+(see page \pageref{sec:sub-job-details} for more details):
+
+\begin{flushleft}
+
+  \setlength{\tabcolsep}{1.5pt}
+  \hspace{30pt}
+  \begin{tabular}{lrl}
+    \textbf{Invoice Number} & \multicolumn{2}{l}{@@@invNumber@@@}\\%%INVNUM
+    \textbf{GST Number} & \multicolumn{2}{l}{@@@GSTNumber@@@}\\%%GSTNUM
+    \textbf{Invoice Date} & \multicolumn{2}{l}{@@@invDate@@@}\\
+    \textbf{Amendment Date}\hspace{6pt} & \multicolumn{2}{l}{@@@amendDate@@@}\\%%AMENDEDINVOICE
+    \textbf{Job ID} & \multicolumn{2}{l}{@@@jobID@@@}\\
+    \textbf{Job Description}\hspace{6pt}\vspace{\fill} &
+    \multicolumn{2}{p{10cm}}{\raggedright{@@@jobDesc@@@}}\\
+    \\
+    \textbf{Job Rate} & @@@unitRate@@@ & @@@currency@@@ (per @@@payType@@@)\\%%UNITLINE
+    \textbf{Job Rate} & @@@unitRate@@@ & @@@currency@@@ (fixed)\\%%FIXEDLINE
+    Total @@@payType@@@s  & @@@totalUnits@@@\\%%UNITLINE
+    \\
+    \cline{1-2}\\
+    \textbf{Invoice Total}  & \textbf{@@@tAmt@@@} & \textbf{@@@currency@@@}\\
+    {}                      & (@@@tNZDAmt@@@      & NZD)\footnotemark[1]\\%%TOTNZDLINE
+    \\
+    Includes GST            & @@@GSTAmt@@@        & @@@currency@@@\\%%GSTINC
+    Plus GST                & @@@GSTAmt@@@        & @@@currency@@@\\%%GSTADD
+    {}                      & (@@@GSTNZDAmt@@@    & NZD)\footnotemark[1]\\%%GSTNZDLINE
+    \\
+    \cline{1-2}\\%%DUEAMOUNT
+    \textbf{Amount due} &  \textbf{@@@dAmt@@@} & \textbf{@@@currency@@@}\\%%DUEAMOUNT
+    {}                     &  (@@@dNZDAmt@@@    & NZD)\footnotemark[1]\\%%DUENZDLINE
+    & & \begin{picture}(0,0)%%PAIDINVOICE
+      \put(65,30){\rotatebox[origin=c]{45}{%%PAIDINVOICE
+          \textcolor{lightsalmon}{\fbox{\Huge{PAID}}}}}%%PAIDINVOICE
+    \end{picture}%%PAIDINVOICE
+  \end{tabular}
+
+  \footnotetext[1]{NZD amount at @@@exDate@@@, calculated using %%%NZDLINE
+    exchange rate of @@@exRate@@@ from @@@exSource@@@}%%%NZDLINE
+
+\end{flushleft}
+\leftskip=10pt
+
+\addvspace{\fill}
+\addvspace{6pt}
+
+Thank you for your business.
+
+\addvspace{12pt}
+
+David Eccles
+
+\addvspace{6pt}
+
+\addvspace{\fill}%%PAIDINVOICE
+
+\filbreak%%DUEINVOICE
+
+\leftskip=0pt
+
+\rule{\linewidth}{0.5mm}%%DUEINVOICE
+
+\begin{center}%%DUEINVOICE
+  \Large{\textbf{Payment Details}}\\ %%DUEINVOICE
+\end{center}%%DUEINVOICE
+
+\rule{\linewidth}{0.5mm}%%DUEINVOICE
+
+\leftskip=10pt
+
+@@@bankMessage@@@%%DUEINVOICE
+
+\hspace{30pt}%%DUEINVOICE
+\begin{tabular}{ll}%%DUEINVOICE
+  @@@accountDetails@@@%%DUEINVOICE
+\end{tabular}%%DUEINVOICE
+
+\pagebreak
+
+\begin{flushleft}
+\begin{center}
+  \Large{\textbf{Sub-job Details}}
+  \label{sec:sub-job-details}
+\end{center}
+
+\rule{\linewidth}{0.5mm}
+
+  \hspace{30pt}
+  \begin{tabular}{llrl}
+    \textbf{Description} & %%
+    \textbf{Date} & %%DATELINE
+    & %%NODATELINE
+    \textbf{Hours}%%UNITLINE
+    \\
+    \hline\\
+    @@@jobLines@@@\\
+    \hline\\
+    Total @@@payType@@@s & & @@@totalUnits@@@\\%%UNITLINE
+  \end{tabular}
+\end{flushleft}
+
+\end{document}
