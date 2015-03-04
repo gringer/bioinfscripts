@@ -341,11 +341,11 @@ public class Affy2SimpleGT {
                      */
                     System.err.print("Writing genotypes to output file (one '.' per 1000 markers)");
                     for (int markerPos = 0; markerPos < markGenotypes.size(); markerPos++) {
-                        if(((markerPos+1) % 1000) == 0){
-                            System.err.print(".");
-                        }
                         Vector<Integer> tMarkGenotype = markGenotypes.get(markerPos);
                         if(tMarkGenotype != null){
+                            if(((markerPos+1) % 1000) == 0){
+                                System.err.print(".");
+                            }
                             /* rMarkVals is a vector of marker name
                              * strings, markGenotypes is where the
                              * actual genotypes are stored (as a
