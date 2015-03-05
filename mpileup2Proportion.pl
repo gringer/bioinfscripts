@@ -55,8 +55,10 @@ while(<>){
     $t = $r;
   }
   # was previously $coverage, not $total
-  ($r, $i, $d, $a, $c, $g, $t) = map {$_ / $total}
+  if($total > 0){
+    ($r, $i, $d, $a, $c, $g, $t) = map {$_ / $total}
       ($r, $i, $d, $a, $c, $g, $t);
+  }
   printf(" %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
          $a, $c, $g, $t, $d, $i);
 }
