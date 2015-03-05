@@ -23,7 +23,7 @@ if($colourChange){
 } else {
   printf("%-20s %8s %8s %3s %s\n",
          "Assembly", "Position", "Coverage", "Ref",
-         "   A    C    G    T    d    i");
+         "   .    A    C    G    T    d    i");
 }
 
 while(<>){
@@ -45,20 +45,20 @@ while(<>){
   my $g = tr/gG//;
   my $t = tr/tT//;
   my $total = $i+$r+$d+$a+$c+$g+$t;
-  if($refAllele eq "A"){
-    $a = $r;
-  } elsif($refAllele eq "C"){
-    $c = $r;
-  } elsif($refAllele eq "G"){
-    $g = $r;
-  } elsif($refAllele eq "T"){
-    $t = $r;
-  }
+  # if($refAllele eq "A"){
+  #   $a = $r;
+  # } elsif($refAllele eq "C"){
+  #   $c = $r;
+  # } elsif($refAllele eq "G"){
+  #   $g = $r;
+  # } elsif($refAllele eq "T"){
+  #   $t = $r;
+  # }
   # was previously $coverage, not $total
   if($total > 0){
     ($r, $i, $d, $a, $c, $g, $t) = map {$_ / $total}
       ($r, $i, $d, $a, $c, $g, $t);
   }
-  printf(" %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
-         $a, $c, $g, $t, $d, $i);
+  printf(" %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
+         $r, $a, $c, $g, $t, $d, $i);
 }
