@@ -129,6 +129,7 @@ while (<>){
   my $line = $_;
   if($lineCounter++ > 5000){
     printf(STDERR ".");
+    $lineCounter = 0;
   }
   if($line =~ /^##/){
     ## Determine individual labels
