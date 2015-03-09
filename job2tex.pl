@@ -52,7 +52,7 @@ my $rateKnown = 0; # false
 my %templateFields = ();
 my %templateRemoveFlags = ();
 
-$templateFields{"unitRate"} = "50.00";
+$templateFields{"unitRate"} = ""; # false
 $templateFields{"totalUnits"} = 0;
 $templateFields{"payType"} = "hour";
 
@@ -125,6 +125,12 @@ while(@ARGV){
 
 if(!$jobInFilename){
     print(STDERR "Error: No valid job input file given\n");
+    usage();
+    exit(1);
+}
+
+if(!$unitRate){
+    print(STDERR "Error: No unit rate specified\n");
     usage();
     exit(1);
 }
