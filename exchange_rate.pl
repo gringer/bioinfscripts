@@ -86,6 +86,7 @@ if($todayDate){
                    $date,$date,$currency);
   printf(STDERR "[Fetching NZD/%s rate for %s from oanda.com]\n",
          $currency, $options{"date"});
+  printf(STDERR "[$url]\n");
   # print(STDERR "[$url]\n");
   my $tree = HTML::TreeBuilder->new_from_url($url);
   my $rate = $tree->findvalue('//pre');

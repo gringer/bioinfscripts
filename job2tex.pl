@@ -48,6 +48,7 @@ my $invoicePaid = 0; # false
 my $gstRate = 0.15;
 my $gstExclusive = 1; # true
 my $showDate = 0; # false
+my $rateKnown = 0; # false
 my %templateFields = ();
 my %templateRemoveFlags = ();
 
@@ -107,7 +108,8 @@ while(@ARGV){
     elsif($argument eq "-amend"){
       $amendedInvoice = 1;
       $templateFields{"invNumber"} = shift(@ARGV);
-      $templateFields{"priorInvDate"} = shift(@ARGV);
+      ($templateFields{"priorInvDate"}, $rateKnown) =
+        split(/,/, shift(@ARGV));
       $updateInvoiceNum = 0; # false
     }
     elsif(($argument eq "-noupdate") || ($argument eq "-draft")){
@@ -236,7 +238,7 @@ close($jobInFile);
 print(STDERR "done!\n");
 
 $templateFields{"logoLocation"} =
-  $Bin."/../Work/images/gringene_5_logo_imageonly.pdf";
+  $Bin."/../Work/images/gringene_7_logo_imageonly.pdf";
 if(!$templateFields{"invNumber"}){
   my $invoicePath = $Bin."/../invnumber.txt";
   $templateFields{"invNumber"} = qx{cat ${invoicePath}};
@@ -474,8 +476,13 @@ EOT
 
   if($templateFields{"currency"} ne "NZD"){
     $templateFields{"exDate"} = $templateFields{"invDate"};
-    ($templateFields{"exSource"},$templateFields{"exRate"}) =
-      getCurrency($templateFields{"exDate"}, $templateFields{"currency"});
+    if($rateKnown){
+      ($templateFields{"exSource"},$templateFields{"exRate"}) =
+        split(';', $rateKnown);
+    } else {
+      ($templateFields{"exSource"},$templateFields{"exRate"}) =
+        getCurrency($templateFields{"exDate"}, $templateFields{"currency"});
+    }
     $templateFields{"tNZDAmt"} =
       sprintf("%0.2f",$templateFields{"tAmt"} / $templateFields{"exRate"});
     $templateFields{"GSTNZDAmt"} =
