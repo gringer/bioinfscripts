@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Class-Path: affy2simplegt.jar
+Main-Class: affytools.Affy2SimpleGT
