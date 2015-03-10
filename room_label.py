@@ -66,22 +66,23 @@ def loadDefaults(fileName, parameters):
             parameters[row[0]] = row[1]
 
 def writeError(errorMessage, parameters):
-    printFile('room_label/header.html', myparams, True)
+    printFile('../room_label/header.html', myparams, True)
     print("<h1>Error</h1>")
     print("<p>%s</p>" % errorMessage)
     printHiddenValues(form, myparams)
-    printFile('room_label/footer.html', myparams, False)
+    printFile('../room_label/footer.html', myparams, False)
     exit(0)
 
-def runGenerator(lastForm, parameters):
+def runGenerator(lastForm, parameters, docType):
     roomID = parameters['ID']
     if(len(roomID) == 0):
         roomID = "X.XX"
     outputFileName = 'room_label/tmp/room_label_%s.pdf' % roomID
-    resultSVG = open('room_label/tmp/room_label_%s.svg' % roomID, mode='w+b')
-    shutil.copy('room_label/bg_default.png',
+    svgFileName = 'room_label/tmp/room_label_%s.svg' % roomID
+    resultSVG = open(svgFileName, mode='w+b')
+    shutil.copy('../room_label/bg_default.png',
                 'room_label/tmp/bg_%s.png' % roomID)
-    for line in open('room_label/MIMR_Room_template.svg', 'r'):
+    for line in open('../room_label/MIMR_Room_template.svg', 'r'):
         if('bg_default.png' in line):
             if(('inputFile' in parameters) and
                (lastForm['inputFile'].filename)):
@@ -102,188 +103,28 @@ def runGenerator(lastForm, parameters):
                     line = line.replace('@' + param + '@', '['+param+']')
         resultSVG.write(line)
     resultSVG.close()
-    exportLine = '--export-pdf=%s' % outputFileName
-    commandLine = list(('inkscape',
-                       exportLine,
-                       resultSVG.name))
-    runProcess = subprocess.call(commandLine)
-    jamFileName = outputFileName.replace(".pdf","-pdfjam.pdf")
-    commandLine = list(('pdfjam','--landscape','--a4paper',
-                        '--scale','0.71',
-                        '--outfile', jamFileName,
-                        outputFileName))
-    runProcess = subprocess.call(commandLine)
-    print('Content-Disposition: attachment; ' +
-          'filename=room_label_%s.pdf\n' % roomID)
-    sys.stdout.write(open(jamFileName,'rb').read())
-    exit(0)
-
-def getResults(parameters):
-    resultStorageName = 'room_label/results/resultsFiles.csv'
-    mostRecentFileName = None
-    mostRecentTime = 0
-    mostRecentErrorFileName = None
-    mostRecentErrorTime = 0
-    formattedPreResult = ''
-    formattedSummaryResult = ''
-    formattedFullResult = ''
-    # sort out GBrowse pattern replacements
-    gbrowsePatterns = dict()
-    if('gbrowse_patterns' in parameters):
-        patternList = parameters['gbrowse_patterns'].split(';')
-        for pattern in patternList:
-            components = pattern.split(':',1)
-            gbrowsePatterns[components[0]] = components[1]
-    # find location of results files and error output
-    reader = csv.reader(open(resultStorageName))
-    for row in reader:
-        sessionID = row[0]
-        resultFileName = row[1]
-        creationTime = float(row[2])
-        if((sessionID == parameters['sessionID']) and
-           (creationTime >= mostRecentTime)):
-            mostRecentFileName = resultFileName
-            mostRecentTime = creationTime
-        if((sessionID == parameters['sessionID']+".err") and
-           (creationTime >= mostRecentErrorTime)):
-            mostRecentErrorFileName = resultFileName
-            mostRecentErrorTime = creationTime
-    resultsFound = False
-    if(mostRecentFileName != None):
-        if((mostRecentErrorFileName != None) and (os.path.getsize(mostRecentErrorFileName) > 0)):
-            f = open(mostRecentErrorFileName, 'r')
-            errorStr = "<pre>"
-            for line in f:
-                errorStr += line
-            errorStr += "</pre>"
-            writeError(errorStr, parameters)
-            return
-        if(os.path.getsize(mostRecentFileName) == 0):
-            return('The results file is empty. Have a sip of your favourite beverage then click "Results" again.')
-        resultFile = open(mostRecentFileName, 'r')
-        blast_records = NCBIXML.parse(resultFile)
-        formattedPreResult += ('<p>BLAST Run started: %s</p>\n'
-                               % time.strftime('%Y-%b-%d %H:%M:%S',
-                                               time.localtime(mostRecentTime)))
-        formattedFullResult += '<h2>Match Details</h2>'
-        formattedFullResult += '<pre>\n'
-        numAlignments = 0
-        queries = set()
-        summaryTable = list()
-        for blast_record in blast_records:
-            for alignment in blast_record.alignments:
-                for hsp in alignment.hsps:
-                    resultsFound = True
-                    query = blast_record.query
-                    subject = alignment.hit_def
-                    if(" " in query):
-                        query = query[0:query.find(" ")]
-                    if(" " in subject):
-                        subject = subject[0:subject.find(" ")]
-                    identity = float(hsp.identities) / (hsp.align_length) * 100
-                    coverage = float(abs(hsp.query_end - hsp.query_start)) / blast_record.query_length * 100
-                    subjCoverage = float(abs(hsp.sbjct_end - hsp.sbjct_start)) / alignment.length * 100
-                    # place appropriate hyperlinks into subject names
-                    for subPattern in gbrowsePatterns:
-                        if(subPattern in subject):
-                            subject = (
-                                gbrowsePatterns[subPattern] %
-                                (subject,
-                                 min(hsp.sbjct_start, hsp.sbjct_end),
-                                 max(hsp.sbjct_start, hsp.sbjct_end),
-                                 subject,
-                                 min(hsp.sbjct_start, hsp.sbjct_end),
-                                 max(hsp.sbjct_start, hsp.sbjct_end),
-                                 subject))
-                    alignmentText = '<a name="%d" href="#summary">**** Alignment %d ****</a>\n' % (
-                        numAlignments, numAlignments)
-                    alignmentText += 'query: %s\n' % query
-#                    alignmentText += str(blast_record.__dict__)
-                    alignmentText += 'query length: %s\n' % blast_record.query_length
-                    alignmentText += 'subject: %s\n' % subject
-                    alignmentText += 'subject length: %s\n' % alignment.length
-                    alignmentText += 'align length: %s\n' % hsp.align_length
-                    alignmentText += 'score: %s\n' % hsp.score
-                    alignmentText += 'bits: %s\n' % hsp.bits
-                    alignmentText += 'identity: %0.2f%%\n' % identity
-                    alignmentText += 'query coverage: %0.2f%%\n' % coverage
-                    alignmentText += 'subject coverage: %0.2f%%\n' % subjCoverage
-                    alignmentText += 'e value: %g\n' % hsp.expect
-                    querySpos = oldQPos = queryPos = hsp.query_start
-                    sbjctSpos = oldSPos = sbjctPos = hsp.sbjct_start
-                    alignSpos = alignPos = 0
-                    queryDir =  1 if (hsp.query_start < hsp.query_end) else -1
-                    sbjctDir = 1 if (hsp.sbjct_start < hsp.sbjct_end) else -1
-                    incQuery = False
-                    incSbjct = False
-                    for hsp.char in hsp.match:
-                        if(hsp.query[alignPos] != '-'):
-                            oldQPos = queryPos
-                            if(not incQuery):
-                                querySpos = queryPos
-                            incQuery = True
-                            queryPos += queryDir
-                        if(hsp.sbjct[alignPos] != '-'):
-                            oldSPos = sbjctPos
-                            if(not incSbjct):
-                                sbjctSpos = sbjctPos
-                            incSbjct = True
-                            sbjctPos += sbjctDir
-                        alignPos += 1
-                        if((alignPos % 100 == 0) or (alignPos >= len(hsp.match))):
-                            alignmentText += '\n'
-#                           alignmentText += '      %8s %s\n' % ('', ''.join('         *' * 10))
-                            alignmentText += 'Query %8d %s %-8d\n' % (
-                                querySpos, hsp.query[alignSpos:alignPos], oldQPos)
-                            alignmentText += '      %8s %s\n' % ('', hsp.match[alignSpos:alignPos])
-                            alignmentText += 'Sbjct %8s %s %-8d\n' % (
-                                sbjctSpos, hsp.sbjct[alignSpos:alignPos], oldSPos)
-                            incQuery = False
-                            incSbjct = False
-                            alignSpos = alignPos
-                    # alignmentText += '\n'
-                    # alignmentText += 'Query %8d %s %-8d\n' % (hsp.query_start, hsp.query, hsp.query_end)
-                    # alignmentText += '      %8s %s\n' % ('', hsp.match)
-                    # alignmentText += 'Sbjct %8s %s %-8d\n' % (hsp.sbjct_start, hsp.sbjct, hsp.sbjct_end)
-                    formattedFullResult += alignmentText + '\n'
-                    queries.add(blast_record.query)
-                    summaryTable.append((query, subject, hsp.score,
-                        coverage, identity, hsp.expect))
-                    numAlignments += 1
-        formattedFullResult += '</pre>\n'
-        formattedPreResult += ('<p>Number of alignments: %d</p>\n'
-                               % numAlignments)
-        formattedSummaryResult += '<h2><a name="summary"></a>Summary</h2>\n'
-        formattedSummaryResult += '<table class="sortable">\n'
-        formattedSummaryResult += ('<thead>\n' +
-                                   '  <tr>' +
-                                   '<th>Alignment</th>' +
-                                   '<th>Query</th>' +
-                                   '<th>Subject</th>' +
-                                   '<th>Bitscore</th>' +
-                                   '<th>Coverage %</th>' +
-                                   '<th>Identity %</th>' +
-                                   '<th>E value</th>' +
-                                   '</tr>\n' +
-                                   '</thead>\n')
-        formattedSummaryResult += '<tbody>\n'
-        for alignment in range(numAlignments):
-            formattedSummaryResult += (('  <tr><td><a href="#%d">%d</a></td><td>%s</td><td>%s</td>' +
-                                        '<td>%0.2f</td><td>%0.2f</td><td>%0.2f</td><td>%5g</td></tr>\n') % (
-                    alignment,
-                    alignment,
-                    (summaryTable[alignment])[0],
-                    (summaryTable[alignment])[1],
-                    (summaryTable[alignment])[2],
-                    (summaryTable[alignment])[3],
-                    (summaryTable[alignment])[4],
-                    (summaryTable[alignment])[5]))
-        formattedSummaryResult += '</tbody>\n'
-        formattedSummaryResult += '</table>\n'
-    if(resultsFound):
-        return(formattedPreResult + formattedSummaryResult + formattedFullResult)
+    if(docType == "pdf"):
+        exportLine = '--export-pdf=%s' % outputFileName
+        commandLine = list(('inkscape',
+                            exportLine,
+                            resultSVG.name))
+        runProcess = subprocess.call(commandLine)
+        jamFileName = outputFileName.replace(".pdf","-pdfjam.pdf")
+        commandLine = list(('pdfjam','--landscape','--a4paper',
+                            '--scale','0.71',
+                            '--outfile', jamFileName,
+                            outputFileName))
+        runProcess = subprocess.call(commandLine)
+        print('Content-type: application/pdf')
+        print('Content-Disposition: attachment; ' +
+              'filename=room_label_%s.pdf\n' % roomID)
+        sys.stdout.write(open(jamFileName,'rb').read())
     else:
-        return('No hits were found')
+        print('Content-type: image/svg+xml')
+        print('Content-Disposition: attachment; ' +
+              'filename=room_label_%s.svg\n' % roomID)
+        sys.stdout.write(open(svgFileName,'rb').read())
+    exit(0)
 
 ### Begin Actual Program ###
 
@@ -328,8 +169,9 @@ if(not ('ID' in myparams)):
     myparams['ID'] = "X.XX"
 
 # run BLAST (if requested)
-if(form.getfirst("runProgram","") == "TRUE"):
-    runGenerator(form, myparams)
+docType = form.getfirst("runProgram","")
+if(len(docType) > 0):
+    runGenerator(form, myparams, docType)
 
 if((not('resultsExist' in myparams)) or (myparams['resultsExist'] != 'True')):
     myparams['class_results'] += " tabdisabled"
@@ -338,8 +180,8 @@ else:
     if(currentTab == 'results'):
         myparams['results'] = getResults(myparams)
 
-printFile('room_label/labeler.html', myparams, True)
+printFile('../room_label/labeler.html', myparams, True)
 if('errors' in myparams):
     print('<h3>Errors:</h3><pre>%s</pre>' % myparams['errors'])
 printHiddenValues(form, myparams)
-printFile('room_label/footer.html', myparams, False)
+printFile('../room_label/footer.html', myparams, False)
