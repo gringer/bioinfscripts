@@ -1,0 +1,276 @@
+<!doctype html>
+<html><head>
+    <meta charset="utf-8" />
+    <script type="text/javascript">
+      var previewDocument;
+      var previewFields = new Array();
+      function startup() {
+      previewObj = document.getElementById("imgPreview");
+      previewDocument = previewObj.getSVGDocument();
+      // set up variables
+      previewFields["ID"] = previewDocument.getElementById("tID");
+      previewFields["RNAME"] = previewDocument.getElementById("tRNAME");
+      previewFields["PNAME"] = previewDocument.getElementById("tPNAME");
+      previewFields["DESC1"] = previewDocument.getElementById("tDESC1");
+      previewFields["DESC2"] = previewDocument.getElementById("tDESC2");
+      previewFields["DESC3"] = previewDocument.getElementById("tDESC3");
+      // initialise to non-scary values
+      setValue("ID","X.XX");
+      setValue("PNAME","Dr. A Researcher");
+      setValue("RNAME","");
+      setValue("DESC1","");
+      setValue("DESC2","");
+      setValue("DESC3","");
+      // set up change listeners
+      document.getElementById("iID").onkeyup = function(){setValue("ID",this.value)};
+      document.getElementById("iRNAME").onkeyup = function(){this.value=this.value.toUpperCase();setValue("RNAME",this.value)};
+      document.getElementById("iPNAME").onkeyup = function(){setValue("PNAME",this.value)};
+      document.getElementById("iDESC1").onkeyup = function(){setValue("DESC1",this.value)};
+      document.getElementById("iDESC2").onkeyup = function(){setValue("DESC2",this.value)};
+      document.getElementById("iDESC3").onkeyup = function(){setValue("DESC3",this.value)};
+      document.getElementById("iID").onchange = function(){setValue("ID",this.value)};
+      document.getElementById("iRNAME").onchange = function(){this.value=this.value.toUpperCase();setValue("RNAME",this.value)};
+      document.getElementById("iPNAME").onchange = function(){setValue("PNAME",this.value)};
+      document.getElementById("iDESC1").onchange = function(){setValue("DESC1",this.value)};
+      document.getElementById("iDESC2").onchange = function(){setValue("DESC2",this.value)};
+      document.getElementById("iDESC3").onchange = function(){setValue("DESC3",this.value)};
+      }
+      function setValue(objTag, value){
+      previewFields[objTag].firstChild.nodeValue = value;
+      }
+    </script>
+<style type="text/css">
+#tabbar {
+   z-index: 1;
+   font-size: 93%;
+   position: fixed;
+   top: 5px;
+   width: auto;
+   height: 43px;
+   left: 175px;
+   right: 92px;
+   bottom: 26px;
+   padding: 0px;
+   margin: 0px;
+}
+
+#tabbar ul {
+   margin: 0;
+   padding:5px 5px;
+   list-style:none;
+}
+
+#tabbar button {
+    border-style: none;
+    background-color: transparent;
+}
+
+#tabbar p {
+   color: gray;
+   font-weight: bold;
+   margin: 2px;
+}
+
+#tabbar li {
+   display: block;
+   float:left;
+   border-radius: 5px 5px 0 0;
+   box-shadow: 1px -1px 1px rgba(0,0,0,0.5);
+   border: 1px solid black;
+   border-bottom: 1px solid white;
+   background: white;
+   margin: 5px 5px 0 0;
+   padding:0px 2px 0px 0px;
+}
+
+#tabbar .tabon p {
+    color: black;
+}
+
+#tabbar .taboff {
+    border-bottom: 1px solid black;
+}
+
+#tabbar .tabdisabled {
+    background: rgba(192,192,192,1);
+    visibility: hidden;
+}
+#menu_area {
+   position: fixed;
+   padding:0;
+   margin:0;
+   left:0;
+   top:0;
+   width: 170px;
+   height: 100%;
+}
+
+#logo_area {
+   position: absolute;
+   padding:0;
+   left:5;
+   width: 150px;
+   height: 150px;
+   top: 5px;
+   color: black;
+   margin: 0px;
+   text-decoration: none;
+}
+
+#logo {
+   padding: 10px;
+}
+
+label {
+    margin-right: 1em;
+    font-weight: bold;
+}
+
+input {
+    margin: 5px;
+    text-align: right;
+}
+
+#labelArea {
+    float: left;
+    width: 35%;
+}
+
+#previewArea {
+    float: right;
+    width: 60%;
+}
+
+#imgPreview {
+    border: 2px solid;
+}
+
+.programButton {
+    border-style: none;
+    background-color: transparent;
+}
+/* a { */
+/* text-decoration: none; */
+/* color: blue; */
+/* } */
+
+a:hover {
+  text-decoration: underline;
+}
+
+#bgDummyFill {
+  opacity: 0.5;
+}
+
+#tabcontent, #contentarea {
+   overflow: auto;
+   position: fixed;
+   top: 5px;
+   left: 163px;
+   right: 5px;
+   width: auto;
+   height: auto;
+   bottom: 5px;
+   padding: 8px;
+}
+
+#tabcontent {
+   margin-top: 15px;
+   margin-bottom: 15px;
+   margin-right: 15px;
+   margin-left: 7px;
+   background-attachment: scroll;
+}
+
+#contentarea {
+    border: 1px solid black;
+    /* border-radius: 5px; */
+    box-shadow: 2px -2px 4px rgba(0,0,0,0.5);
+    background: white;
+}
+
+#contentarea p { text-align: justify}
+</style>
+<title>MIMR Room Labeler</title>
+</head><body>
+<div id="menu_area">
+  <div id="logo_area">
+    <a href="http://www.malaghan.org.nz">
+      <img alt="MIMR Logo" id="logo"
+           src="../room_label/Malaghan_logo_vertical_RGB.svg"
+           width="130" height="130" />
+    </a>
+    <h1><center>Office Labeler</center></h1>
+    <p><center>
+        <a href="%(request_uri)?selectClass=lab">&gt;  Lab Labeler</a>
+    </center></p>
+  </div>
+</div>
+<div id="contentarea">
+<div id="tabcontent">
+
+<div id="labelArea">
+<form method="post" action="%(request_uri)" enctype="multipart/form-data">
+<h2>Required Fields</h2>
+
+<div><label for="iID">Room Number</label>
+<input id="iID" type="text" name="ID" placeholder="X.XX" size="4"></div>
+
+<div><label for="iPNAME">Occupant</label>
+<input id="iPNAME" type="text" name="PNAME"
+       placeholder="Dr. A Researcher" size="20"></div>
+
+<h2>Optional Fields</h2>
+
+<div><label for="iDESC3">Job Title</label>
+<input id="iDESC3" type="text" name="DESC3" size="20"></div>
+
+<div><label for="iRNAME">Room Name</label>
+<input id="iRNAME" type="text" name="RNAME" size="10"></div>
+
+<div><label for="iDESC1">Line 1</label>
+<input id="iDESC1" type="text" name="DESC1" size="20"></div>
+
+<div><label for="iDESC2">Line 2</label>
+<input id="iDESC2" type="text" name="DESC2" size="20"></div>
+
+<h2>Background (optional)</h2>
+
+<div><label for="fInput">Upload file:</label>
+  <input id="fInput" type="file" name="inputFile" size="30" /></div>
+
+<hr />
+
+<center>
+<button type="submit" class="pdfbutton" name="runProgram" value="pdf">
+  <p>Generate PDF</p>
+</button>
+<button type="submit" class="pdfbutton" name="runProgram" value="svg">
+  <p>Generate SVG</p>
+</button>
+</center>
+
+<hr />
+
+</form>
+</div>
+
+<div id="previewArea">
+<h2>Preview</h2>
+
+<object id="imgPreview" width="100%" onload="startup()"
+        data="../room_label/MIMR_Room_template.svg" type="image/svg+xml" />
+
+<!-- <img id="imgPreview" width="100%" onload="startup(evt)" -->
+<!--         src="../room_label/MIMR_Room_template.svg" /> -->
+
+<!-- <embed id="imgPreview" width="100%" onload="startup()" -->
+<!--         src="../room_label/MIMR_Room_template.svg" /> -->
+
+<!-- <svg id="imgPreview" width="100%" viewBox="0 0 744.09 524.41" onload="startup(evt)" -->
+<!--      xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" > -->
+<!--   <image x="0" y="0" height="524.41" width="744.09"  xlink:href="../room_label/MIMR_Room_template.svg" /> -->
+<!-- </svg> -->
+
+</div>
+
