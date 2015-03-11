@@ -80,18 +80,20 @@ def runGenerator(lastForm, parameters, docType):
     outputFileName = 'room_label/tmp/room_label_%s.pdf' % roomID
     svgFileName = 'room_label/tmp/room_label_%s.svg' % roomID
     resultSVG = open(svgFileName, mode='w+b')
-    shutil.copy('../room_label/bg_default.png',
-                'room_label/tmp/bg_%s.png' % roomID)
     for line in open('../room_label/MIMR_Room_template.svg', 'r'):
         if('bg_default.png' in line):
             if(('inputFile' in parameters) and
                (lastForm['inputFile'].filename)):
                 fileItem = lastForm['inputFile']
                 fName, fExt = os.path.splitext(fileItem.filename)
-                open('room_label/tmp/bg_%s.%s' % (roomID, fExt),
+                open('room_label/tmp/bg_%s%s' % (roomID, fExt),
                      'wb').write(fileItem.file.read())
-                line = line.replace('bg_default.png',
-                                    'bg_%s.%s' % (roomID,fExt))
+                if(docType == "svg"):
+                    fHead, fTail = os.path.split(fileItem.filename)
+                    line = line.replace('bg_default.png', fTail)
+                else:
+                    line = line.replace('bg_default.png',
+                                        'bg_%s%s' % (roomID,fExt))
             else:
                 line = '<!--' + line.strip() + '-->\n'
         if('@' in line):
@@ -142,7 +144,7 @@ myparams = {
 
 #blastn -db db/3alln_smed -query /tmp/tmpGFk3hs -outfmt 5 -task blastn -evalue 10 -max_target_seqs 100 -word_size 11
 
-currentProgram = form.getfirst("selectProgram","blastn")
+currentType = form.getfirst("selectClass","office")
 currentTab = form.getfirst("selectTab","query")
 
 # overwrite default values with previous form values
@@ -152,12 +154,12 @@ loadForm(form, myparams)
 if(not('sessionID' in myparams)):
     myparams['sessionID'] = base64.b64encode(os.urandom(16))
 
-myparams['program'] = currentProgram
+myparams['type'] = currentType
 # activate current tab
 myparams['class_' + currentTab] = "tabon"
 
 if('REQUEST_URI' in os.environ):
-    myparams['request_uri'] = os.environ['REQUEST_URI']
+    myparams['request_uri'] = os.environ['REQUEST_URI'].split("?")[0]
 else:
     myparams['request_uri'] = 'shell'
     for arg in sys.argv:
@@ -180,7 +182,7 @@ else:
     if(currentTab == 'results'):
         myparams['results'] = getResults(myparams)
 
-printFile('../room_label/labeler.html', myparams, True)
+printFile('../room_label/%s-labeler.html' % currentType, myparams, True)
 if('errors' in myparams):
     print('<h3>Errors:</h3><pre>%s</pre>' % myparams['errors'])
 printHiddenValues(form, myparams)
