@@ -13,6 +13,7 @@ import time # for results file cleanup
 import tempfile # for blast results
 import sys # for command-line argument parsing
 import shutil # for copying files
+import math # for label placement
 
 def printFile(fileName, parameters, printContent):
     if(printContent):
@@ -34,13 +35,13 @@ def printFile(fileName, parameters, printContent):
                 line = line.replace('%(' + param + ')', '')
         seenFields = re.findall('<(?:input|textarea|select).*?name="(.*?)"', line)
         for field in seenFields:
-            parameters['seenFields'].append(field)
+            parameters['seenFields'].add(field)
         print(line.rstrip())
 
 def printHiddenValues(lastForm, parameters):
     # make sure runProgram state isn't preserved across multiple submits
     # [don't want it to try running more than once]
-    parameters['seenFields'].append('runProgram')
+    parameters['seenFields'].add('runProgram')
     # add fields from 'addFields' to hidden values
     for field in parameters['addFields']:
         if(not(field in parameters['seenFields']) and
@@ -80,7 +81,13 @@ def runGenerator(lastForm, parameters, docType):
     outputFileName = 'room_label/tmp/room_label_%s.pdf' % roomID
     svgFileName = 'room_label/tmp/room_label_%s.svg' % roomID
     resultSVG = open(svgFileName, mode='w+b')
-    for line in open('../room_label/MIMR_Room_template.svg', 'r'):
+    inputFile = '../room_label/MIMR_Room_template.svg'
+    hbase = 'unece/'
+    if('ANGELS' in parameters):
+        parameters['ANGELS'] = parameters['ANGELS'].replace('\n','</flowPara><flowPara>')
+    if (parameters['selectClass'] == 'lab'):
+        inputFile = '../room_label/MIMR_Lab_template.svg'
+    for line in open(inputFile, 'r'):
         if('bg_default.png' in line):
             if(('inputFile' in parameters) and
                (lastForm['inputFile'].filename)):
@@ -103,6 +110,27 @@ def runGenerator(lastForm, parameters, docType):
                     line = line.replace('@' + param + '@', parameters[param])
                 else:
                     line = line.replace('@' + param + '@', '['+param+']')
+        if('${HAZARDS}' in line):
+            hazardItems = list(lastForm.getvalue('warnBoxes'))
+            numHazards = len(hazardItems)
+            hLines = 2 if (numHazards > 3) else 1
+            hWidth = 440 / (int(math.ceil(numHazards / hLines)))
+            if(hWidth > (160/hLines)):
+                hWidth = (160/hLines)
+            hHeight = hWidth
+            nextHazard = 0
+            lPos = 440 - (hWidth * numHazards) / (2 * hLines)
+            hazardStr = "    "
+            for item in hazardItems:
+                xPos = (int(nextHazard / hLines) * hWidth +
+                        hWidth*0.05 + lPos + 7.5 +
+                        (numHazards % 2) * (nextHazard % hLines) * (hWidth / 2))
+                yPos = int(nextHazard % hLines) * hHeight + hWidth*0.05 + 863 + 7.5
+                hazardStr = ((hazardStr + '<image xlink:href="%s%s.svg" ' % (hbase,item)) +
+                             'height="%f" width="%f" x="%f" y="%f" />' %
+                             (hWidth * 0.9, hHeight * 0.9, xPos, yPos))
+                nextHazard += 1
+            line = hazardStr + '\n'
         resultSVG.write(line)
     resultSVG.close()
     if(docType == "pdf"):
@@ -135,10 +163,7 @@ cgitb.enable() # make errors visible on web pages
 form = cgi.FieldStorage()   # FieldStorage object to
                             # hold the form data
 myparams = {
-    "class_query"  : "taboff",
-    "class_params" : "taboff",
-    "class_results": "taboff",
-    "seenFields"   : list(),
+    "seenFields"   : set(),
     "addFields"    : ('resultsExist','sessionID','blastCommand'),
     }
 
@@ -170,17 +195,10 @@ else:
 if(not ('ID' in myparams)):
     myparams['ID'] = "X.XX"
 
-# run BLAST (if requested)
+# run generator program (if requested)
 docType = form.getfirst("runProgram","")
 if(len(docType) > 0):
     runGenerator(form, myparams, docType)
-
-if((not('resultsExist' in myparams)) or (myparams['resultsExist'] != 'True')):
-    myparams['class_results'] += " tabdisabled"
-else:
-    # retrieve result file, and display on tab (if tab is visible)
-    if(currentTab == 'results'):
-        myparams['results'] = getResults(myparams)
 
 printFile('../room_label/%s-labeler.html' % currentType, myparams, True)
 if('errors' in myparams):
