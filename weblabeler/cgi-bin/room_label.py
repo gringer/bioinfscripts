@@ -85,7 +85,7 @@ def runGenerator(lastForm, parameters, docType):
     hbase = 'unece/'
     if('ANGELS' in parameters):
         parameters['ANGELS'] = parameters['ANGELS'].replace('\n','</flowPara><flowPara>')
-    if (parameters['selectClass'] == 'lab'):
+    if (('selectClass' in parameters) and (parameters['selectClass'] == 'lab')):
         inputFile = '../room_label/MIMR_Lab_template.svg'
     for line in open(inputFile, 'r'):
         if('bg_default.png' in line):
@@ -93,8 +93,18 @@ def runGenerator(lastForm, parameters, docType):
                (lastForm['inputFile'].filename)):
                 fileItem = lastForm['inputFile']
                 fName, fExt = os.path.splitext(fileItem.filename)
+                fHead, fTail = os.path.split(fileItem.filename)
                 open('room_label/tmp/bg_%s%s' % (roomID, fExt),
                      'wb').write(fileItem.file.read())
+                if(fExt == ".pdf"):
+                    commandLine = list(('convert',
+                                        '-density','150',
+                                        'room_label/tmp/bg_%s%s' %
+                                        (roomID, fExt),
+                                        'room_label/tmp/bg_%s.jpg' %
+                                        roomID))
+                    runProcess = subprocess.call(commandLine)
+                    fExt = ".jpg"
                 if(docType == "svg"):
                     fHead, fTail = os.path.split(fileItem.filename)
                     line = line.replace('bg_default.png', fTail)
@@ -111,26 +121,31 @@ def runGenerator(lastForm, parameters, docType):
                 else:
                     line = line.replace('@' + param + '@', '['+param+']')
         if('${HAZARDS}' in line):
-            hazardItems = list(lastForm.getvalue('warnBoxes'))
-            numHazards = len(hazardItems)
-            hLines = 2 if (numHazards > 3) else 1
-            hWidth = 440 / (int(math.ceil(numHazards / hLines)))
-            if(hWidth > (160/hLines)):
-                hWidth = (160/hLines)
-            hHeight = hWidth
-            nextHazard = 0
-            lPos = 440 - (hWidth * numHazards) / (2 * hLines)
             hazardStr = "    "
-            for item in hazardItems:
-                xPos = (int(nextHazard / hLines) * hWidth +
-                        hWidth*0.05 + lPos + 7.5 +
-                        (numHazards % 2) * (nextHazard % hLines) * (hWidth / 2))
-                yPos = int(nextHazard % hLines) * hHeight + hWidth*0.05 + 863 + 7.5
-                hazardStr = ((hazardStr + '<image xlink:href="%s%s.svg" ' % (hbase,item)) +
-                             'height="%f" width="%f" x="%f" y="%f" />' %
-                             (hWidth * 0.9, hHeight * 0.9, xPos, yPos))
-                nextHazard += 1
+            if('warnBoxes' in lastForm):
+                boxHeight = 200
+                boxWidth = 440
+                boxSY = 823
+                hazardItems = list(lastForm.getvalue('warnBoxes'))
+                numHazards = len(hazardItems)
+                hLines = 2 if (numHazards > 3) else 1
+                hWidth = boxWidth / (int(math.ceil(numHazards / hLines)))
+                if(hWidth > (boxHeight/hLines)):
+                    hWidth = (boxHeight/hLines)
+                hHeight = hWidth
+                nextHazard = 0
+                lPos = boxWidth - (hWidth * numHazards) / (2 * hLines)
+                for item in hazardItems:
+                    xPos = (int(nextHazard / hLines) * hWidth +
+                            hWidth*0.05 + lPos + 7.5 +
+                            (numHazards % 2) * (nextHazard % hLines) * (hWidth / 2))
+                    yPos = int(nextHazard % hLines) * hHeight + hWidth*0.05 + boxSY + 7.5
+                    hazardStr = ((hazardStr + '<image xlink:href="%s%s.svg" ' % (hbase,item)) +
+                                 'height="%f" width="%f" x="%f" y="%f" />' %
+                                 (hWidth * 0.9, hHeight * 0.9, xPos, yPos))
+                    nextHazard += 1
             line = hazardStr + '\n'
+        line = line.replace('&','&amp;')
         resultSVG.write(line)
     resultSVG.close()
     if(docType == "pdf"):
@@ -140,8 +155,12 @@ def runGenerator(lastForm, parameters, docType):
                             resultSVG.name))
         runProcess = subprocess.call(commandLine)
         jamFileName = outputFileName.replace(".pdf","-pdfjam.pdf")
-        commandLine = list(('pdfjam','--landscape','--a4paper',
-                            '--scale','0.71',
+        commandLine = list(('pdfjam','--landscape',
+                            '--a4paper',
+#                            '--a5paper',
+#                            '--preamble',
+#                            '\usepackage[cam,a4,center]{crop}'
+                            '--scale', '0.71',
                             '--outfile', jamFileName,
                             outputFileName))
         runProcess = subprocess.call(commandLine)
@@ -164,7 +183,7 @@ form = cgi.FieldStorage()   # FieldStorage object to
                             # hold the form data
 myparams = {
     "seenFields"   : set(),
-    "addFields"    : ('resultsExist','sessionID','blastCommand'),
+    "addFields"    : ('resultsExist','sessionID','blastCommand','selectClass'),
     }
 
 #blastn -db db/3alln_smed -query /tmp/tmpGFk3hs -outfmt 5 -task blastn -evalue 10 -max_target_seqs 100 -word_size 11
