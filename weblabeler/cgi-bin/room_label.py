@@ -125,7 +125,8 @@ def runGenerator(lastForm, parameters, docType):
             if('warnBoxes' in lastForm):
                 boxHeight = 200
                 boxWidth = 440
-                boxSY = 823
+                boxCY = 823 + 215/2
+                boxCX = 221 + 460/2
                 hazardItems = list(lastForm.getvalue('warnBoxes'))
                 numHazards = len(hazardItems)
                 hLines = 2 if (numHazards > 3) else 1
@@ -134,12 +135,13 @@ def runGenerator(lastForm, parameters, docType):
                     hWidth = (boxHeight/hLines)
                 hHeight = hWidth
                 nextHazard = 0
-                lPos = boxWidth - (hWidth * numHazards) / (2 * hLines)
+                lPos = boxCX - (hWidth * numHazards) / (2 * hLines)
+                tPos = boxCY - (hHeight * hLines / 2)
                 for item in hazardItems:
                     xPos = (int(nextHazard / hLines) * hWidth +
-                            hWidth*0.05 + lPos + 7.5 +
+                            hWidth*0.05 + lPos +
                             (numHazards % 2) * (nextHazard % hLines) * (hWidth / 2))
-                    yPos = int(nextHazard % hLines) * hHeight + hWidth*0.05 + boxSY + 7.5
+                    yPos = int(nextHazard % hLines) * hHeight + hWidth*0.05 + tPos
                     hazardStr = ((hazardStr + '<image xlink:href="%s%s.svg" ' % (hbase,item)) +
                                  'height="%f" width="%f" x="%f" y="%f" />' %
                                  (hWidth * 0.9, hHeight * 0.9, xPos, yPos))
