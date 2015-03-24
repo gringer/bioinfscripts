@@ -127,7 +127,10 @@ def runGenerator(lastForm, parameters, docType):
                 boxWidth = 440
                 boxCY = 823 + 215/2
                 boxCX = 221 + 460/2
-                hazardItems = list(lastForm.getvalue('warnBoxes'))
+                formHazards = lastForm.getvalue('warnBoxes')
+                hazardItems = list(formHazards)
+                if(isinstance(formHazards, str)):
+                    hazardItems = list([formHazards])
                 numHazards = len(hazardItems)
                 hLines = 2 if (numHazards > 3) else 1
                 hWidth = boxWidth / (int(math.ceil(numHazards / hLines)))
@@ -158,13 +161,12 @@ def runGenerator(lastForm, parameters, docType):
         runProcess = subprocess.call(commandLine)
         jamFileName = outputFileName.replace(".pdf","-pdfjam.pdf")
         commandLine = list(('pdfjam','--landscape',
-                            '--a4paper',
-#                            '--a5paper',
-#                            '--preamble',
-#                            '\usepackage[cam,a4,center]{crop}'
-                            '--scale', '0.71',
+                            '--preamble',
+                            '\usepackage[cross,axes,a4,center,noinfo]{crop}',
+                            '--papersize', '{15.8cm,21.03cm}',
                             '--outfile', jamFileName,
                             outputFileName))
+        sys.stderr.write("Running '%s'...\n" % (" ".join(commandLine)))
         runProcess = subprocess.call(commandLine)
         print('Content-type: application/pdf')
         print('Content-Disposition: attachment; ' +

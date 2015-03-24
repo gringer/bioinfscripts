@@ -14,6 +14,8 @@
       previewFields["DESC1"] = previewDocument.getElementById("tDESC1");
       previewFields["DESC2"] = previewDocument.getElementById("tDESC2");
       previewFields["DESC3"] = previewDocument.getElementById("tDESC3");
+      previewFields["DESC4"] = previewDocument.getElementById("tDESC4");
+      previewFields["DESC5"] = previewDocument.getElementById("tDESC5");
       // initialise to non-scary values
       setValue("ID","X.XX");
       setValue("PNAME","Dr. A Researcher");
@@ -21,6 +23,8 @@
       setValue("DESC1","");
       setValue("DESC2","");
       setValue("DESC3","");
+      setValue("DESC4","");
+      setValue("DESC5","");
       // set up change listeners
       document.getElementById("iID").onkeyup = function(){setValue("ID",this.value)};
       document.getElementById("iRNAME").onkeyup = function(){this.value=this.value.toUpperCase();setValue("RNAME",this.value)};
@@ -28,12 +32,16 @@
       document.getElementById("iDESC1").onkeyup = function(){setValue("DESC1",this.value)};
       document.getElementById("iDESC2").onkeyup = function(){setValue("DESC2",this.value)};
       document.getElementById("iDESC3").onkeyup = function(){setValue("DESC3",this.value)};
+      document.getElementById("iDESC4").onkeyup = function(){setValue("DESC4",this.value)};
+      document.getElementById("iDESC5").onkeyup = function(){setValue("DESC5",this.value)};
       document.getElementById("iID").onchange = function(){setValue("ID",this.value)};
       document.getElementById("iRNAME").onchange = function(){this.value=this.value.toUpperCase();setValue("RNAME",this.value)};
       document.getElementById("iPNAME").onchange = function(){setValue("PNAME",this.value)};
       document.getElementById("iDESC1").onchange = function(){setValue("DESC1",this.value)};
       document.getElementById("iDESC2").onchange = function(){setValue("DESC2",this.value)};
       document.getElementById("iDESC3").onchange = function(){setValue("DESC3",this.value)};
+      document.getElementById("iDESC4").onchange = function(){setValue("DESC4",this.value)};
+      document.getElementById("iDESC5").onchange = function(){setValue("DESC5",this.value)};
       }
       function setValue(objTag, value){
       previewFields[objTag].firstChild.nodeValue = value;
@@ -233,6 +241,12 @@ a:hover {
 
 <div><label for="iDESC2">Line 2</label>
 <input id="iDESC2" type="text" name="DESC2" size="20"></div>
+
+<div><label for="iDESC4">Line 3</label>
+<input id="iDESC4" type="text" name="DESC4" size="20"></div>
+
+<div><label for="iDESC5">Line 4</label>
+<input id="iDESC5" type="text" name="DESC5" size="20"></div>
 
 <h2>Background (optional)</h2>
 
