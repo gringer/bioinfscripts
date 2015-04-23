@@ -6,8 +6,10 @@ use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
 my $colourChange = 0;
+my $minCoverage = 0;
 
-GetOptions("samplename=s" => \$sampleName,
+GetOptions("mincoverage=i" => \$minCoverage,
+	   "samplename=s" => \$sampleName,
           "colour!" => \$colourChange) or
   die("Error in command line arguments");
 
@@ -30,10 +32,6 @@ while(<>){
 #  print(STDERR $_);
   chomp;
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
-  if($sampleName){
-    printf("%-15s ", $sampleName);
-  }
-  printf("%-20s %8d %8d %3s", $refName, $pos, $cov, $refAllele);
   $_ = uc($bases);
   my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
   s/\^.//g;
@@ -59,6 +57,12 @@ while(<>){
     ($r, $i, $d, $a, $c, $g, $t) = map {$_ / $total}
       ($r, $i, $d, $a, $c, $g, $t);
   }
-  printf(" %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
-         $r, $a, $c, $g, $t, $d, $i);
+  if($cov > $minCoverage){
+      if($sampleName){
+	  printf("%-15s ", $sampleName);
+      }
+      printf("%-20s %8d %8d %3s", $refName, $pos, $cov, $refAllele);
+      printf(" %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
+	     $r, $a, $c, $g, $t, $d, $i);
+  }
 }
