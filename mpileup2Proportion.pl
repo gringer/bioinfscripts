@@ -17,13 +17,13 @@ if($sampleName){
   printf("%-15s ", "Sample");
 }
 if($colourChange){
-  printf("%-20s %8s %8s %3s %s\n",
-         "Assembly", "Position", "Coverage", "Ref",
-         "   0    1    2    3    d    i");
+  printf("%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "cR",
+         "0,1,2,3,d,i");
 } else {
-  printf("%-20s %8s %8s %3s %s\n",
-         "Assembly", "Position", "Coverage", "Ref",
-         "   .    A    C    G    T    d    i");
+  printf("%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "cR",
+         "pR,A,C,G,T,d,i");
 }
 
 while(<>){
@@ -33,7 +33,7 @@ while(<>){
   if($sampleName){
     printf("%-15s ", $sampleName);
   }
-  printf("%-20s %8d %8d %3s", $refName, $pos, $cov, $refAllele);
+  printf("%s,%d,%d,%s", $refName, $pos, $cov, $refAllele);
   $_ = uc($bases);
   my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
   s/\^.//g;
@@ -44,6 +44,7 @@ while(<>){
   my $c = tr/cC//;
   my $g = tr/gG//;
   my $t = tr/tT//;
+  my ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = (0, 0, 0, 0, 0, 0, 0);
   my $total = $i+$r+$d+$a+$c+$g+$t;
   # if($refAllele eq "A"){
   #   $a = $r;
@@ -56,9 +57,9 @@ while(<>){
   # }
   # was previously $coverage, not $total
   if($total > 0){
-    ($r, $i, $d, $a, $c, $g, $t) = map {$_ / $total}
+    ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = map {$_ / $total}
       ($r, $i, $d, $a, $c, $g, $t);
   }
-  printf(" %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f %0.2f\n",
-         $r, $a, $c, $g, $t, $d, $i);
+  printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
+         $pr, $pa, $pc, $pg, $pt, $pd, $pi);
 }
