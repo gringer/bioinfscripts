@@ -31,9 +31,9 @@ while(<>){
   chomp;
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
   if($sampleName){
-    printf("%-15s ", $sampleName);
+    printf("%s", $sampleName);
   }
-  printf("%s,%d,%d,%s", $refName, $pos, $cov, $refAllele);
+  printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
   $_ = uc($bases);
   my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
   s/\^.//g;
