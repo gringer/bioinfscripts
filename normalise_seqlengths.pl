@@ -125,7 +125,7 @@ sub processFastqSeq{
   # additional fragments required, derived from...
   my $k = ceil(($lo * ($nf - 1) - $dl) / ($lf - $lo));
   # ... mean_overlap = ($dl + $k * $lf) / ($nf + $k - 1)
-  my $mo = ($dl + $k * $lf) / ($nf + $k - 1);
+  my $mo = ($nf == 1) ? 0 : ($dl + $k * $lf) / ($nf + $k - 1);
   my $mor = sprintf("%0.0f", $mo);
   $nf += $k;
   for(my $i = 0; $i < $nf; $i++){
