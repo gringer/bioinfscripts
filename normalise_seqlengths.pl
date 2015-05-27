@@ -115,7 +115,7 @@ sub processFastqSeq{
     return;
   }
   if(length($seq) == $lf){
-    print("@${id}\n${seq}\n+\n${qual}\n");
+    print("@"."${id}\n${seq}\n+\n${qual}\n");
   }
   my $ls = length($seq);
   # number of full or partial fragments in sequence (minimum number of splits)
