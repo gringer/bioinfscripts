@@ -3,17 +3,21 @@
 \usepackage{fp}
 \usepackage{charter}
 
+\usepackage[margin=1cm,bottom=3cm]{geometry}
+
 % length changes to get header in the right place
 \setlength{\voffset}{1.5cm}
 \setlength{\headheight}{2cm}
 \setlength{\headsep}{0pt}
 
-\usepackage[margin=1cm,bottom=3cm]{geometry}
+\setlength{\textheight}{24.2cm}
+
 \usepackage{multirow}
 \usepackage{fancyhdr}
 \usepackage{lastpage} % provides the number of the last page
 \usepackage{framed}
 \usepackage{color}
+\usepackage{longtable} % allows tables to split across pages
 
 \pagestyle{fancy}
 
@@ -171,25 +175,26 @@ David Eccles
 \pagebreak
 
 \begin{flushleft}
-\begin{center}
-  \Large{\textbf{Sub-job Details}}
-  \label{sec:sub-job-details}
-\end{center}
+  \begin{center}
+    \Large{\textbf{Sub-job Details}}
+    \label{sec:sub-job-details}
+  \end{center}
 
-\rule{\linewidth}{0.5mm}
+  \rule{\linewidth}{0.5mm}
 
   \hspace{30pt}
-  \begin{tabular}{llrl}
+  \begin{longtable}{llrl}
     \textbf{Description} & %%
     \textbf{Date} & %%DATELINE
     & %%NODATELINE
     \textbf{Hours}%%UNITLINE
     \\
     \hline\\
+    \endhead
     @@@jobLines@@@\\
     \hline\\
     Total @@@payType@@@s & & @@@totalUnits@@@\\%%UNITLINE
-  \end{tabular}
+  \end{longtable}
 \end{flushleft}
 
 \end{document}

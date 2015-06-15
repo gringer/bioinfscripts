@@ -52,7 +52,7 @@ my $rateKnown = 0; # false
 my %templateFields = ();
 my %templateRemoveFlags = ();
 
-$templateFields{"unitRate"} = "50.00";
+$templateFields{"unitRate"} = ""; # false
 $templateFields{"totalUnits"} = 0;
 $templateFields{"payType"} = "hour";
 
@@ -125,6 +125,12 @@ while(@ARGV){
 
 if(!$jobInFilename){
     print(STDERR "Error: No valid job input file given\n");
+    usage();
+    exit(1);
+}
+
+if(!$templateFields{"unitRate"}){
+    print(STDERR "Error: No unit rate specified\n");
     usage();
     exit(1);
 }
@@ -214,8 +220,20 @@ while(<$jobInFile>){
         print(STDERR "Calculated cost is negative for '".
               $lineData[$colHeadings{"Description"}].
               "'. " .
-              "Units will be set to 0 for this subjob.");
+              "Units will be set to 0 for this subjob.\n");
         $units = 0;
+      }
+      if($units == 0){
+        print(STDERR "Calculated cost is 0 hours for '".
+              $lineData[$colHeadings{"Description"}].
+              "'. " .
+              "Units will remain at $units for this subjob.\n");
+      }
+      if($units > 24){
+        print(STDERR "Calculated cost is greater than 24 hours for '".
+              $lineData[$colHeadings{"Description"}].
+              "'. " .
+              "Units will remain at $units for this subjob.\n");
       }
       if(defined($subjobUnits{$colHeadings{"Description"}})){
         printf(STDERR "WARNING: Description '%s' already exists ".
@@ -429,6 +447,7 @@ EOT
     my $subJobDesc = $subJob;
     $subJobDesc =~ s/_[0-9]+$//;
     $subJobDesc =~ s/&/\\&/g;
+    $subJobDesc =~ s/#/\\#/g;
     $subJobDesc =~ s/_/\\_/g;
     $subJobDesc =~ s/\\n/\n/g;
     if($jobType ne "fixed"){
