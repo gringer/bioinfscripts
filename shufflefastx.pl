@@ -59,10 +59,15 @@ while(<>){
       my $newShortID = $3;
       if($seqID){
         my $newSeq = "";
-        foreach my $rp (shuffle (0 .. length($seq))){
+        my @shuffleLocs = (shuffle (0 .. length($seq)));
+        foreach my $rp (@shuffleLocs){
           $newSeq .= substr($seq,$rp,1);
         }
         if($qual){
+          my $newQual = "";
+          foreach my $rp (@shuffleLocs){
+            $newQual .= substr($qual,$rp,1);
+          }
           printf("@"."shuffled_%s\n%s\n+\n%s\n", $seqID, $newSeq, $qual);
         } else {
           if($wrap){
@@ -94,18 +99,23 @@ while(<>){
   }
 }
 
-if($seqID){
+if ($seqID) {
   my $newSeq = "";
-  foreach my $rp (shuffle (0 .. length($seq))){
+  my @shuffleLocs = (shuffle (0 .. length($seq)));
+  foreach my $rp (@shuffleLocs) {
     $newSeq .= substr($seq,$rp,1);
   }
-  if($wrap){
-    $newSeq =~ s/(.{70})/$1\n/g;
-    $newSeq =~ s/\s+$//;
-  }
-  if($qual){
-    printf("@%s\n%s\n+\n%s\n", $seqID, $newSeq, $qual);
+  if ($qual) {
+    my $newQual = "";
+    foreach my $rp (@shuffleLocs) {
+      $newQual .= substr($qual,$rp,1);
+    }
+    printf("@"."shuffled_%s\n%s\n+\n%s\n", $seqID, $newSeq, $qual);
   } else {
-    printf(">%s\n%s\n", $seqID, $newSeq);
+    if ($wrap) {
+      $newSeq =~ s/(.{70})/$1\n/g;
+      $newSeq =~ s/\s+$//;
+    }
+    printf(">shuffled_%s\n%s\n", $seqID, $newSeq);
   }
 }
