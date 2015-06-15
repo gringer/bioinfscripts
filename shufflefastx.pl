@@ -63,13 +63,13 @@ while(<>){
           $newSeq .= substr($seq,$rp,1);
         }
         if($qual){
-          printf("@%s\n%s\n+\n%s\n", $seqID, $newSeq, $qual);
+          printf("@"."shuffled_%s\n%s\n+\n%s\n", $seqID, $newSeq, $qual);
         } else {
           if($wrap){
             $newSeq =~ s/(.{70})/$1\n/g;
             $newSeq =~ s/\s+$//;
           }
-          printf(">%s\n%s\n", $seqID, $newSeq);
+          printf(">shuffled_%s\n%s\n", $seqID, $newSeq);
         }
       }
       $seq = "";
