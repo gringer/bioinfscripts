@@ -2,6 +2,22 @@
 use warnings;
 use strict;
 
+# mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
+#   output from 'samtools mpileup'
+#
+# example use:
+# samtools mpileup -C50 -Q0 -e 20 -o 40 -f ref.fasta input.bam |
+#   mpileup2Proportion.pl > output.prop.csv
+#
+# example output:
+# Assembly,Position,Ref,Coverage,cR,pR,A,C,G,T,d,i
+# mmusMT_PCR1,15564,G,89,85,95.5,0.0,2.2,95.5,1.1,1.1,2.2
+# mmusMT_PCR1,15565,A,89,85,95.5,95.5,1.1,3.4,0.0,0.0,7.9
+# mmusMT_PCR1,15566,A,89,83,93.3,93.3,0.0,2.2,1.1,0.0,0.0
+# mmusMT_PCR1,15567,T,89,73,82.0,4.5,0.0,5.6,82.0,7.9,1.1
+# mmusMT_PCR1,15568,A,89,71,79.8,79.8,3.4,2.2,1.1,13.5,2.2
+
+
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
@@ -19,6 +35,7 @@ if($sampleName){
   printf("%-15s ", "Sample");
 }
 if($colourChange){
+  warn("Warning: Colour change calculations are not yet properly implemented");
   printf("%s,%s,%s,%s,%s\n",
          "Assembly", "Position", "Coverage", "cR",
          "0,1,2,3,d,i");
