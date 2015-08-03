@@ -38,12 +38,12 @@ if($sampleName){
 }
 if($colourChange){
   warn("Warning: Colour change calculations are not yet properly implemented");
-  printf("%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "cR",
+  printf("%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "cR",
          "0,1,2,3,d,i");
 } else {
-  printf("%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "cR",
+  printf("%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "cR",
          "pR,A,C,G,T,d,i");
 }
 
@@ -83,11 +83,11 @@ while(<>){
       }
       printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
       if($writeCounts){
-        printf("%d,%d,%d,%d,%d,%d,%d\n",
-               $r, $a, $c, $g, $t, $d, $i);
+        printf("%d,%0.2f,%d,%d,%d,%d,%d,%d\n",
+               $r, $pr, $a, $c, $g, $t, $d, $i);
       } else {
         printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
-               $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+               $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
       }
   }
 }
