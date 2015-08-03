@@ -23,10 +23,12 @@ use Getopt::Long qw(:config auto_help pass_through);
 my $sampleName = "";
 my $colourChange = 0;
 my $minCoverage = 0;
+my $writeCounts = 0;
 
 GetOptions("mincoverage=i" => \$minCoverage,
 	   "samplename=s" => \$sampleName,
-          "colour!" => \$colourChange) or
+           "colour!" => \$colourChange,
+           "counts!" => \$writeCounts) or
   die("Error in command line arguments");
 
 my $assembly = "";
@@ -80,7 +82,12 @@ while(<>){
 	  printf("%s,", $sampleName);
       }
       printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-      printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
-           $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      if($writeCounts){
+        printf("%d,%d,%d,%d,%d,%d,%d\n",
+               $r, $a, $c, $g, $t, $d, $i);
+      } else {
+        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
+               $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      }
   }
 }
