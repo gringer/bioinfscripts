@@ -93,10 +93,13 @@ while(<>){
       my $taxID = $seqMap{$seqBase};
       if($taxID){
 	  $seqID.= "|kraken:taxid|".$taxID;
+	  printf(">%s%s\n", $seqID, $rest);
+      } else {
+	  print(STDERR "Warning: Sequence '$seqID' skipped: no reference found in map file\n");
+	  $seqID = "";
       }
-      printf(">%s%s\n", $seqID, $rest);
       $seq = "";
-  } else {
+  } elsif($seqID) {
       $_ =~ tr/U/T/;
       print($_."\n");
   }
