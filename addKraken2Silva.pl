@@ -86,9 +86,9 @@ my $seq = "";
 while(<>){
   chomp;
   if(/^>(([^\.]+).*?)(( |$).*)$/){
-      my $seqBase = $2;
-      my $seqID = $1;
-      my $rest = $3;
+      $seqID = $1;
+      $seqBase = $2;
+      $rest = $3;
       ##print(STDERR "base: $seqBase, id:$seqID, rest:$rest\n");
       my $taxID = $seqMap{$seqBase};
       if($taxID){
