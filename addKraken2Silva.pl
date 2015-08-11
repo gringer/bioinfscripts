@@ -76,7 +76,6 @@ while(<$mapFile>){
     if($mapLinesCounter++ > 100000){
 	$mapLinesCounter = 0;
 	print(STDERR ".");
-	last;
     }
 }
 
