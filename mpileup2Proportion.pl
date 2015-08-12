@@ -86,7 +86,7 @@ while(<>){
         printf("%d,%0.2f,%d,%d,%d,%d,%d,%d\n",
                $r, $pr, $a, $c, $g, $t, $d, $i);
       } else {
-        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
+        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
                $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
       }
   }
