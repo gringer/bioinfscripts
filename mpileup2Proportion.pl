@@ -34,7 +34,7 @@ GetOptions("mincoverage=i" => \$minCoverage,
 my $assembly = "";
 
 if($sampleName){
-  printf("%-15s ", "Sample");
+  printf("%s,", "Sample");
 }
 if($colourChange){
   warn("Warning: Colour change calculations are not yet properly implemented");

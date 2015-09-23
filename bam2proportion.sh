@@ -5,9 +5,9 @@ bamFile=$2;
 regFile=$3; # /data/all/david/diagnostic/design/IAD31669_Submitted.bed
 refFile=$(samtools view -H ${bamFile} | grep '\.fa' | perl -pe 's#^.*-f #/mnt/ihbi_ngs/iontorrent-kgq4#;s/(\.fa(sta)?).*$/$1/');
 
-#echo "BAM File:" ${bamFile};
-#echo "Reference File:" ${refFile};
-#echo "Region File:" ${regFile};
+echo "BAM File: '${bamFile}'" > /dev/stderr;
+echo "Reference File: '${refFile}'" > /dev/stderr;
+echo "Region File: '${regFile}'" > /dev/stderr;
 
 pileupOpts="";
 
@@ -30,6 +30,15 @@ fi
 # for Variant annotation with annovar
 # http://www.cureffi.org/2012/09/07/an-alternative-exome-sequencing-pipeline-using-bowtie2-and-samtools/
 
-samtools mpileup -l ${regFile} ${pileupOpts} | ~/scripts/mpileup2Proportion.pl -m 10
+if [ -z ${regFile} ]; then
+    #echo "samtools mpileup ${pileupOpts} | ~/scripts/mpileup2Proportion.pl -m 10 | perl -pe 's/ +/,/g'" > /dev/stderr
+    samtools mpileup ${pileupOpts} | ~/scripts/mpileup2Proportion.pl -m 10 | perl -pe 's/ +/,/g'
+else
+    #echo "samtools mpileup -l ${regFile} ${pileupOpts} | ~/scripts/mpileup2Proportion.pl -m 10 | perl -pe 's/ +/,/g'" > /dev/stderr
+    samtools mpileup -l ${regFile} ${pileupOpts} | ~/scripts/mpileup2Proportion.pl -m 10 | perl -pe 's/ +/,/g'
+fi
 
-# for x in IonXpress_0*.bam; do echo -n ${x} "..."; ~/scripts/bam2proportion.sh IonTorrent ${x} /data/all/david/diagnostic/design/IAD31669_Submitted.bed | perl -pe 's/ +/,/g' > proportion_Diagnostics_AmpliSeq_QUT_NGS11_98_099/$(basename ${x} .bam).pileupprop.csv; echo "done"; done
+# for x in IonXpress_0*.bam; do echo -n ${x} "..."; ~/scripts/bam2proportion.sh IonTorrent ${x} /data/all/david/diagnostic/design/IAD31669_Submitted.bed > proportion_Diagnostics_AmpliSeq_QUT_NGS11_98_099/$(basename ${x} .bam).pileupprop.csv; echo "done"; done
+# for x in IonXpress_0*.bam; do echo -n ${x} "..."; ~/scripts/bam2proportion.sh IonTorrent ${x} > proportion_Shani_Mito_Run18_71_082/$(basename ${x} .bam).pileupprop.csv; echo "done"; done
+
+exit 0
