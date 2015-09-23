@@ -47,6 +47,8 @@ if($colourChange){
          "pR,A,C,G,T,d,i");
 }
 
+my %deletions = ();
+
 while(<>){
 #  print(STDERR $_);
   chomp;
@@ -54,9 +56,21 @@ while(<>){
   $_ = uc($bases);
   my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
   s/\^.//g;
+  ## process deletions
+  while(s/-([0-9]+)[ACGTNacgtn]+//){
+      ## deletions are a special case, because *all* deletions are replaced with a single '*'
+      ## this is worked around by ignoring '*' and parsing the delete string for future positions
+      my $delSize = $1;
+      for(my $i = 1; $i <= $delSize; $i++){
+	  $deletions{$pos+$i}++;
+      }
+  }
+  ## remove insertions
   s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
   my $r = tr/,.//;
-  my $d = tr/*//;
+  #my $d = tr/*//;
+  my $d = $deletions{$pos}?$deletions{$pos}:0;
+  delete($deletions{$pos});
   my $a = tr/aA//;
   my $c = tr/cC//;
   my $g = tr/gG//;
