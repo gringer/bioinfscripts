@@ -2,12 +2,18 @@
 use warnings;
 use strict;
 
+use Getopt::Long qw(:config auto_version auto_help pass_through); # for option parsing
+
 my $inQual = 0; # false
 my $seqID = "";
 my $qualID = "";
 my $seq = "";
 my $qual = "";
 my $minLen = 0;
+
+GetOptions('minlength=i' => \$minLen) or
+  die("Error in command line arguments");
+
 while(<>){
   chomp;
   chomp;
