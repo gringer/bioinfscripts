@@ -2,7 +2,7 @@
 
 # job2tex.pl -- Create job invoice based on comma-separated job file
 
-# Author: David Eccles (gringer), 2010-2013 <programming@gringer.org>
+# Author: David Eccles (gringer), 2010-2015 <programming@gringer.org>
 
 # use diagnostics -verbose;
 use strict;
@@ -47,6 +47,7 @@ my $advanceText = "";
 my $invoicePaid = 0; # false
 my $gstRate = 0.15;
 my $gstExclusive = 1; # true
+my $gstDefined = 0; # false
 my $showDate = 0; # false
 my $rateKnown = 0; # false
 my %templateFields = ();
@@ -93,6 +94,7 @@ while(@ARGV){
     }
     elsif($argument eq "-gstinc"){
       $gstExclusive = 0; # false
+      $gstDefined = 1;
     }
     elsif($argument eq "-rate"){
       $templateFields{"unitRate"} = shift @ARGV;
@@ -311,6 +313,20 @@ if($outputBaseName =~
         "Genomics Research Centre\n".
           "Griffith University\n";
     $country = "au";
+  } elsif ($templateFields{"clientBusinessName"} eq 'ONT') {
+    $templateFields{"clientBusinessName"} = 'Oxford Nanopore Technologies';
+    $templateFields{"jobDesc"} = "Purchase Order";
+    $templateFields{"payType"} = "item";
+    $templateFields{"clientAddress"} =
+      "Delivery / Billing: \n\n".
+      "David Eccles\n".
+      "Malaghan Institute of Medical Research\n".
+      "Gate 7, Victoria University, Kelburn Parade\n".
+      "Wellington, 6012\n".
+      "New Zealand\n\n".
+      "\\textbf{Ph}: +64 4 499 6914\n".
+      "\\textbf{Fx}: +64 4 499 6915\n";
+    $country = "us";
   } elsif ($templateFields{"clientBusinessName"} eq 'QUT') {
     $templateFields{"clientBusinessName"} =
       'Queensland University of Technology';
@@ -398,11 +414,27 @@ Kontonummer:  0135644714
 EOT
   }
   if($country eq "nz"){
+    printf(STDERR "Country: New Zealand\n");
     $templateFields{"currency"} = "NZD";
-    $gstExclusive = 1; # true
+    if(!$gstDefined){
+      $gstExclusive = 1; # true
+      $gstDefined = 1;
+    }
+  }
+  if($country eq "us"){
+    printf(STDERR "Country: United States\n");
+    $templateFields{"currency"} = "USD";
+    if(!$gstDefined){
+      $gstExclusive = 0; # false
+      $gstDefined = 1;
+    }
   }
   if($country eq "au"){
-    $gstExclusive = 1; # true
+    printf(STDERR "Country: Australia\n");
+    if(!$gstDefined){
+      $gstExclusive = 1; # true
+      $gstDefined = 1;
+    }
     $templateFields{"currency"} = "AUD";
     $templateFields{"bankMessage"} = "Please use the following details ".
       "for international money transfer:";
@@ -421,6 +453,12 @@ Bank:   TSB Bank
 Branch: TSB Bank Direct, New Plymouth
 Number: 15-3959-0522435-00
 EOT
+  }
+
+  if(!$gstDefined){
+    printf(STDERR "Value is exclusive of GST\n");
+    $gstExclusive = 1;
+    $gstDefined = 1;
   }
 
   $templateFields{"clientAddress"} =~ s/\n/\\\\\n/g;
@@ -479,6 +517,7 @@ EOT
       sprintf("%-1.2f",$templateFields{"totalUnits"});
   }
   if($gstExclusive){
+    printf(STDERR "Calculating additional GST\n");
     my $gstComponent = $templateFields{"tAmt"} * $gstRate;
     my $amountDue = $templateFields{"tAmt"} +
       $templateFields{"tAmt"} * $gstRate;
@@ -486,6 +525,7 @@ EOT
     $templateFields{"dAmt"} = sprintf("%0.2f", $amountDue);
     $templateRemoveFlags{"GSTINC"} = 1;
   } else {
+    printf(STDERR "Calculating GST component\n");
     my $gstComponent = ($templateFields{"tAmt"} * 3) / 23;
     $templateFields{"GSTAmt"} = sprintf("%0.2f", $gstComponent);
     $templateRemoveFlags{"GSTADD"} = 1;
