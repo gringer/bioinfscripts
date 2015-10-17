@@ -18,10 +18,11 @@
 # G component: Y proportion (i.e. TC ratio) [alternate colour magenta]
 # B component: S proportion (i.e. GC ratio) [alternate colour yellow]
 #
-# These colours can be presented as-is, or scaled based on the
-# observed range (or distribution) of proportions. The effect of
-# proportion scaling would be an increase in the colour saturation of
-# regions between homopolymer sequences.
+# These colours can be presented as-is, or increased to full
+# saturation between homopolymer sequences. With a consistent
+# saturation setting, the same subsequence should appear identical
+# regardless of its location (except possibly at the start and end of
+# the sequence).
 #
 # Copyright 2015, David Eccles (gringer) <bioinformatics@gringene.org>
 #
@@ -35,18 +36,18 @@
 use warnings;
 use strict;
 
-use Getopt::Long qw(:config auto_version auto_help pass_through); # for option parsing
+use Getopt::Long qw(:config auto_version auto_help pass_through);
+use List::Util qw(min);
 
 my $hpLength = 1;
-my @pScale = [0,1,0,1,0,1];
+my $saturate = 0;
 
-GetOptions('hplength=i' => \$hpLength, 'pscale=f{6}' => \@pScale) or
+GetOptions('hplength=i' => \$hpLength, 'saturate!' => \$saturate) or
   die("Error in command line arguments");
 
 my $seq = "";
 my $seqCount = 1;
 my $seqID = "";
-my @newPS = (0.5,0.5,0.5,0.5,0.5,0.5);
 
 print("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
 print("<svg xmlns:svg=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n");
@@ -57,12 +58,7 @@ while(<>){
   if(/^>(.+)$/){
     my $newID = $1;
     if($seq){
-      my @tPS = drawSeq($seq, $seqID, $seqCount, $hpLength);
-      #print(STDERR join(":",@tPS)."\n");
-      foreach my $i (0..2){
-        $newPS[$i*2] = $tPS[$i*2] if($tPS[$i*2] < $newPS[$i*2]);
-        $newPS[$i*2+1] = $tPS[$i*2+1] if($tPS[$i*2+1] > $newPS[$i*2+1]);
-      }
+      drawSeq($seq, $seqID, $seqCount, $hpLength, $saturate);
       $seqCount++;
     }
     $seq = "";
@@ -73,11 +69,7 @@ while(<>){
 }
 
 if($seq){
-  my @tPS = drawSeq($seq, $seqID, $seqCount, $hpLength);
-  foreach my $i (0..2){
-    $newPS[$i*2] = $tPS[$i*2] if($tPS[$i*2] < $newPS[$i*2]);
-    $newPS[$i*2+1] = $tPS[$i*2+1] if($tPS[$i*2+1] > $newPS[$i*2+1]);
-  }
+  drawSeq($seq, $seqID, $seqCount, $hpLength, $saturate);
 }
 
 print("</svg>\n");
@@ -89,19 +81,8 @@ sub comp{
   return($tSeq);
 }
 
-sub updateRange{
-  my ($cr, $newCr) = @_;
-  #print(STDERR join(":",@{$cr})." ".join(":",@{$newCr})."\n");
-  foreach my $i (0..2){
-    ${$cr}[$i*2] = ${$newCr}[$i]
-      if((${$newCr}[$i] > 0) && (${$newCr}[$i] < ${$cr}[$i*2]));
-    ${$cr}[$i*2+1] = ${$newCr}[$i]
-      if((${$newCr}[$i] < 1) && (${$newCr}[$i] > ${$cr}[$i*2+1]));
-  }
-}
-
 sub contentColour{
-  my ($tSeq) = @_;
+  my ($tSeq, $doSat) = @_;
   my $total = ($tSeq =~ tr/AaCcGgTt//);
   if($total == 0){
     return(("#000000", 0.5, 0.5, 0.5));
@@ -110,14 +91,27 @@ sub contentColour{
   my $c = ($tSeq =~ tr/Cc//);
   my $g = ($tSeq =~ tr/Gg//);
   my $t = ($tSeq =~ tr/Tt//);
-  my ($S, $Y, $M) = map {$_ / $total} (($c+$g), ($c+$t), ($c+$a));
-  my ($Sc, $Yc, $Mc) = map {$_ * 255} ($S, $Y, $M);
-  return((sprintf("#%02X%02X%02X", $Mc, $Yc, $Sc), $S, $Y, $M));
+  my ($M, $Y, $S) = map {$_ / $total} (($c+$a), ($c+$t), ($c+$g));
+  if($doSat){
+    # fully saturate colours using HSP model, increasing R/G/B until
+    # one colour reaches 1
+    # code derived from Darel Rex Finley's function
+    # see: http://alienryderflex.com/saturation.html
+    my ($pR, $pG, $pB) = (0.299, 0.587, 0.114);
+    my $p = sqrt($M*$M*$pR + $Y*$Y*$pG + $S*$S*$pB);
+    my ($dR, $dG, $dB) = ($M-$p, $Y-$p, $S-$p);
+    my ($kR, $kG, $kB) = map {$_ ? (1-$p) / $_ : 1} ($dR, $dG, $dB);
+    my $minK = min(grep {$_ > 0} ($kR, $kG, $kB));
+    ($M, $Y, $S) = map {$p + $_ * $minK} ($dR, $dG, $dB);
+    # clip at 0 and 1
+    ($M, $Y, $S) = map {($_<0) ? 0 : (($_>1) ? 1 : $_)} ($M, $Y, $S);
+  }
+  my ($Mc, $Yc, $Sc) = map {$_ * 255} ($M, $Y, $S);
+  return(sprintf("#%02X%02X%02X", $Mc, $Yc, $Sc));
 }
 
 sub drawSeq{
-  my ($tSeq, $tSeqID, $tSeqCount, $hl) = @_;
-  my $ccRange = [0.5,0.5,0.5,0.5,0.5,0.5];
+  my ($tSeq, $tSeqID, $tSeqCount, $hl, $doSat) = @_;
   my %hpCols = ( A => "#00FF00", C => "#0000FF", G=> "#FFFF00", T=> "#FF0000");
   #$tSeq = substr($tSeq,0,200); # only show first 100 bases for testing purposes
   my $tSeqC = comp($tSeq);
@@ -136,10 +130,7 @@ sub drawSeq{
     my $hpBase = substr($hpSeq,0,1);
     if($preSeq){
       ## display sequence prior to homopolymer
-      my ($col, @CC) = contentColour($preSeq);
-      if(length($preSeq) > 5){
-        updateRange($ccRange, \@CC);
-      }
+      my $col = contentColour($preSeq, $doSat);
       printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
              $col, $xp, $tSeqCount*$sf-$ofy, length($preSeq));
     }
@@ -150,10 +141,7 @@ sub drawSeq{
     $xp += length($hpSeq);
   }
   if($tSeq){
-    my ($col, @CC) = contentColour($tSeq);
-    if(length($tSeq) > 5){
-      updateRange($ccRange, \@CC);
-    }
+    my $col = contentColour($tSeq, $doSat);
     ## display sequence after last homopolymer
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
            $col, $xp, $tSeqCount*$sf-$ofy, length($tSeq));
@@ -168,10 +156,7 @@ sub drawSeq{
     my $hpBase = substr($hpSeq,0,1);
     if($preSeq){
       ## display sequence prior to homopolymer
-      my ($col, @CC) = contentColour($preSeq);
-      if(length($preSeq) > 5){
-        updateRange($ccRange, \@CC);
-      }
+      my $col = contentColour($preSeq, $doSat);
       printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
              $col, $xp, $tSeqCount*$sf+$ofy, length($preSeq));
     }
@@ -182,15 +167,11 @@ sub drawSeq{
     $xp += length($hpSeq);
   }
   if($tSeqC){
-    my ($col, @CC) = contentColour($tSeqC);
-    if(length($tSeqC) > 5){
-      updateRange($ccRange, \@CC);
-    }
+    my $col = contentColour($tSeqC, $doSat);
     ## display sequence after last homopolymer
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
            $col, $xp, $tSeqCount*$sf+$ofy, length($tSeqC));
   }
   printf("  </g>\n");
   printf(" </g>\n");
-  return(@{$ccRange});
 }
