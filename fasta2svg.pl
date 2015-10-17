@@ -95,30 +95,32 @@ sub drawSeq{
   my %hpCols = ( A => "#00FF00", C => "#0000FF", G=> "#FFFF00", T=> "#FF0000");
   #$tSeq = substr($tSeq,0,200); # only show first 100 bases for testing purposes
   my $tSeqC = comp($tSeq);
-  printf(" <g id=\"%s\">\n", $tSeqID);
-  my $xp = 5;
+  printf(" <g id=\"%s\" stroke-width=\"%s\">\n", $tSeqID, $hl);
+  my $sf = 5*$hl; ## size adjustment factor
+  my $sfy = $hl/2+0.5; ## size adjustment factor (y)
+  my $xp = $sf;
   printf("  <g id=\"%s_FWD\">\n", $tSeqID);
   printf("   <rect fill=\"black\" x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" />\n",
-         $xp - 0.5, $tSeqCount*5-2, length($tSeq)+1, 4);
+         $xp - 0.5, $tSeqCount*$sf-$hl-1, length($tSeq)+1, 2*$hl+2);
   while($tSeq =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
     my $preSeq = $1;
     my $hpSeq = $2;
     my $hpBase = substr($hpSeq,0,1);
     if($preSeq){
       printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-             contentColour($preSeq), $xp, $tSeqCount*5-1, length($preSeq));
+             contentColour($preSeq), $xp, $tSeqCount*$sf-$sfy, length($preSeq));
     }
     $xp += length($preSeq);
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $hpCols{$hpBase}, $xp, $tSeqCount*5-1, length($hpSeq));
+           $hpCols{$hpBase}, $xp, $tSeqCount*$sf-$sfy, length($hpSeq));
     $xp += length($hpSeq);
   }
   if($tSeq){
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           contentColour($tSeq), $xp, $tSeqCount*5-1, length($tSeq));
+           contentColour($tSeq), $xp, $tSeqCount*$sf-$sfy, length($tSeq));
   }
   printf("  </g>\n");
-  $xp = 5;
+  $xp = $sf;
   printf("  <g id=\"%s_REV\">\n", $tSeqID);
   #print(STDERR $tSeqC."\n");
   while($tSeqC =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
@@ -127,16 +129,16 @@ sub drawSeq{
     my $hpBase = substr($hpSeq,0,1);
     if($preSeq){
       printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-             contentColour($preSeq), $xp, $tSeqCount*5+1, length($preSeq));
+             contentColour($preSeq), $xp, $tSeqCount*$sf+$sfy, length($preSeq));
     }
     $xp += length($preSeq);
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $hpCols{$hpBase}, $xp, $tSeqCount*5+1, length($hpSeq));
+           $hpCols{$hpBase}, $xp, $tSeqCount*$sf+$sfy, length($hpSeq));
     $xp += length($hpSeq);
   }
   if($tSeqC){
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           contentColour($tSeqC), $xp, $tSeqCount*5+1, length($tSeqC));
+           contentColour($tSeqC), $xp, $tSeqCount*$sf+$sfy, length($tSeqC));
   }
   printf("  </g>\n");
   printf(" </g>\n");
