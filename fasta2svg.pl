@@ -19,10 +19,9 @@
 # B component: S proportion (i.e. GC ratio) [alternate colour yellow]
 #
 # These colours can be presented as-is, or increased to full
-# saturation between homopolymer sequences. With a consistent
-# saturation setting, the same subsequence should appear identical
-# regardless of its location (except possibly at the start and end of
-# the sequence).
+# saturation. With a consistent saturation setting, the same
+# subsequence should appear identical regardless of its location
+# (except possibly at the start and end of the sequence).
 #
 # Copyright 2015, David Eccles (gringer) <bioinformatics@gringene.org>
 #
@@ -149,7 +148,7 @@ sub drawSeq{
   printf("  </g>\n");
   $xp = $sf;
   ## complement sequence
-  printf("  <g id=\"%s_REV\">\n", $tSeqID);
+  printf("  <g id=\"%s_COMP\">\n", $tSeqID);
   while($tSeqC =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
     my $preSeq = $1;
     my $hpSeq = $2;
