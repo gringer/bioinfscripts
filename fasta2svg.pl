@@ -55,7 +55,7 @@ while(<>){
   if(/^>(.+)$/){
     my $newID = $1;
     if($seq){
-      drawSeq($seq, $seqID, $seqCount);
+      drawSeq($seq, $seqID, $seqCount, $hpLength);
       $seqCount++;
     }
     $seq = "";
@@ -66,7 +66,7 @@ while(<>){
 }
 
 if($seq){
-  drawSeq($seq, $seqID, $seqCount);
+  drawSeq($seq, $seqID, $seqCount, $hpLength);
 }
 
 print("</svg>\n");
@@ -77,30 +77,66 @@ sub comp{
   return($tSeq);
 }
 
+sub contentColour{
+  my ($tSeq) = @_;
+  my $total = ($tSeq =~ tr/AaCcGgTt//);
+  my $a = ($tSeq =~ tr/Aa//);
+  my $c = ($tSeq =~ tr/Cc//);
+  my $g = ($tSeq =~ tr/Gg//);
+  my $t = ($tSeq =~ tr/Tt//);
+  my $S = (($c+$g) * 255) / $total;
+  my $Y = (($c+$t) * 255) / $total;
+  my $M = (($c+$a) * 255) / $total;
+  return(sprintf("#%02X%02X%02X", $M, $Y, $S))
+}
+
 sub drawSeq{
-  my ($tSeq, $tSeqID, $tSeqCount) = @_;
+  my ($tSeq, $tSeqID, $tSeqCount, $hl) = @_;
   my %hpCols = ( A => "#00FF00", C => "#0000FF", G=> "#FFFF00", T=> "#FF0000");
-  $tSeq = substr($tSeq,0,100); # only show first 100 bases for testing purposes
+  $tSeq = substr($tSeq,0,200); # only show first 100 bases for testing purposes
   my $tSeqC = comp($tSeq);
   printf(" <g id=\"%s\">\n", $tSeqID);
   my $xp = 5;
   printf("  <g id=\"%s_FWD\">\n", $tSeqID);
-  while($tSeq =~ s/^(A{1}|C{1}|G{1}|T{1})//){
-    my $hpSeq = $1;
+  printf("   <rect fill=\"black\" x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" />\n",
+         $xp - 0.5, $tSeqCount*5-2, length($tSeq)+1, 4);
+  while($tSeq =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
+    my $preSeq = $1;
+    my $hpSeq = $2;
     my $hpBase = substr($hpSeq,0,1);
+    if($preSeq){
+      printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
+             contentColour($preSeq), $xp, $tSeqCount*5-1, length($preSeq));
+    }
+    $xp += length($preSeq);
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $hpCols{$hpBase}, $xp, $tSeqCount*5+1, length($hpSeq));
+           $hpCols{$hpBase}, $xp, $tSeqCount*5-1, length($hpSeq));
     $xp += length($hpSeq);
+  }
+  if($tSeq){
+    printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
+           contentColour($tSeq), $xp, $tSeqCount*5-1, length($tSeq));
   }
   printf("  </g>\n");
   $xp = 5;
   printf("  <g id=\"%s_REV\">\n", $tSeqID);
-  while($tSeqC =~ s/^(A{1}|C{1}|G{1}|T{1})//){
-    my $hpSeq = $1;
+  #print(STDERR $tSeqC."\n");
+  while($tSeqC =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
+    my $preSeq = $1;
+    my $hpSeq = $2;
     my $hpBase = substr($hpSeq,0,1);
+    if($preSeq){
+      printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
+             contentColour($preSeq), $xp, $tSeqCount*5+1, length($preSeq));
+    }
+    $xp += length($preSeq);
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $hpCols{$hpBase}, $xp, $tSeqCount*5-1, length($hpSeq));
+           $hpCols{$hpBase}, $xp, $tSeqCount*5+1, length($hpSeq));
     $xp += length($hpSeq);
+  }
+  if($tSeqC){
+    printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
+           contentColour($tSeqC), $xp, $tSeqCount*5+1, length($tSeqC));
   }
   printf("  </g>\n");
   printf(" </g>\n");
