@@ -93,7 +93,7 @@ sub contentColour{
 sub drawSeq{
   my ($tSeq, $tSeqID, $tSeqCount, $hl) = @_;
   my %hpCols = ( A => "#00FF00", C => "#0000FF", G=> "#FFFF00", T=> "#FF0000");
-  $tSeq = substr($tSeq,0,200); # only show first 100 bases for testing purposes
+  #$tSeq = substr($tSeq,0,200); # only show first 100 bases for testing purposes
   my $tSeqC = comp($tSeq);
   printf(" <g id=\"%s\">\n", $tSeqID);
   my $xp = 5;
