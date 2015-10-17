@@ -8,7 +8,7 @@
 # standard electropherogram colours for bases:
 #
 # A -- Green  C -- Blue
-# T -- Red    G -- Yellow
+# G -- Yellow T -- Red
 #
 # Regions between homopolymer sequences are coded in the RGB space
 # with each of the three components defined based on the proportion of
@@ -26,8 +26,11 @@
 # Copyright 2015, David Eccles (gringer) <bioinformatics@gringene.org>
 #
 # Permission to use, copy, modify, and/or distribute this software for
-# any purpose with or without fee is hereby granted.
-
+# any purpose with or without fee is hereby granted. The software is
+# provided "as is" and the author disclaims all warranties with regard
+# to this software including all implied warranties of merchantability
+# and fitness. The parties responsible for running the code are solely
+# liable for the consequences of code excecution.
 
 use warnings;
 use strict;
@@ -76,17 +79,29 @@ sub comp{
 
 sub drawSeq{
   my ($tSeq, $tSeqID, $tSeqCount) = @_;
-  print(STDERR $seqID."\n");
+  my %hpCols = ( A => "#00FF00", C => "#0000FF", G=> "#FFFF00", T=> "#FF0000");
   $tSeq = substr($tSeq,0,100); # only show first 100 bases for testing purposes
   my $tSeqC = comp($tSeq);
   printf(" <g id=\"%s\">\n", $tSeqID);
+  my $xp = 5;
   printf("  <g id=\"%s_FWD\">\n", $tSeqID);
-  printf("   <path stroke=\"black\" d=\"M5,%s l%s,0\" />\n",
-         $tSeqCount*5+1, length($tSeq));
+  while($tSeq =~ s/^(A{1}|C{1}|G{1}|T{1})//){
+    my $hpSeq = $1;
+    my $hpBase = substr($hpSeq,0,1);
+    printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
+           $hpCols{$hpBase}, $xp, $tSeqCount*5+1, length($hpSeq));
+    $xp += length($hpSeq);
+  }
   printf("  </g>\n");
+  $xp = 5;
   printf("  <g id=\"%s_REV\">\n", $tSeqID);
-  printf("  <path stroke=\"black\" d=\"M5,%s l%s,0\" />\n",
-         $tSeqCount*5-1, length($tSeqC));
+  while($tSeqC =~ s/^(A{1}|C{1}|G{1}|T{1})//){
+    my $hpSeq = $1;
+    my $hpBase = substr($hpSeq,0,1);
+    printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
+           $hpCols{$hpBase}, $xp, $tSeqCount*5-1, length($hpSeq));
+    $xp += length($hpSeq);
+  }
   printf("  </g>\n");
   printf(" </g>\n");
 }
