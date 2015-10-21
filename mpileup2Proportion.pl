@@ -2,31 +2,52 @@
 use warnings;
 use strict;
 
+# mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
+#   output from 'samtools mpileup'
+#
+# example use:
+# samtools mpileup -C50 -Q0 -e 20 -o 40 -f ref.fasta input.bam |
+#   mpileup2Proportion.pl > output.prop.csv
+#
+# example output:
+# Assembly,Position,Ref,Coverage,cR,pR,A,C,G,T,d,i
+# mmusMT_PCR1,15564,G,89,85,95.5,0.0,2.2,95.5,1.1,1.1,2.2
+# mmusMT_PCR1,15565,A,89,85,95.5,95.5,1.1,3.4,0.0,0.0,7.9
+# mmusMT_PCR1,15566,A,89,83,93.3,93.3,0.0,2.2,1.1,0.0,0.0
+# mmusMT_PCR1,15567,T,89,73,82.0,4.5,0.0,5.6,82.0,7.9,1.1
+# mmusMT_PCR1,15568,A,89,71,79.8,79.8,3.4,2.2,1.1,13.5,2.2
+
+
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
 my $colourChange = 0;
 my $minCoverage = 0;
+my $writeCounts = 0;
 
 GetOptions("mincoverage=i" => \$minCoverage,
 	   "samplename=s" => \$sampleName,
-          "colour!" => \$colourChange) or
+           "colour!" => \$colourChange,
+           "counts!" => \$writeCounts) or
   die("Error in command line arguments");
 
 my $assembly = "";
 
 if($sampleName){
-  printf("%-15s ", "Sample");
+  printf("%s,", "Sample");
 }
 if($colourChange){
-  printf("%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "cR",
+  warn("Warning: Colour change calculations are not yet properly implemented");
+  printf("%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "cR",
          "0,1,2,3,d,i");
 } else {
-  printf("%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "cR",
+  printf("%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "cR",
          "pR,A,C,G,T,d,i");
 }
+
+my %deletions = ();
 
 while(<>){
 #  print(STDERR $_);
@@ -35,9 +56,21 @@ while(<>){
   $_ = uc($bases);
   my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
   s/\^.//g;
+  ## process deletions
+  while(s/-([0-9]+)[ACGTNacgtn]+//){
+      ## deletions are a special case, because *all* deletions are replaced with a single '*'
+      ## this is worked around by ignoring '*' and parsing the delete string for future positions
+      my $delSize = $1;
+      for(my $i = 1; $i <= $delSize; $i++){
+	  $deletions{$pos+$i}++;
+      }
+  }
+  ## remove insertions
   s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
   my $r = tr/,.//;
-  my $d = tr/*//;
+  #my $d = tr/*//;
+  my $d = $deletions{$pos}?$deletions{$pos}:0;
+  delete($deletions{$pos});
   my $a = tr/aA//;
   my $c = tr/cC//;
   my $g = tr/gG//;
@@ -63,7 +96,12 @@ while(<>){
 	  printf("%s,", $sampleName);
       }
       printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-      printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
-           $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      if($writeCounts){
+        printf("%d,%0.2f,%d,%d,%d,%d,%d,%d\n",
+               $r, $pr, $a, $c, $g, $t, $d, $i);
+      } else {
+        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
+               $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      }
   }
 }

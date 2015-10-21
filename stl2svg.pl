@@ -1,5 +1,12 @@
 #!/usr/bin/perl
 
+# stl2svg.pl -- create an SVG file from a top-down view of an STL object
+# usage: ~/scripts/stl2svg.pl input.stl > output.svg
+
+# Note: There is no orientation / camera setting. This script just takes
+#       a view from the top. Use OpenSCAD (or similar) to re-orient STL
+#       files so that the top-down view is the desired view.
+
 use warnings;
 use strict;
 

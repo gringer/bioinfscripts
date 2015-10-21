@@ -38,9 +38,13 @@ zcat -f ${d1}/${f1} > ${mergeName}.seq
 if [ $# -gt 1 ]
     then zcat -f ${d2}/${f2} >> ${mergeName}.seq
 fi
+echo "currently in $(pwd)"
 ~/bin/amos/toAmos -s ${mergeName}.seq -o ${mergeName}.afg
-if [ $3 = "-nomerge" ]
+if [ $# -gt 2 ]
+then if [ $3 = "-nomerge" ]
     then ~/bin/amos/minimus2 ${mergeName}
     else ~/bin/amos/minimus2 ${mergeName} -D REFCOUNT=${refCount}
+    fi
+else ~/bin/amos/minimus2 ${mergeName} -D REFCOUNT=${refCount}
 fi
 echo "-- DONE --"
