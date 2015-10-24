@@ -209,6 +209,98 @@ sub lastMap{
   }
 }
 
+=head2 clipFastXFile(outDir, inputFile, clipHash)
+
+Creates clipped files in I<outDir> (one per primer sequence)
+containing I<inputFile> clipped according to the table in I<clipHash>.
+
+=cut
+
+sub clipFastXFile{
+  my ($outDir, $inputFileName, $clipHash) = @_;
+  my @outFileTags = ();
+  my %outFiles = ();
+
+  my $fileExt = $inputFileName;
+  $fileExt =~ s/^.*\.//;
+
+  open(my $inputFile, "<", $inputFileName);
+  my $inQual = 0;               # false
+  my $seqID = "";
+  my $qualID = "";
+  my $shortID = "";
+  my $seq = "";
+  my $qual = "";
+  my $outFileTag = "unknown";
+  while (<$inputFile>) {
+    chomp; chomp;
+    if (!$inQual) {
+      if (/^(>|@)((.*?)(\s|$))/){
+        my $newSeqID = $2;
+        my $newShortID = $3;
+        if($seq){
+          if($outFileTag ne "unknown"){
+            my $clipStart = $clipHash->{$shortID}->{"keepStart"};
+            my $clipLen = $clipHash->{$shortID}->{"keepEnd"} - $clipStart;
+            $seq = substr($seq, $clipStart, $clipLen);
+            $qual = substr($qual, $clipStart, $clipLen);
+          }
+          my $outFile = $outFiles{$outFileTag};
+          if ($qual) {
+            printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+          } else {
+            printf($outFile ">%s\n%s\n", $seqID, $seq);
+          }
+        }
+        $seq = "";
+        $qual = "";
+        $seqID = $newSeqID;
+        $shortID = $newShortID;
+        $outFileTag = "unknown";
+        if(exists($clipHash->{$shortID})){
+          $outFileTag = $clipHash->{$shortID}->{"target"};
+        }
+        if(!exists($outFiles{$outFileTag})){
+          printf(STDERR "Creating file associated with $outFileTag\n");
+          open(my $outFile, ">", "${outDir}/${outFileTag}_clipped.${fileExt}");
+          $outFiles{$outFileTag} = $outFile;
+          push(@outFileTags, $outFileTag);
+        }
+      } elsif (/^\+(.*)$/) {
+        $inQual = 1;            # true
+        $qualID = $1;
+      } else {
+        $seq .= $_;
+      }
+    } else {
+      $qual .= $_;
+      if (length($qual) >= length($seq)) {
+        $inQual = 0;            # false
+      }
+    }
+  }
+  close($inputFile);
+  if($seq){
+    if($outFileTag ne "unknown"){
+      my $clipStart = $clipHash->{$shortID}->{"keepStart"};
+      my $clipLen = $clipHash->{$shortID}->{"keepEnd"} - $clipStart;
+      $seq = substr($seq, $clipStart, $clipLen);
+      $qual = substr($qual, $clipStart, $clipLen);
+    }
+    my $outFile = $outFiles{$outFileTag};
+    if ($qual) {
+      printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+    } else {
+      printf($outFile ">%s\n%s\n", $seqID, $seq);
+    }
+  }
+  foreach $outFileTag (@outFileTags){
+    close($outFiles{$outFileTag});
+  }
+}
+
+
+
 ####################################################
 # Command line parsing and verification starts here
 ####################################################
@@ -276,13 +368,17 @@ close($outFile);
 ## create primer index file
 my $indexBase = makePrimerIndex($options->{"primerfile"}, $options->{"outdir"});
 
+## map input file to primers
 my $clipHash = {};
-
 my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"},
                           "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50",
                           $clipHash);
 
+## write out intermediate clipping file
 writeClipTable($options->{"outdir"}, $clipHash);
+
+## write out clipped input file
+clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $clipHash);
 
 
 =head1 AUTHOR
