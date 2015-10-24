@@ -144,7 +144,7 @@ I<lastOpts> as mapping options.
 =cut
 
 sub lastMap{
-  my ($outDir, $dbLoc, $inputFile, $lastOpts) = @_;
+  my ($outDir, $dbLoc, $inputFile, $lastOpts, $clipHash) = @_;
   my $startTime = time;
   printf(STDERR "Mapping input file '%s' to primers...",
          preDotted($inputFile));
@@ -158,7 +158,6 @@ sub lastMap{
   my $linesOutput = 0;
   my $lineMod = 0;
   my %queryScore = ();
-  my $queryMeta = {};
   open(my $outFile, ">", $outFileName);
   while(<$sout>){
     my $line = $_;
@@ -186,7 +185,7 @@ sub lastMap{
         $keepStart = $start2 + $alnSize2;
         $keepEnd = $seqSize2;
       }
-      $queryMeta -> {$name2} = {score => $score, target => $name1,
+      $clipHash -> {$name2} = {score => $score, target => $name1,
                                 keepStart => $keepStart, keepEnd => $keepEnd};
     }
   }
@@ -206,7 +205,6 @@ sub lastMap{
   if($linesOutput == 0){
     return("");
   } else {
-    writeClipTable($outDir, $queryMeta);
     return($outFileName);
   }
 }
@@ -278,11 +276,18 @@ close($outFile);
 ## create primer index file
 my $indexBase = makePrimerIndex($options->{"primerfile"}, $options->{"outdir"});
 
-my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"}, "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50");
+my $clipHash = {};
+
+my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"},
+                          "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50",
+                          $clipHash);
+
+writeClipTable($options->{"outdir"}, $clipHash);
+
 
 =head1 AUTHOR
 
-David Eccles (gringer) 2014 <bioinformatics@gringene.org>
+David Eccles (gringer) 2015 <bioinformatics@gringene.org>
 
 =head1 LICENSE
 
