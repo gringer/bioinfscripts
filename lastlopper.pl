@@ -107,32 +107,41 @@ sub makePrimerIndex{
   return($indexBase);
 }
 
-=head2 lastMap(outDir, dbName, inputFile, lastOpts)
+=head2 lastMap(outDir, dbLoc, inputFile, lastOpts)
 
-Maps I<inputFile> to I<dbName> in I<outDir> with LAST using
+Maps I<inputFile> to I<dbLoc> in I<outDir> with LAST using
 I<lastOpts> as mapping options.
 
 =cut
 
 sub lastMap{
-  my ($outDir, $dbName, $inputFile, $lastOpts) = @_;
+  my ($outDir, $dbLoc, $inputFile, $lastOpts) = @_;
   my $startTime = time;
-  printf(STDERR "Mapping input file '%s' to primers... ",
+  printf(STDERR "Mapping input file '%s' to primers...",
          preDotted($inputFile));
-  my $indexBase = "$outDir/$dbName";
   my ($wtr,$sout,$serr);
   use Symbol 'gensym'; $serr = gensym;
-  my @cline = ($lastOpts, $indexBase);
-  push(@cline, split(/ /,$inputFile));
-  print(STDERR "\n".join(" ",@cline)."\n");
+  my @cline = split(/ /,$lastOpts);
+  push(@cline, $dbLoc, $inputFile);
   my $pid = open3($wtr, $sout, $serr,
                   "lastal", @cline);
   my $outFileName = "$outDir/mapped.maf";
+  my $linesOutput = 0;
+  my $lineMod = 0;
   open(my $outFile, ">", $outFileName);
   while(<$sout>){
-    my $line = $_;
     print($outFile $_);
-    print($line);
+    $linesOutput++;
+    $lineMod++;
+    if($lineMod > 5000){
+      print(STDERR ".");
+      $lineMod = 0;
+    }
+  }
+  if($linesOutput == 0){
+    while(<$serr>){
+      print(STDERR $_);
+    }
   }
   close($wtr);
   close($sout);
@@ -141,8 +150,12 @@ sub lastMap{
   waitpid($pid, 0);
   my $child_exit_status = $? >> 8;
   my $timeDiff = time - $startTime;
-  printf(STDERR "done [mapped '$inputFile' in %0.1f seconds]\n", $timeDiff);
-  return($outFileName);
+  printf(STDERR " done [mapped '$inputFile' in %0.1f seconds]\n", $timeDiff);
+  if($linesOutput == 0){
+    return("");
+  } else {
+    return($outFileName);
+  }
 }
 
 ####################################################
@@ -212,7 +225,7 @@ close($outFile);
 ## create primer index file
 my $indexBase = makePrimerIndex($options->{"primerfile"}, $options->{"outdir"});
 
-my $outFile = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"}, "-Q 1 -T 1 -r 5 -a 0 -e 50");
+my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"}, "-Q 1 -T 1 -r 5 -a 0 -e 50");
 
 =head1 AUTHOR
 
