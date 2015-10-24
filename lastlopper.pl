@@ -107,6 +107,35 @@ sub makePrimerIndex{
   return($indexBase);
 }
 
+=head2 writeClipTable(outDir, clipHash)
+
+Writes out a table in I<outDir> containing the best primer matches, as
+stored in I<clipHash>.
+
+=cut
+
+sub writeClipTable{
+  my ($outDir, $clipHash) = @_;
+  my $outFileName = "$outDir/bestMapped.tsv";
+  my $startTime = time;
+  printf(STDERR "Writing best matches to '%s'...",
+         preDotted($outFileName));
+  open(my $outFile, ">", $outFileName);
+  print($outFile join("\t",("qName","score","target",
+                            "keepStart","keepEnd"))."\n");
+  foreach my $qName (keys(%{$clipHash})){
+    print($outFile join("\t",($qName,
+                              $clipHash->{$qName}->{"score"},
+                              $clipHash->{$qName}->{"target"},
+                              $clipHash->{$qName}->{"keepStart"},
+                              $clipHash->{$qName}->{"keepEnd"}))."\n");
+  }
+  my $timeDiff = time - $startTime;
+  printf(STDERR " done [written in %0.1f seconds]\n", $timeDiff);
+  close($outFile);
+}
+
+
 =head2 lastMap(outDir, dbLoc, inputFile, lastOpts)
 
 Maps I<inputFile> to I<dbLoc> in I<outDir> with LAST using
@@ -125,17 +154,40 @@ sub lastMap{
   push(@cline, $dbLoc, $inputFile);
   my $pid = open3($wtr, $sout, $serr,
                   "lastal", @cline);
-  my $outFileName = "$outDir/mapped.maf";
+  my $outFileName = "$outDir/lastal_mapped.tsv";
   my $linesOutput = 0;
   my $lineMod = 0;
+  my %queryScore = ();
+  my $queryMeta = {};
   open(my $outFile, ">", $outFileName);
   while(<$sout>){
-    print($outFile $_);
+    my $line = $_;
+    print($outFile $line);
     $linesOutput++;
     $lineMod++;
     if($lineMod > 5000){
       print(STDERR ".");
       $lineMod = 0;
+    }
+    if($line =~ /^#/){
+      next;
+    }
+    # parse output and store best scores in hash
+    my ($score, $name1, $start1, $alnSize1, $strand1, $seqSize1,
+        $name2, $start2, $alnSize2, $strand2, $seqSize2, $blocks, $rest) =
+          split(/\t/, $line, 13);
+    if(!exists($queryScore{$name2}) || ($queryScore{$name2} < $score)){
+      $queryScore{$name2} = $score;
+      # default to keep start of sequence
+      my $keepStart = 0;
+      my $keepEnd = $start2;
+      if(($start2 + ($alnSize2 / 2)) < ($seqSize2 / 2)){
+        # keep last part of sequence
+        $keepStart = $start2 + $alnSize2;
+        $keepEnd = $seqSize2;
+      }
+      $queryMeta -> {$name2} = {score => $score, target => $name1,
+                                keepStart => $keepStart, keepEnd => $keepEnd};
     }
   }
   if($linesOutput == 0){
@@ -154,6 +206,7 @@ sub lastMap{
   if($linesOutput == 0){
     return("");
   } else {
+    writeClipTable($outDir, $queryMeta);
     return($outFileName);
   }
 }
@@ -225,7 +278,7 @@ close($outFile);
 ## create primer index file
 my $indexBase = makePrimerIndex($options->{"primerfile"}, $options->{"outdir"});
 
-my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"}, "-Q 1 -T 1 -r 5 -a 0 -e 50");
+my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"}, "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50");
 
 =head1 AUTHOR
 
