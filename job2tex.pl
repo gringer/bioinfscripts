@@ -26,6 +26,7 @@ sub usage {
   print("-date             : Show date on job summary details\n");
   print("-noupdate,-draft  : Don't update invoice number\n");
   print("-amend <n> <date> : Amend invoice #n, produced on date\n");
+  print("                    Can also use <date>,<source>;<rate>\n");
   print("-paid             : Add a 'paid' message on the invoice\n");
   print("\n");
 }
@@ -112,6 +113,9 @@ while(@ARGV){
       $templateFields{"invNumber"} = shift(@ARGV);
       ($templateFields{"priorInvDate"}, $rateKnown) =
         split(/,/, shift(@ARGV));
+      printf(STDERR "Amending invoice #%d on %s\n",
+             $templateFields{"invNumber"},
+             $templateFields{"priorInvDate"});
       $updateInvoiceNum = 0; # false
     }
     elsif(($argument eq "-noupdate") || ($argument eq "-draft")){
@@ -538,6 +542,8 @@ EOT
     if($rateKnown){
       ($templateFields{"exSource"},$templateFields{"exRate"}) =
         split(';', $rateKnown);
+      printf(STDERR "Parsing known rate: %s [from %s]\n",
+            $templateFields{"exRate"},$templateFields{"exSource"});
     } else {
       ($templateFields{"exSource"},$templateFields{"exRate"}) =
         getCurrency($templateFields{"exDate"}, $templateFields{"currency"});
