@@ -107,7 +107,7 @@ sub makePrimerIndex{
   return($indexBase);
 }
 
-=head2 writeClipTable(outDir, primerFileName, clipHash)
+=head2 writeClipTable(outDir, clipHash)
 
 Writes out a table in I<outDir> containing the best primer matches, as
 stored in I<clipHash>.
@@ -115,25 +115,28 @@ stored in I<clipHash>.
 =cut
 
 sub writeClipTable{
-  my ($outDir, $primerFileName, $clipHash) = @_;
-  my $outFileName = "${outDir}/${primerFileName}";
-  $outFileName =~ s/\.fa(sta)?$/.bestMapped.tsv/;
-  my $startTime = time;
-  printf(STDERR "Writing best matches to '%s'...",
-         preDotted($outFileName));
-  open(my $outFile, ">", $outFileName);
-  print($outFile join("\t",("qName","score","target",
-                            "keepStart","keepEnd"))."\n");
-  foreach my $qName (keys(%{$clipHash})){
-    print($outFile join("\t",($qName,
-                              $clipHash->{$qName}->{"score"},
-                              $clipHash->{$qName}->{"target"},
-                              $clipHash->{$qName}->{"keepStart"},
-                              $clipHash->{$qName}->{"keepEnd"}))."\n");
+  my ($outDir, $clipHash) = @_;
+  foreach my $pf (keys(%{$clipHash})){
+    my $outFileName = "${outDir}/${pf}";
+    $outFileName .= ".bestMapped.tsv";
+    my $startTime = time;
+    printf(STDERR "Writing best matches to '%s'...",
+           preDotted($outFileName));
+    open(my $outFile, ">", $outFileName);
+    print($outFile join("\t",("qName","score","target",
+                              "keepStart","keepEnd"))."\n");
+    foreach my $qName (keys(%{$clipHash->{$pf}})){
+      print($outFile
+            join("\t",($qName,
+                       $clipHash->{$pf}->{$qName}->{"score"},
+                       $clipHash->{$pf}->{$qName}->{"target"},
+                       $clipHash->{$pf}->{$qName}->{"keepStart"},
+                       $clipHash->{$pf}->{$qName}->{"keepEnd"}))."\n");
+    }
+    my $timeDiff = time - $startTime;
+    printf(STDERR " done [written in %0.1f seconds]\n", $timeDiff);
+    close($outFile);
   }
-  my $timeDiff = time - $startTime;
-  printf(STDERR " done [written in %0.1f seconds]\n", $timeDiff);
-  close($outFile);
 }
 
 
@@ -155,8 +158,10 @@ sub lastMap{
   push(@cline, $dbLoc, $inputFile);
   my $pid = open3($wtr, $sout, $serr,
                   "lastal", @cline);
-  my $outFileName = $dbLoc;
-  $outFileName =~ s/\.index$/.lastal_mapped.tsv/;
+  my $outFileBase = $dbLoc;
+  $outFileBase =~ s/^.*\///;
+  $outFileBase =~ s/\.index$//;
+  my $outFileName = $outFileBase."lastal_mapped.tsv";
   my $linesOutput = 0;
   my $lineMod = 0;
   my %queryScore = ();
@@ -187,8 +192,9 @@ sub lastMap{
         $keepStart = $start2 + $alnSize2;
         $keepEnd = $seqSize2;
       }
-      $clipHash -> {$name2} = {score => $score, target => $name1,
-                                keepStart => $keepStart, keepEnd => $keepEnd};
+      $clipHash -> {$outFileBase} -> {$name2} =
+        {score => $score, target => $name1,
+         keepStart => $keepStart, keepEnd => $keepEnd};
     }
   }
   if($linesOutput == 0){
@@ -211,7 +217,7 @@ sub lastMap{
   }
 }
 
-=head2 clipFastXFile(outDir, inputFileName, primerFileName, clipHash)
+=head2 clipFastXFile(outDir, inputFileName, clipHash)
 
 Creates clipped files in I<outDir> (one per primer sequence)
 containing I<inputFile> clipped according to the table in I<clipHash>.
@@ -219,85 +225,86 @@ containing I<inputFile> clipped according to the table in I<clipHash>.
 =cut
 
 sub clipFastXFile{
-  my ($outDir, $inputFileName, $primerFileName, $clipHash) = @_;
-  my @outFileTags = ();
-  my %outFiles = ();
+  my ($outDir, $inputFileName, $clipHash) = @_;
 
   my $fileExt = $inputFileName;
   $fileExt =~ s/^.*\.//;
-
-  open(my $inputFile, "<", $inputFileName);
-  my $inQual = 0;               # false
-  my $seqID = "";
-  my $qualID = "";
-  my $shortID = "";
-  my $seq = "";
-  my $qual = "";
-  my $outFileTag = "unknown";
-  while (<$inputFile>) {
-    chomp; chomp;
-    if (!$inQual) {
-      if (/^(>|@)((.*?)(\s|$))/){
-        my $newSeqID = $2;
-        my $newShortID = $3;
-        if($seq){
-          if($outFileTag ne "unknown"){
-            my $clipStart = $clipHash->{$shortID}->{"keepStart"};
-            my $clipLen = $clipHash->{$shortID}->{"keepEnd"} - $clipStart;
-            $seq = substr($seq, $clipStart, $clipLen);
-            $qual = substr($qual, $clipStart, $clipLen);
+  foreach my $pf (keys(%{$clipHash})){
+    my @outFileTags = ();
+    my %outFiles = ();
+    open(my $inputFile, "<", $inputFileName);
+    my $inQual = 0;             # false
+    my $seqID = "";
+    my $qualID = "";
+    my $shortID = "";
+    my $seq = "";
+    my $qual = "";
+    my $outFileTag = "";
+    while (<$inputFile>) {
+      chomp; chomp;
+      if (!$inQual) {
+        if (/^(>|@)((.*?)(\s|$))/) {
+          my $newSeqID = $2;
+          my $newShortID = $3;
+          if ($seq) {
+            if ($outFileTag ne "unknown") {
+              my $clipStart = $clipHash->{$pf}->{$shortID}->{"keepStart"};
+              my $clipLen = $clipHash->{$pf}->{$shortID}->{"keepEnd"} - $clipStart;
+              $seq = substr($seq, $clipStart, $clipLen);
+              $qual = substr($qual, $clipStart, $clipLen);
+            }
+            my $outFile = $outFiles{$outFileTag};
+            if ($qual) {
+              printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+            } else {
+              printf($outFile ">%s\n%s\n", $seqID, $seq);
+            }
           }
-          my $outFile = $outFiles{$outFileTag};
-          if ($qual) {
-            printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
-          } else {
-            printf($outFile ">%s\n%s\n", $seqID, $seq);
+          $seq = "";
+          $qual = "";
+          $seqID = $newSeqID;
+          $shortID = $newShortID;
+          $outFileTag = "unknown";
+          if (exists($clipHash->{$pf}->{$shortID})) {
+            $outFileTag = $clipHash->{$pf}->{$shortID}->{"target"};
           }
+          if (!exists($outFiles{$outFileTag})) {
+            #printf(STDERR "Creating file associated with $outFileTag\n");
+            open(my $outFile, ">", "${outDir}/${outFileTag}-${pf}_clipped.${fileExt}");
+            $outFiles{$outFileTag} = $outFile;
+            push(@outFileTags, $outFileTag);
+          }
+        } elsif (/^\+(.*)$/) {
+          $inQual = 1;          # true
+          $qualID = $1;
+        } else {
+          $seq .= $_;
         }
-        $seq = "";
-        $qual = "";
-        $seqID = $newSeqID;
-        $shortID = $newShortID;
-        $outFileTag = "unknown";
-        if(exists($clipHash->{$shortID})){
-          $outFileTag = $clipHash->{$shortID}->{"target"};
-        }
-        if(!exists($outFiles{$outFileTag})){
-          #printf(STDERR "Creating file associated with $outFileTag\n");
-          open(my $outFile, ">", "${outDir}/${outFileTag}_clipped.${fileExt}");
-          $outFiles{$outFileTag} = $outFile;
-          push(@outFileTags, $outFileTag);
-        }
-      } elsif (/^\+(.*)$/) {
-        $inQual = 1;            # true
-        $qualID = $1;
       } else {
-        $seq .= $_;
-      }
-    } else {
-      $qual .= $_;
-      if (length($qual) >= length($seq)) {
-        $inQual = 0;            # false
+        $qual .= $_;
+        if (length($qual) >= length($seq)) {
+          $inQual = 0;          # false
+        }
       }
     }
-  }
-  close($inputFile);
-  if($seq){
-    if($outFileTag ne "unknown"){
-      my $clipStart = $clipHash->{$shortID}->{"keepStart"};
-      my $clipLen = $clipHash->{$shortID}->{"keepEnd"} - $clipStart;
-      $seq = substr($seq, $clipStart, $clipLen);
-      $qual = substr($qual, $clipStart, $clipLen);
+    close($inputFile);
+    if ($seq) {
+      if ($outFileTag ne "unknown") {
+        my $clipStart = $clipHash->{$pf}->{$shortID}->{"keepStart"};
+        my $clipLen = $clipHash->{$pf}->{$shortID}->{"keepEnd"} - $clipStart;
+        $seq = substr($seq, $clipStart, $clipLen);
+        $qual = substr($qual, $clipStart, $clipLen);
+      }
+      my $outFile = $outFiles{$outFileTag};
+      if ($qual) {
+        printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+      } else {
+        printf($outFile ">%s\n%s\n", $seqID, $seq);
+      }
     }
-    my $outFile = $outFiles{$outFileTag};
-    if ($qual) {
-      printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
-    } else {
-      printf($outFile ">%s\n%s\n", $seqID, $seq);
+    foreach $outFileTag (@outFileTags) {
+      close($outFiles{$outFileTag});
     }
-  }
-  foreach $outFileTag (@outFileTags){
-    close($outFiles{$outFileTag});
   }
 }
 
@@ -338,8 +345,6 @@ if(!($options->{"primerfile"}) ||
   pod2usage("Error: primer file (-p) and input file (-i) must be specified");
 }
 
-printf(STDERR "Primer file: %s\n", join(":", $options->{"primerfile"}));
-
 foreach my $pf (@{$options->{"primerfile"}}){
   if(!(-f $pf)){
     pod2usage("Error: specified primer file [".$pf.
@@ -371,22 +376,24 @@ open(my $outFile, ">", $options->{"outdir"}."/cmdline.txt");
 printf($outFile "Command line: %s\n", $argLine);
 close($outFile);
 
+my $clipHash = {};
+
 foreach my $pf (@{$options->{"primerfile"}}){
   ## create primer index file
   my $indexBase = makePrimerIndex($pf, $options->{"outdir"});
 
   ## map input file to primers
-  my $clipHash = {};
   my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"},
                             "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50",
                             $clipHash);
 
-  ## write out intermediate clipping file
-  writeClipTable($options->{"outdir"}, $pf, $clipHash);
-
-  ## write out clipped input file
-  clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $pf, $clipHash);
 }
+
+## write out intermediate clipping file
+writeClipTable($options->{"outdir"}, $clipHash);
+
+## write out clipped input file
+clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $clipHash);
 
 =head1 AUTHOR
 
