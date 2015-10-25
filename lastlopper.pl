@@ -107,7 +107,7 @@ sub makePrimerIndex{
   return($indexBase);
 }
 
-=head2 writeClipTable(outDir, clipHash)
+=head2 writeClipTable(outDir, primerFileName, clipHash)
 
 Writes out a table in I<outDir> containing the best primer matches, as
 stored in I<clipHash>.
@@ -115,8 +115,9 @@ stored in I<clipHash>.
 =cut
 
 sub writeClipTable{
-  my ($outDir, $clipHash) = @_;
-  my $outFileName = "$outDir/bestMapped.tsv";
+  my ($outDir, $primerFileName, $clipHash) = @_;
+  my $outFileName = "${outDir}/${primerFileName}";
+  $outFileName =~ s/\.fa(sta)?$/.bestMapped.tsv/;
   my $startTime = time;
   printf(STDERR "Writing best matches to '%s'...",
          preDotted($outFileName));
@@ -154,7 +155,8 @@ sub lastMap{
   push(@cline, $dbLoc, $inputFile);
   my $pid = open3($wtr, $sout, $serr,
                   "lastal", @cline);
-  my $outFileName = "$outDir/lastal_mapped.tsv";
+  my $outFileName = $dbLoc;
+  $outFileName =~ s/\.index$/.lastal_mapped.tsv/;
   my $linesOutput = 0;
   my $lineMod = 0;
   my %queryScore = ();
@@ -209,7 +211,7 @@ sub lastMap{
   }
 }
 
-=head2 clipFastXFile(outDir, inputFile, clipHash)
+=head2 clipFastXFile(outDir, inputFileName, primerFileName, clipHash)
 
 Creates clipped files in I<outDir> (one per primer sequence)
 containing I<inputFile> clipped according to the table in I<clipHash>.
@@ -217,7 +219,7 @@ containing I<inputFile> clipped according to the table in I<clipHash>.
 =cut
 
 sub clipFastXFile{
-  my ($outDir, $inputFileName, $clipHash) = @_;
+  my ($outDir, $inputFileName, $primerFileName, $clipHash) = @_;
   my @outFileTags = ();
   my %outFiles = ();
 
@@ -314,7 +316,7 @@ my $options =
 
 GetOptions($options,
            'outdir|o=s',
-           'primerfile=s@',
+           'primerfile=s@{1,}',
            'inputfile=s',
           ) or
   pod2usage(1);
@@ -380,10 +382,10 @@ foreach my $pf (@{$options->{"primerfile"}}){
                             $clipHash);
 
   ## write out intermediate clipping file
-  writeClipTable($options->{"outdir"}, $clipHash);
+  writeClipTable($options->{"outdir"}, $pf, $clipHash);
 
   ## write out clipped input file
-  clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $clipHash);
+  clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $pf, $clipHash);
 }
 
 =head1 AUTHOR
