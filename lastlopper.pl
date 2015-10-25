@@ -261,7 +261,7 @@ sub clipFastXFile{
           $outFileTag = $clipHash->{$shortID}->{"target"};
         }
         if(!exists($outFiles{$outFileTag})){
-          printf(STDERR "Creating file associated with $outFileTag\n");
+          #printf(STDERR "Creating file associated with $outFileTag\n");
           open(my $outFile, ">", "${outDir}/${outFileTag}_clipped.${fileExt}");
           $outFiles{$outFileTag} = $outFile;
           push(@outFileTags, $outFileTag);
@@ -314,7 +314,7 @@ my $options =
 
 GetOptions($options,
            'outdir|o=s',
-           'primerfile=s',
+           'primerfile=s@',
            'inputfile=s',
           ) or
   pod2usage(1);
@@ -336,9 +336,13 @@ if(!($options->{"primerfile"}) ||
   pod2usage("Error: primer file (-p) and input file (-i) must be specified");
 }
 
-if(!(-f $options->{"primerfile"})){
-  pod2usage("Error: specified primer file [".$options->{"primerfile"}.
-            "] does not exist");
+printf(STDERR "Primer file: %s\n", join(":", $options->{"primerfile"}));
+
+foreach my $pf (@{$options->{"primerfile"}}){
+  if(!(-f $pf)){
+    pod2usage("Error: specified primer file [".$pf.
+              "] does not exist");
+  }
 }
 
 if(!(-f $options->{"inputfile"})){
@@ -365,21 +369,22 @@ open(my $outFile, ">", $options->{"outdir"}."/cmdline.txt");
 printf($outFile "Command line: %s\n", $argLine);
 close($outFile);
 
-## create primer index file
-my $indexBase = makePrimerIndex($options->{"primerfile"}, $options->{"outdir"});
+foreach my $pf (@{$options->{"primerfile"}}){
+  ## create primer index file
+  my $indexBase = makePrimerIndex($pf, $options->{"outdir"});
 
-## map input file to primers
-my $clipHash = {};
-my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"},
-                          "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50",
-                          $clipHash);
+  ## map input file to primers
+  my $clipHash = {};
+  my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"},
+                            "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50",
+                            $clipHash);
 
-## write out intermediate clipping file
-writeClipTable($options->{"outdir"}, $clipHash);
+  ## write out intermediate clipping file
+  writeClipTable($options->{"outdir"}, $clipHash);
 
-## write out clipped input file
-clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $clipHash);
-
+  ## write out clipped input file
+  clipFastXFile($options->{"outdir"}, $options->{"inputfile"}, $clipHash);
+}
 
 =head1 AUTHOR
 
