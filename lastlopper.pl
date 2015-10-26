@@ -219,92 +219,113 @@ sub lastMap{
 
 =head2 clipFastXFile(outDir, inputFileName, clipHash)
 
-Creates clipped files in I<outDir> (one per primer sequence)
+Creates clipped files in I<outDir> (one per primer sequence combination)
 containing I<inputFile> clipped according to the table in I<clipHash>.
 
 =cut
 
 sub clipFastXFile{
   my ($outDir, $inputFileName, $clipHash) = @_;
-
   my $fileExt = $inputFileName;
   $fileExt =~ s/^.*\.//;
-  foreach my $pf (keys(%{$clipHash})){
-    my @outFileTags = ();
-    my %outFiles = ();
-    open(my $inputFile, "<", $inputFileName);
-    my $inQual = 0;             # false
-    my $seqID = "";
-    my $qualID = "";
-    my $shortID = "";
-    my $seq = "";
-    my $qual = "";
-    my $outFileTag = "";
-    while (<$inputFile>) {
-      chomp; chomp;
-      if (!$inQual) {
-        if (/^(>|@)((.*?)(\s|$))/) {
-          my $newSeqID = $2;
-          my $newShortID = $3;
-          if ($seq) {
-            if ($outFileTag ne "unknown") {
-              my $clipStart = $clipHash->{$pf}->{$shortID}->{"keepStart"};
-              my $clipLen = $clipHash->{$pf}->{$shortID}->{"keepEnd"} - $clipStart;
-              $seq = substr($seq, $clipStart, $clipLen);
-              $qual = substr($qual, $clipStart, $clipLen);
+  my @outFileTags = ();
+  my %outFiles = ();
+  open(my $inputFile, "<", $inputFileName);
+  my $inQual = 0;               # false
+  my $seqID = "";
+  my $qualID = "";
+  my $shortID = "";
+  my $seq = "";
+  my $qual = "";
+  my $outFileTag = "";
+  while (<$inputFile>) {
+    chomp; chomp;
+    if (!$inQual) {
+      if (/^(>|@)((.*?)(\s|$))/) {
+        my $newSeqID = $2;
+        my $newShortID = $3;
+        if ($seq) {
+          my $clipStart = 0;
+          my $clipEnd = length($seq);
+          my $clipStr = "";
+          foreach my $pf (keys(%{$clipHash})) {
+            my $clipName = "unknown";
+            if (exists($clipHash->{$pf}->{$shortID})) {
+              $clipName = $clipHash->{$pf}->{$shortID}->{"target"};
+              my $newClipStart = $clipHash->{$pf}->{$shortID}->{"keepStart"};
+              my $newClipEnd = $clipHash->{$pf}->{$shortID}->{"keepEnd"};
+              $clipStart = $newClipStart if($newClipStart > $clipStart);
+              $clipEnd = $newClipEnd if($newClipEnd < $clipEnd);
             }
-            my $outFile = $outFiles{$outFileTag};
-            if ($qual) {
-              printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
-            } else {
-              printf($outFile ">%s\n%s\n", $seqID, $seq);
-            }
+            $clipStr = ($clipStr) ? "${clipStr}~${clipName}" : $clipName;
           }
-          $seq = "";
-          $qual = "";
-          $seqID = $newSeqID;
-          $shortID = $newShortID;
-          $outFileTag = "unknown";
-          if (exists($clipHash->{$pf}->{$shortID})) {
-            $outFileTag = $clipHash->{$pf}->{$shortID}->{"target"};
+          $seqID .= " [${clipStr}]" if($clipStr);
+          $seq = substr($seq, $clipStart, $clipEnd - $clipStart);
+          $qual = substr($qual, $clipStart,  $clipEnd - $clipStart);
+          if (!exists($outFiles{$clipStr})) {
+            #printf(STDERR "Creating file associated with $clipStr\n");
+            open(my $outFile, ">", "${outDir}/${clipStr}_clipped.${fileExt}");
+            $outFiles{$clipStr} = $outFile;
+            push(@outFileTags, $clipStr);
           }
-          if (!exists($outFiles{$outFileTag})) {
-            #printf(STDERR "Creating file associated with $outFileTag\n");
-            open(my $outFile, ">", "${outDir}/${outFileTag}-${pf}_clipped.${fileExt}");
-            $outFiles{$outFileTag} = $outFile;
-            push(@outFileTags, $outFileTag);
+          my $outFile = $outFiles{$clipStr};
+          if ($qual) {
+            printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+          } else {
+            printf($outFile ">%s\n%s\n", $seqID, $seq);
           }
-        } elsif (/^\+(.*)$/) {
-          $inQual = 1;          # true
-          $qualID = $1;
-        } else {
-          $seq .= $_;
         }
+        $seq = "";
+        $qual = "";
+        $seqID = $newSeqID;
+        $shortID = $newShortID;
+      } elsif (/^\+(.*)$/) {
+        $inQual = 1;            # true
+        $qualID = $1;
       } else {
-        $qual .= $_;
-        if (length($qual) >= length($seq)) {
-          $inQual = 0;          # false
-        }
+        $seq .= $_;
+      }
+    } else {
+      $qual .= $_;
+      if (length($qual) >= length($seq)) {
+        $inQual = 0;            # false
       }
     }
-    close($inputFile);
-    if ($seq) {
-      if ($outFileTag ne "unknown") {
-        my $clipStart = $clipHash->{$pf}->{$shortID}->{"keepStart"};
-        my $clipLen = $clipHash->{$pf}->{$shortID}->{"keepEnd"} - $clipStart;
-        $seq = substr($seq, $clipStart, $clipLen);
-        $qual = substr($qual, $clipStart, $clipLen);
+  }
+  close($inputFile);
+  if ($seq) {
+    my $clipStart = 0;
+    my $clipEnd = length($seq);
+    my $clipStr = "";
+    foreach my $pf (keys(%{$clipHash})) {
+      my $clipName = "unknown";
+      if (exists($clipHash->{$pf}->{$shortID})) {
+        $clipName = $clipHash->{$pf}->{$shortID}->{"target"};
+        my $newClipStart = $clipHash->{$pf}->{$shortID}->{"keepStart"};
+        my $newClipEnd = $clipHash->{$pf}->{$shortID}->{"keepEnd"};
+        $clipStart = $newClipStart if($newClipStart > $clipStart);
+        $clipEnd = $newClipEnd if($newClipEnd < $clipEnd);
       }
-      my $outFile = $outFiles{$outFileTag};
-      if ($qual) {
-        printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
-      } else {
-        printf($outFile ">%s\n%s\n", $seqID, $seq);
-      }
+      $clipStr = ($clipStr) ? "${clipStr}~${clipName}" : $clipName;
     }
-    foreach $outFileTag (@outFileTags) {
-      close($outFiles{$outFileTag});
+    $seqID .= " [${clipStr}]" if($clipStr);
+    $seq = substr($seq, $clipStart, $clipEnd - $clipStart);
+    $qual = substr($qual, $clipStart,  $clipEnd - $clipStart);
+    if (!exists($outFiles{$clipStr})) {
+      #printf(STDERR "Creating file associated with $clipStr\n");
+      open(my $outFile, ">", "${outDir}/${clipStr}_clipped.${fileExt}");
+      $outFiles{$clipStr} = $outFile;
+      push(@outFileTags, $clipStr);
     }
+    my $outFile = $outFiles{$clipStr};
+    if ($qual) {
+      printf($outFile "@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+    } else {
+      printf($outFile ">%s\n%s\n", $seqID, $seq);
+    }
+  }
+  foreach $outFileTag (@outFileTags) {
+    close($outFiles{$outFileTag});
   }
 }
 
