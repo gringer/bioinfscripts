@@ -405,7 +405,7 @@ foreach my $pf (@{$options->{"primerfile"}}){
 
   ## map input file to primers
   my $outFileName = lastMap($options->{"outdir"}, $indexBase, $options->{"inputfile"},
-                            "-f 0 -Q 1 -T 1 -r 5 -a 0 -e 50",
+                            "-f 0 -Q 1 -T 1 -r 5 -j 6 -a 0 -e 50",
                             $clipHash);
 
 }
