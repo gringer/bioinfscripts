@@ -9,7 +9,7 @@ use warnings;
 use strict;
 
 my $windowSize = 50000;
-my $currentChr = "";
+ my $currentChr = "";
 my $minPos = -1;
 my $maxPos = -1;
 
