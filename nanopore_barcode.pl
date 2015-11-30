@@ -81,6 +81,51 @@ my @baseOrders = split(//, $baseOrder);
 
 my $lastBase = "";
 
+# Derived from code from
+# http://www.simgene.com/Oligo_Calc/OligoCalcObj.js
+sub getTm {
+  my ($seq) = @_;
+  if(length($seq) == 0){
+    return (undef,undef);
+  }
+  $seq =~ tr/ //d;
+  $seq = uc($seq);
+  my $GCMin = ($seq =~ tr/CGS//);
+  my $GCMax = ($seq =~ tr/CGSYRMKVHDBN//);
+  if(length($seq) < 14){
+    return((2 * (length($seq)-$GCMin) + 4 * ($GCMin)),
+           (2 * (length($seq)-$GCMax) + 4 * ($GCMax)));
+  } else {
+    return((64.9 + 41 * (($GCMin - 16.4) / length($seq))),
+           (64.9 + 41 * (($GCMax - 16.4) / length($seq))));
+  }
+}
+
+sub getSATm {
+  my ($seq, $saltConc) = @_;
+  if(length($seq) == 0){
+    return (undef,undef);
+  }
+  $seq =~ tr/ //d;
+  $seq = uc($seq);
+  my $GCMin = ($seq =~ tr/CGS//);
+  my $GCMax = ($seq =~ tr/CGSYRMKVHDBN//);
+  my $fGCMin = ($GCMin / length($seq)) * 100;
+  my $fGCMax = ($GCMin / length($seq)) * 100;
+ if (length($seq) < 14) {
+    return((2 * (length($seq)-$GCMin) + 4 * ($GCMin)+
+            21.6+(7.21*log($saltConc/1000))),
+           (2 * (length($seq)-$GCMax) + 4 * ($GCMax)+
+            21.6+(7.21*log($saltConc/1000))));
+  }
+  else {
+    return((100.5 + (0.41*$fGCMin) - (820 / length($seq))+
+           (7.21*log($saltConc/1000))),
+           (100.5 + (0.41*$fGCMax) - (820 / length($seq))+
+            (7.21*log($saltConc/1000))));
+  }
+}
+
 sub seqsDifferent {
   my ($seq1, $seq2, $diffThreshold) = @_;
   my $differences = 0;
@@ -103,7 +148,8 @@ while($seqNum < $count){
   $sequence = "";
   my $lastHP = (length($prefix) == 0) ? "C" : substr($prefix,-1,1);
   for(my $i = 0; $i < $length; $i++){
-    my @nextBaseOptions = (length($lastHP) < $maxHPlength) ?
+    my @nextBaseOptions = ((length($lastHP) < $maxHPlength) &&
+                           ($i < ($length-$maxHPlength+1))) ?
       @baseOrders :
         grep {$_ ne substr($lastHP,0,1)} @baseOrders;
     my $prob = rand();
@@ -127,7 +173,13 @@ while($seqNum < $count){
     grep {seqsDifferent($_,$sequence,$threshold)} @addedSeqs;
   if(!@addedSeqs || ($addedDiffCount == scalar(@addedSeqs))){
     $seqNum++;
-    printf(">Barcode_%03d\n%s\n", $seqNum, $prefix.$sequence.$suffix);
+    my $fullSeq = $prefix.$sequence.$suffix;
+    my @Tm = getTm($fullSeq);
+    my @SATm = getSATm($fullSeq,50);
+    printf(">Barcode_%03d [Tm (%0.0f-%0.0f °C); ".
+           "(%0.0f-%0.0f °C) in 50mM Na+]\n%s\n", $seqNum,
+           $Tm[0],$Tm[1], $SATm[0], $SATm[1],
+           $fullSeq);
     push(@addedSeqs, $sequence);
   }
 }
