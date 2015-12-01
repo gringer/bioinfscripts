@@ -47,7 +47,14 @@ Order of base selection (default I<ATCG>)
 
 =item B<-baseprob>
 
-Base probability, excluding previous base (commma-separated, default I<0.45,0.30,0.25>)
+Base probability, excluding previous base (commma-separated, default
+I<0.45,0.30,0.25>)
+
+=item B<-showtm> I<type>
+
+Show melting temperature of (p)refix, (s)uffix, or (e)ntire sequence,
+or a certain distance from the start of the sequence (+bp) or the end
+of the sequence (-bp).
 
 =back
 
@@ -66,6 +73,7 @@ my $prefix = "GGTGCTG";
 my $suffix = "TTAACCT";
 my $baseOrder = "ATCG";
 my $baseProb = "0.25,0.50,0.75";
+my $showTm = "e"; # entire sequence only
 
 GetOptions('length=i' => \$length,
            'count=i'=> \$count,
@@ -74,6 +82,7 @@ GetOptions('length=i' => \$length,
            'suffix=s' => \$suffix,
            'order=s' => \$baseOrder,
            'baseprob=s' => \$baseProb,
+           'showtm=s' => \$showTm,
           ) or pod2usage(1);
 
 my @baseProbs = split(/,/,$baseProb);
@@ -174,12 +183,45 @@ while($seqNum < $count){
   if(!@addedSeqs || ($addedDiffCount == scalar(@addedSeqs))){
     $seqNum++;
     my $fullSeq = $prefix.$sequence.$suffix;
-    my @Tm = getTm($fullSeq);
-    my @SATm = getSATm($fullSeq,50);
-    printf(">Barcode_%03d [Tm (%0.0f-%0.0f °C); ".
-           "(%0.0f-%0.0f °C) in 50mM Na+]\n%s\n", $seqNum,
-           $Tm[0],$Tm[1], $SATm[0], $SATm[1],
-           $fullSeq);
+    printf(">Barcode_%03d", $seqNum);
+    if($showTm =~ /e/){
+      my @Tm = getTm($fullSeq);
+      my @SATm = getSATm($fullSeq,50);
+      printf(" [Whole Sequence Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]",
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /p/){
+      my @Tm = getTm($prefix);
+      my @SATm = getSATm($prefix,50);
+      printf(" [Prefix Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]",
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /s/){
+      my @Tm = getTm($suffix);
+      my @SATm = getSATm($suffix,50);
+      printf(" [Suffix Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]",
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /\+([0-9]+)/){
+      my $startDist = $1;
+      my @Tm = getTm(substr($fullSeq,0,$startDist));
+      my @SATm = getSATm(substr($fullSeq,0,$startDist),50);
+      printf(" [Last %d bases Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]", $startDist,
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /-([0-9]+)/){
+      my $endDist = $1;
+      my @Tm = getTm(substr($fullSeq,-$endDist));
+      my @SATm = getSATm(substr($fullSeq,-$endDist),50);
+      printf(" [Last %d bases Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]", $endDist,
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    printf("\n%s\n", $fullSeq);
     push(@addedSeqs, $sequence);
   }
 }
