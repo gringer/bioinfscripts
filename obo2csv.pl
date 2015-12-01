@@ -12,7 +12,7 @@ while(<>){
   chomp;
   if(/^\[(.*?)\]/){
     if($category eq "Term"){
-      printf("%s,%s,%s,%s\n",
+      printf("%s,%s,\"%s\",%s\n",
              $data{"id"},
              $data{"is_a"} ? $data{"is_a"} : "",
              $data{"name"} ? $data{"name"} : "",

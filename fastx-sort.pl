@@ -5,7 +5,7 @@ use strict;
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $quiet = 0;
-my $searchPattern = "(^.*$)";
+my $searchPattern = "(^.*\$)";
 
 GetOptions("pattern=s" => \$searchPattern, "quiet!" => \$quiet) or
   die("Error in command line arguments");
@@ -36,10 +36,10 @@ while(<>){
     if(/^(>|@)(.*)$/){
       my $newSeqID = $2;
       if($seqID){
-        if($seqID =~ /$searchPattern/){
+        if($newSeqID =~ /$searchPattern/){
           $fastXStrs{$1} = ($qual) ?
             sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
-            printf(">%s\n%s\n", $seqID, $seq);
+            sprintf(">%s\n%s\n", $seqID, $seq);
         } else {
           printf(STDERR "Warning: No match for pattern '$searchPattern' for sequence '$seqID'\n");
         }
@@ -65,7 +65,7 @@ if($seqID){
   if($seqID =~ /$searchPattern/){
     $fastXStrs{$1} = ($qual) ?
       sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
-      printf(">%s\n%s\n", $seqID, $seq);
+      sprintf(">%s\n%s\n", $seqID, $seq);
   } else {
     printf(STDERR "Warning: No match for pattern '$searchPattern' for sequence '$seqID'\n");
   }
