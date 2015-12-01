@@ -46,11 +46,7 @@ while(<>){
       }
       $seq = "";
       $qual = "";
-      if(exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
-        $seqID = $newSeqID;
-      } else {
-        $seqID = "";
-      }
+      $seqID = $newSeqID;
     } elsif(/^\+(.*)$/) {
       $inQual = 1; # true
       $qualID = $1;
