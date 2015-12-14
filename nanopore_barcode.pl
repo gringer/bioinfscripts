@@ -6,7 +6,7 @@ use strict;
 use Pod::Usage; ## uses pod documentation in usage code
 use Getopt::Long qw(:config auto_version auto_help);
 
-our $VERSION = "0.2";
+our $VERSION = "0.3";
 
 =head1 NAME
 
@@ -23,7 +23,7 @@ the nanopore sequencer
 
 =item B<-length>
 
-Length of barcode to generate, excluding prefix/suffix (default 24)
+Length of barcode to generate, excluding prefix/suffix (default 38)
 
 =item B<-count>
 
@@ -47,7 +47,14 @@ Order of base selection (default I<ATCG>)
 
 =item B<-baseprob>
 
-Base probability, excluding previous base (commma-separated, default I<0.45,0.30,0.25>)
+Base probability, excluding previous base (commma-separated, default
+I<0.45,0.30,0.25>)
+
+=item B<-showtm> I<type>
+
+Show melting temperature of (p)refix, (s)uffix, or (e)ntire sequence,
+or a certain distance from the start of the sequence (+bp) or the end
+of the sequence (-bp).
 
 =back
 
@@ -59,27 +66,74 @@ added sequences.
 
 =cut
 
-my $length = 24;
+my $length = 38;
 my $count = 1;
 my $threshold = 0.2;
 my $prefix = "GGTGCTG";
 my $suffix = "TTAACCT";
 my $baseOrder = "ATCG";
-my $baseProb = "0.45,0.30,0.25";
+my $baseProb = "0.25,0.50,0.75";
+my $showTm = "e"; # entire sequence only
 
 GetOptions('length=i' => \$length,
            'count=i'=> \$count,
            'threshold=f'=> \$threshold,
            'prefix=s' => \$prefix,
-           'suffix=s' => \$suffix, 
+           'suffix=s' => \$suffix,
            'order=s' => \$baseOrder,
            'baseprob=s' => \$baseProb,
+           'showtm=s' => \$showTm,
           ) or pod2usage(1);
 
 my @baseProbs = split(/,/,$baseProb);
 my @baseOrders = split(//, $baseOrder);
 
 my $lastBase = "";
+
+# Derived from code from
+# http://www.simgene.com/Oligo_Calc/OligoCalcObj.js
+sub getTm {
+  my ($seq) = @_;
+  if(length($seq) == 0){
+    return (undef,undef);
+  }
+  $seq =~ tr/ //d;
+  $seq = uc($seq);
+  my $GCMin = ($seq =~ tr/CGS//);
+  my $GCMax = ($seq =~ tr/CGSYRMKVHDBN//);
+  if(length($seq) < 14){
+    return((2 * (length($seq)-$GCMin) + 4 * ($GCMin)),
+           (2 * (length($seq)-$GCMax) + 4 * ($GCMax)));
+  } else {
+    return((64.9 + 41 * (($GCMin - 16.4) / length($seq))),
+           (64.9 + 41 * (($GCMax - 16.4) / length($seq))));
+  }
+}
+
+sub getSATm {
+  my ($seq, $saltConc) = @_;
+  if(length($seq) == 0){
+    return (undef,undef);
+  }
+  $seq =~ tr/ //d;
+  $seq = uc($seq);
+  my $GCMin = ($seq =~ tr/CGS//);
+  my $GCMax = ($seq =~ tr/CGSYRMKVHDBN//);
+  my $fGCMin = ($GCMin / length($seq)) * 100;
+  my $fGCMax = ($GCMin / length($seq)) * 100;
+ if (length($seq) < 14) {
+    return((2 * (length($seq)-$GCMin) + 4 * ($GCMin)+
+            21.6+(7.21*log($saltConc/1000))),
+           (2 * (length($seq)-$GCMax) + 4 * ($GCMax)+
+            21.6+(7.21*log($saltConc/1000))));
+  }
+  else {
+    return((100.5 + (0.41*$fGCMin) - (820 / length($seq))+
+           (7.21*log($saltConc/1000))),
+           (100.5 + (0.41*$fGCMax) - (820 / length($seq))+
+            (7.21*log($saltConc/1000))));
+  }
+}
 
 sub seqsDifferent {
   my ($seq1, $seq2, $diffThreshold) = @_;
@@ -97,26 +151,77 @@ my @addedSeqs = ();
 my $sequence = "";
 my $seqNum = 0;
 
+my $maxHPlength = 3;
+
 while($seqNum < $count){
   $sequence = "";
-  my $lastBase = (length($prefix) == 0) ? "C" : substr($prefix,-1,1);
+  my $lastHP = (length($prefix) == 0) ? "C" : substr($prefix,-1,1);
   for(my $i = 0; $i < $length; $i++){
-    my @nextBaseOptions = grep {$_ ne $lastBase} @baseOrders;
+    my @nextBaseOptions = ((length($lastHP) < $maxHPlength) &&
+                           ($i < ($length-$maxHPlength+1))) ?
+      @baseOrders :
+        grep {$_ ne substr($lastHP,0,1)} @baseOrders;
     my $prob = rand();
-    my $nextBase = $nextBaseOptions[2];
-    if($prob < $baseProbs[0]){
+    my $nextBase = $nextBaseOptions[$#nextBaseOptions];
+    my $probMultiplier = (scalar(@nextBaseOptions) == 4) ? 1 : (4/3);
+    if($prob < ($baseProbs[0] * $probMultiplier)){
       $nextBase = $nextBaseOptions[0];
-    } elsif($prob < $baseProbs[1]){
+    } elsif($prob < ($baseProbs[1] * $probMultiplier)){
       $nextBase = $nextBaseOptions[1];
+    } elsif($prob < ($baseProbs[2] * $probMultiplier)){
+      $nextBase = $nextBaseOptions[2];
     }
     $sequence .= $nextBase;
-    $lastBase = $nextBase;
+    if($nextBase eq substr($lastHP,0,1)){
+      $lastHP .= $nextBase;
+    } else {
+      $lastHP = $nextBase;
+    }
   }
   my $addedDiffCount =
     grep {seqsDifferent($_,$sequence,$threshold)} @addedSeqs;
   if(!@addedSeqs || ($addedDiffCount == scalar(@addedSeqs))){
     $seqNum++;
-    printf(">Barcode_%03d\n%s\n", $seqNum, $prefix.$sequence.$suffix);
+    my $fullSeq = $prefix.$sequence.$suffix;
+    printf(">Barcode_%03d", $seqNum);
+    if($showTm =~ /e/){
+      my @Tm = getTm($fullSeq);
+      my @SATm = getSATm($fullSeq,50);
+      printf(" [Whole Sequence Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]",
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /p/){
+      my @Tm = getTm($prefix);
+      my @SATm = getSATm($prefix,50);
+      printf(" [Prefix Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]",
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /s/){
+      my @Tm = getTm($suffix);
+      my @SATm = getSATm($suffix,50);
+      printf(" [Suffix Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]",
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /\+([0-9]+)/){
+      my $startDist = $1;
+      my @Tm = getTm(substr($fullSeq,0,$startDist));
+      my @SATm = getSATm(substr($fullSeq,0,$startDist),50);
+      printf(" [Last %d bases Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]", $startDist,
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    if($showTm =~ /-([0-9]+)/){
+      my $endDist = $1;
+      my @Tm = getTm(substr($fullSeq,-$endDist));
+      my @SATm = getSATm(substr($fullSeq,-$endDist),50);
+      printf(" [Last %d bases Tm (%0.0f-%0.0f °C); ".
+             "(%0.0f-%0.0f °C) in 50mM Na+]", $endDist,
+             $Tm[0],$Tm[1], $SATm[0], $SATm[1]);
+    }
+    printf("\n%s\n", $fullSeq);
     push(@addedSeqs, $sequence);
   }
 }
