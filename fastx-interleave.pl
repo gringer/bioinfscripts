@@ -34,7 +34,7 @@ my $numFiles = scalar(@seqFileOrder);
 if($numFiles < 2){
   die("Too few input files");
 } else {
-  printf("%d\n", $numFiles);
+  printf(STDERR "Interleaving %d input files\n", $numFiles);
 }
 
 my @inQual = (0) x $numFiles; # false
