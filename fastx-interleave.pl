@@ -6,11 +6,12 @@ use Getopt::Long qw(:config auto_help pass_through);
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $singleLine = 0;
+my $minLength = 0;
 
 my %seqFiles = ();
 my @seqFileOrder = ();
 
-GetOptions("singleLine!" => \$singleLine) or
+GetOptions("singleLine!" => \$singleLine, "minLength=i" => \$minLength) or
   die("Error in command line arguments");
 
 while(@ARGV){
@@ -66,12 +67,18 @@ for(my @lines = map {
       if($line =~ /^(>|@)(.*)$/){
         my $newSeqID = $2;
         if($seqID[$i]){
+          if($printable[$i]){
+            print(STDERR "Warning: double print for file $i\n");
+          }
           if($qual[$i]){
             $printable[$i] .=
               sprintf("@%s\n%s\n+\n%s\n", $seqID[$i], $seq[$i], $qual[$i]);
           } else {
             $printable[$i] .=
               sprintf(">%s\n%s\n", $seqID[$i], $seq[$i]);
+          }
+          if(length($seq[$i]) < $minLength){
+            $printable[$i] = "#";
           }
         }
         $qual[$i] = "";
@@ -103,13 +110,17 @@ for(my @lines = map {
     }
   } # end loop over lines from files
   if(scalar(grep {$_} @printable) == $numFiles){ # print if all can be printed
-    #printf(STDERR "/----------\\\n");
-    for(my $i = 0; $i < $numFiles; $i++){
-      print($printable[$i]);
-      $printable[$i] = "";
+    if(grep {/^#/} @printable){
+      ## reset / clear all if any are non-printable
+      for(my $i = 0; $i < $numFiles; $i++){
+        $printable[$i] = "";
+      }
+    } else {
+      for(my $i = 0; $i < $numFiles; $i++){
+        print($printable[$i]);
+        $printable[$i] = "";
+      }
     }
-    ## reset variables
-    #printf(STDERR "\\----------/\n");
   }
 } # end loop over files
 
