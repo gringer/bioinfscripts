@@ -50,9 +50,9 @@ function flatten(pointArray, done=0, res=[]) =
             res=concat(res,pointArray[done]));
 
 // Creates a polyhedron face
-function phFace(pp, base, add=0) =
+function phFace(pp, tp, base, add=0) =
     [base + add, (base+1) % pp + add,
-     ((base+1) % pp) + pp + add, base + pp + add];
+     (((base+1) % pp) + pp + add) % tp, (base + pp + add) % tp];
 
 function add(vecArg, scArg, res=[]) = 
     (len(res) >= len(vecArg)) ?
@@ -64,20 +64,20 @@ function add(vecArg, scArg, res=[]) =
 // start and end polygon
 module makeExtrudedPoly(ex, merge=false){
     ps = flatten(ex);
-    pp = len(ex[1]);
-    tp = len(ex[1]) * len(ex);
-    if(merge){
+    pp = len(ex[1]); // points in one polygon
+    tp = len(ex[1]) * len(ex); // total number of points
+    if(!merge){
         polyhedron(points=ps, faces=concat(
             [[for (i = [pp-1  : -1 :    0]) i]],
             [[for (i = [tp-pp :  1 : tp-1]) i]],
             [for (pt=[0:(len(ex)-2)])
-                for(i = [0:pp-1]) phFace(pp,i,pt*pp)],
+                for(i = [0:pp-1]) phFace(pp,tp,i,pt*pp)],
             [])
         );
     } else {
         polyhedron(points=ps, faces=
-            [for (pt=[0:(len(ex)-2)])
-                for(i = [0:pp-1]) phFace(pp,i,pt*pp)]);
+            [for (pt=[0:(len(ex)-1)])
+                for(i = [0:pp-1]) phFace(pp,tp,i,pt*pp)]);
     }
 }
 
@@ -86,12 +86,12 @@ module path_extrude(points, path, pos=0, merge=false, extruded=[]){
     if((len(points) > 0) && (len(path) > 0)){
         if(len(extruded) >= (len(path))){
             // extrusion is finished, so construct the object
-            echo(extruded);
+            //echo(extruded);
             makeExtrudedPoly(extruded, merge=merge);
         } else {
             // generate points from rotating polygon
-            if(!merge || (pos < (len(path) - 1))){
-                if((pos == 0) && (merge)) {
+            if(merge || (pos < (len(path) - 1))){
+                if((pos == 0) && (!merge)) {
                     newPts = myRotate(rToS(path[1] - path[0]),
                         points);
                     path_extrude(points=points, path=path, pos=pos+1, 
@@ -118,8 +118,8 @@ module path_extrude(points, path, pos=0, merge=false, extruded=[]){
 
 pi=3.14159;
 
-myPoints = [ for(t = [0:90:359]) [cos(t+45),sin(t+45)] ];
-myPath = [ for(t = [0:36:359]) 
+myPoints = [ for(t = [0:72:359]) [cos(t+45),sin(t+45)] ];
+myPath = [ for(t = [0:72:359]) 
     [5*cos(t),5*sin(t), 0] ];
 
 path_extrude(points=myPoints, path=myPath, merge=true);
