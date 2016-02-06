@@ -3,7 +3,6 @@ use warnings;
 use strict;
 
 use Getopt::Long qw(:config auto_help pass_through);
-use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $idFileName = "";
 my $quiet = 0;
@@ -11,7 +10,7 @@ my $quiet = 0;
 GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet) or
   die("Error in command line arguments");
 
-my %idsToGet = ();
+my %idsToAnnotate = ();
 
 # unknown commands are treated as identifiers
 my @files = ();
@@ -20,27 +19,28 @@ while(@ARGV){
   if(-f $arg){
     push(@files, $arg);
   } else {
-    $idsToGet{$arg} = 1;
+    $idsToAnnotate{$arg} = shift(@ARGV);
   }
 }
 @ARGV = @files;
 
 if($idFileName){
   # read sequence IDs from input file
-  my $idFile = new IO::Uncompress::Gunzip "$idFileName" or
-    die "Unable to open $idFileName\n";
+  printf(STDERR "Reading from file '$idFileName'\n");
+  open(my $idFile, "<", $idFileName);
   while(<$idFile>){
     chomp;
     s/^[>@]//;
-    $idsToGet{$_} = 1;
+    s/\"//g;
+    my @F = split(/,/,$_,2);
+    $idsToAnnotate{$F[0]} = $F[1];
   }
   close($idFile);
 }
 
 if(!$quiet){
-  printf(STDERR "Read %d identifiers\n", scalar(keys(%idsToGet)));
+  printf(STDERR "Read %d identifiers\n", scalar(keys(%idsToAnnotate)));
 }
-
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -63,10 +63,12 @@ while(<>){
       }
       $seq = "";
       $qual = "";
-      if(exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
-        $seqID = $newSeqID;
+      if(exists($idsToAnnotate{$newSeqID})){
+        $seqID = $newSeqID . " " . $idsToAnnotate{$newSeqID};
+      } elsif(exists($idsToAnnotate{$newShortID})){
+        $seqID = $newShortID . " " . $idsToAnnotate{$newShortID};
       } else {
-        $seqID = "";
+        $seqID = $newSeqID;
       }
     } elsif(/^\+(.*)$/) {
       $inQual = 1; # true

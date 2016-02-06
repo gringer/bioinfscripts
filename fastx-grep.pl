@@ -3,15 +3,13 @@ use warnings;
 use strict;
 
 use Getopt::Long qw(:config auto_help pass_through);
-use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
-my $idFileName = "";
 my $quiet = 0;
+my $filterSeqs = "";
+my $reverse = 0;
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet) or
+GetOptions("filter=s" => \$filterSeqs, "reverse|v!" => \$reverse, "quiet!" => \$quiet) or
   die("Error in command line arguments");
-
-my %idsToGet = ();
 
 # unknown commands are treated as identifiers
 my @files = ();
@@ -20,27 +18,19 @@ while(@ARGV){
   if(-f $arg){
     push(@files, $arg);
   } else {
-    $idsToGet{$arg} = 1;
+    $filterSeqs .= "|$arg";
   }
 }
 @ARGV = @files;
 
-if($idFileName){
-  # read sequence IDs from input file
-  my $idFile = new IO::Uncompress::Gunzip "$idFileName" or
-    die "Unable to open $idFileName\n";
-  while(<$idFile>){
-    chomp;
-    s/^[>@]//;
-    $idsToGet{$_} = 1;
-  }
-  close($idFile);
-}
+$filterSeqs =~ s/^\|//;
+$filterSeqs = "($filterSeqs)";
 
-if(!$quiet){
-  printf(STDERR "Read %d identifiers\n", scalar(keys(%idsToGet)));
+if($reverse){
+    printf(STDERR "Filter sequence (excluded): $filterSeqs\n");
+} else {
+    printf(STDERR "Filter sequence: $filterSeqs\n");
 }
-
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -54,7 +44,7 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID){
+      if($seqID && ($reverse xor ($seq =~ /$filterSeqs/))){
         if($qual){
           printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
         } else {
@@ -63,11 +53,7 @@ while(<>){
       }
       $seq = "";
       $qual = "";
-      if(exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
-        $seqID = $newSeqID;
-      } else {
-        $seqID = "";
-      }
+      $seqID = $newSeqID;
     } elsif(/^\+(.*)$/) {
       $inQual = 1; # true
       $qualID = $1;
@@ -82,7 +68,7 @@ while(<>){
   }
 }
 
-if($seqID){
+if($seqID && ($reverse xor ($seq =~ /$filterSeqs/))){
   if($qual){
     printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
   } else {
