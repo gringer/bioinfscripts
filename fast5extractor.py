@@ -13,11 +13,11 @@ and fitness. The parties responsible for running the code are solely
 liable for the consequences of code excecution.
 '''
 
+import os
 import sys
 import h5py
-import numpy
 
-def generate_event_matrix(fileName):
+def generate_event_matrix(fileName, header=True):
     '''write out event matrix from fast5, return False if not present'''
     try:
         h5File = h5py.File(fileName, 'r')
@@ -26,22 +26,49 @@ def generate_event_matrix(fileName):
         return False
     with h5py.File(fileName, 'r') as h5File:
       runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
       eventBase = "/Analyses/EventDetection_000/Reads/"
       readNames = h5File[eventBase]
       for readName in readNames:
+        readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
         eventLocation = "/Analyses/EventDetection_000/Reads/%s/Events" % readName
+        outMeta = h5File[readMetaLocation].attrs
+        channel = str(channelMeta["channel_number"])
+        mux = str(outMeta["start_mux"])
         outData = h5File[eventLocation]
         headers = outData.dtype
-        sys.stdout.write(",".join(headers.names)+"\n")
+        if(header):
+            sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
         # There *has* to be an easier way to do this while preserving
         # precision. Reading element by element seems very inefficient
         for line in outData:
           res=map(str,line)
-          sys.stdout.write(readName + "," + ",".join(res) + "\n")
+          # data seems to be normalised, but just in case it isn't, here's the formula for
+          # future reference: pA = (raw + offset)*range/digitisation
+          # (using channelMeta[("offset", "range", "digitisation")])
+          sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
 
 if len(sys.argv) < 2:
     sys.stderr.write('Usage: sys.argv[0] <fast5 file name>')
     sys.exit(1)
 
-generate_event_matrix(sys.argv[1]);
+fileArg = sys.argv[1]
+seenHeader = False
+
+if(os.path.isdir(fileArg)):
+    sys.stderr.write("Processing directory '%s':\n" % fileArg)
+    for dirPath, dirNames, fileNames in os.walk(fileArg):
+        fc = len(fileNames)
+        for fileName in fileNames:
+            if(fileName.endswith(".fast5")): # only process fast5 files
+                sys.stderr.write("  Processing file '%s'..." % fileName)
+                generate_event_matrix(os.path.join(dirPath, fileName), not seenHeader)
+                fc -= 1
+                seenHeader = True
+                if(fc == 1):
+                    sys.stderr.write(" done (%d more file to process)\n" % fc)
+                else:
+                    sys.stderr.write(" done (%d more files to process)\n" % fc)
+elif(os.path.isfile(fileArg)):
+    generate_event_matrix(fileArg)
