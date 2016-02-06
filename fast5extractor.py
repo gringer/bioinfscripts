@@ -16,6 +16,7 @@ liable for the consequences of code excecution.
 import os
 import sys
 import h5py
+import numpy
 
 def generate_event_matrix(fileName, header=True):
     '''write out event matrix from fast5, return False if not present'''
@@ -36,8 +37,8 @@ def generate_event_matrix(fileName, header=True):
         outMeta = h5File[readMetaLocation].attrs
         channel = str(channelMeta["channel_number"])
         mux = str(outMeta["start_mux"])
-        outData = h5File[eventLocation]
-        headers = outData.dtype
+        headers = h5File[eventLocation].dtype
+        outData = h5File[eventLocation][()]
         if(header):
             sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
         # There *has* to be an easier way to do this while preserving
