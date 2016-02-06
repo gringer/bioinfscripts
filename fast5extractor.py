@@ -38,7 +38,7 @@ def generate_event_matrix(fileName, header=True):
         channel = str(channelMeta["channel_number"])
         mux = str(outMeta["start_mux"])
         headers = h5File[eventLocation].dtype
-        outData = h5File[eventLocation][()]
+        outData = h5File[eventLocation][()] # load entire array into memory
         if(header):
             sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
         # There *has* to be an easier way to do this while preserving
