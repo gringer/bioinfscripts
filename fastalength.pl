@@ -4,7 +4,8 @@ use strict;
 
 my $sortable = 0; # false
 
-if(@ARGV[0] eq "-s"){
+if($ARGV[0] eq "-s"){
+  shift(@ARGV);
   $sortable = 1; # true
 }
 
