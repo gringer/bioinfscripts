@@ -2,6 +2,12 @@
 use warnings;
 use strict;
 
+my $sortable = 0; # false
+
+if(@ARGV[0] eq "-s"){
+  $sortable = 1; # true
+}
+
 my $seq = "";
 my $seqID = "";
 my $keep = 0;
@@ -11,7 +17,11 @@ while(<>){
     my $newID = $1;
     my $newShortID = $2;
     if($seq){
-      printf(">%s [%d bp]\n", $seqID, length($seq));
+      if($sortable){
+        printf("%d %s\n", length($seq), $seqID);
+      } else {
+        printf(">%s [%d bp]\n", $seqID, length($seq));
+      }
     }
     $seq = "";
     $seqID = $newID;
@@ -20,5 +30,9 @@ while(<>){
   }
 }
 if($seq){
-  printf(">%s [%d bp]\n", $seqID, length($seq));
+  if($sortable){
+    printf("%d %s\n", length($seq), $seqID);
+  } else {
+    printf(">%s [%d bp]\n", $seqID, length($seq));
+  }
 }
