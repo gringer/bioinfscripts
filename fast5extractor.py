@@ -5,18 +5,19 @@ reads event data from ONT fast5 file, writes event data matrix to output.
 
 Copyright 2016, David Eccles (gringer) <bioinformatics@gringene.org>
 
-Permission to use, copy, modify, and distribute this software for
-any purpose with or without fee is hereby granted. The software is
+Permission to use, copy, modify, and distribute this software for any
+purpose with or without fee is hereby granted. The software is
 provided "as is" and the author disclaims all warranties with regard
 to this software including all implied warranties of merchantability
-and fitness. The parties responsible for running the code are solely
-liable for the consequences of code execution.
+and fitness. In other words, the parties responsible for running the
+code are solely liable for the consequences of code execution.
 '''
 
 import os
 import sys
 import h5py
 import numpy
+from collections import Counter
 
 def generate_event_matrix(fileName, header=True):
     '''write out event matrix from fast5, return False if not present'''
@@ -75,22 +76,51 @@ def generate_fastq(fileName, callID="000"):
         readNameStr = str(readName)
       seqBase1D = "/Analyses/Basecall_1D_%s" % callID
       seqBase2D = "/Analyses/Basecall_2D_%s" % callID
+      badEvt = False
       if(seqBase1D in h5File):
           baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
           baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
-          if(baseTemp in h5File):
-              sys.stdout.write("@1Dtemp_"+
-                               "_".join((runID,channel,mux,readName)) + " ")
-              sys.stdout.write(str(h5File[baseTemp][()][1:]))
-          if(baseComp in h5File):
-              sys.stdout.write("@1Dcomp_"+
-                               "_".join((runID,channel,mux,readName)) + " ")
-              sys.stdout.write(str(h5File[baseComp][()][1:]))
+          eventComp = "%s/BaseCalled_complement/Events" % seqBase1D
+          eventTemp = "%s/BaseCalled_template/Events" % seqBase1D
+          if(eventTemp in h5File):
+              headers = h5File[eventTemp].dtype
+              moveLoc = -1
+              for index, item in enumerate(headers.names):
+                  if(item == "move"):
+                      moveLoc = index
+              outEvt = h5File[eventTemp][:] # load events into memory
+              mCount = Counter(map(lambda x: x[moveLoc], outEvt))
+              badThresh = (sum(mCount.values()) * 0.05)
+              #sys.stdout.write("#%s\n" % str(mCount))
+              if(((mCount[0] + mCount[2]) < (badThresh*4)) and
+                 ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseTemp in h5File)):
+                  sys.stdout.write("@1Dtemp_"+
+                                   "_".join((runID,channel,mux,readName)) + " ")
+                  sys.stdout.write(str(h5File[baseTemp][()][1:]))
+              else:
+                  badEvt = True
+          if(eventComp in h5File):
+              headers = h5File[eventComp].dtype
+              moveLoc = -1
+              for index, item in enumerate(headers.names):
+                  if(item == "move"):
+                      moveLoc = index
+              outEvt = h5File[eventComp][:] # load events into memory
+              mCount = Counter(map(lambda x: x[moveLoc], outEvt))
+              badThresh = (sum(mCount.values()) * 0.05)
+              #sys.stdout.write("#%s\n" % str(mCount))
+              if(((mCount[0] + mCount[2]) < badThresh*4) and
+                 ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseComp in h5File)):
+                  sys.stdout.write("@1Dcomp_"+
+                                   "_".join((runID,channel,mux,readName)) + " ")
+                  sys.stdout.write(str(h5File[baseComp][()][1:]))
+              else:
+                  badEvt = True
       else:
           sys.stderr.write("seqBase1D [%s] not in file\n" % seqBase1D)
-      if(seqBase2D in h5File):
+      if((not badEvt) and seqBase2D in h5File):
           base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
-          if(base2D in h5File):
+          if((base2D in h5File)):
               sys.stdout.write("@2Dcons_"+
                            "_".join((runID,channel,mux,readName)) + " ")
               sys.stdout.write(str(h5File[base2D][()][1:]))
