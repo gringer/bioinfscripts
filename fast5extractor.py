@@ -50,8 +50,8 @@ def generate_event_matrix(fileName, header=True):
           # (using channelMeta[("offset", "range", "digitisation")])
           sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
 
-def generate_seqs(fileName, seqType="fastq"):
-    '''write out sequence(s) from fast5, return False if not present'''
+def generate_fastq(fileName, callID="000"):
+    '''write out fastq sequence(s) from fast5, return False if not present'''
     try:
         h5File = h5py.File(fileName, 'r')
         h5File.close()
@@ -61,37 +61,50 @@ def generate_seqs(fileName, seqType="fastq"):
       runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
       channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
-      eventBase = "/Analyses/EventDetection_000/Reads/"
+      eventBase = "/Analyses/EventDetection_%s/Reads/" % callID
       readNames = h5File[eventBase]
+      channel = -1
+      mux = -1
+      readNameStr = ""
       for readName in readNames:
         readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
         eventLocation = "/Analyses/EventDetection_000/Reads/%s/Events" % readName
         outMeta = h5File[readMetaLocation].attrs
         channel = str(channelMeta["channel_number"])
         mux = str(outMeta["start_mux"])
-        headers = h5File[eventLocation].dtype
-        outData = h5File[eventLocation][()] # load entire array into memory
-        if(header):
-            sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
-        # There *has* to be an easier way to do this while preserving
-        # precision. Reading element by element seems very inefficient
-        for line in outData:
-          res=map(str,line)
-          # data seems to be normalised, but just in case it isn't, here's the formula for
-          # future reference: pA = (raw + offset)*range/digitisation
-          # (using channelMeta[("offset", "range", "digitisation")])
-          sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
+        readNameStr = str(readName)
+      seqBase1D = "/Analyses/Basecall_1D_%s" % callID
+      seqBase2D = "/Analyses/Basecall_2D_%s" % callID
+      if(seqBase1D in h5File):
+          baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
+          baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
+          if(baseTemp in h5File):
+              sys.stdout.write("@1Dtemp_"+
+                               "_".join((runID,channel,mux,readName)) + " ")
+              sys.stdout.write(str(h5File[baseTemp][()][1:]))
+          if(baseComp in h5File):
+              sys.stdout.write("@1Dcomp_"+
+                               "_".join((runID,channel,mux,readName)) + " ")
+              sys.stdout.write(str(h5File[baseComp][()][1:]))
+      else:
+          sys.stderr.write("seqBase1D [%s] not in file\n" % seqBase1D)
+      if(seqBase2D in h5File):
+          base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
+          if(base2D in h5File):
+              sys.stdout.write("@2Dcons_"+
+                           "_".join((runID,channel,mux,readName)) + " ")
+              sys.stdout.write(str(h5File[base2D][()][1:]))
 
 if len(sys.argv) < 3:
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of {fastq, fasta, event, raw}\n')
+    sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
     sys.exit(1)
 
 dataType = sys.argv[1]
 if(not dataType in ("fastq","fasta","event","raw")):
     sys.stderr.write('Error: Incorrect dataType\n\n')
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of {fastq, fasta, event, raw}\n')
+    sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
     sys.exit(1)
 
 fileArg = sys.argv[2]
@@ -107,11 +120,7 @@ if(os.path.isdir(fileArg)):
                 if(dataType == "event"):
                     generate_event_matrix(os.path.join(dirPath, fileName), not seenHeader)
                 elif(dataType == "fastq"):
-                    generate_event_matrix(os.path.join(dirPath, fileName),
-                                          seqType="fastq")
-                elif(dataType == "fasta"):
-                    generate_event_matrix(os.path.join(dirPath, fileName),
-                                          seqType="fasta")
+                    generate_fastq(os.path.join(dirPath, fileName))
                 fc -= 1
                 seenHeader = True
                 if(fc == 1):
@@ -122,11 +131,9 @@ elif(os.path.isfile(fileArg)):
     if(dataType == "event"):
         generate_event_matrix(fileArg)
     elif(dataType == "fastq"):
-        generate_event_matrix(fileArg, seqType="fastq")
-    elif(dataType == "fasta"):
-        generate_event_matrix(fileArg, seqType="fasta")
+        generate_fastq(fileArg)
 else:
     sys.stderr.write('Error: No file or directory provided in arguments\n\n')
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of {fastq, fasta, event, raw}\n')
+    sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
     sys.exit(1)
