@@ -2,6 +2,8 @@
 use warnings;
 use strict;
 
+## fastx-grep -- search for a pattern in the sequence or sequence name
+
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $quiet = 0;
