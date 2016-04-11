@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 '''
-reads event data from ONT fast5 file, writes event data matrix to output.
+reads elements from ONT fast5 file and writes them to standard output.
 
 Copyright 2016, David Eccles (gringer) <bioinformatics@gringene.org>
 
@@ -17,7 +17,11 @@ import os
 import sys
 import h5py
 import numpy
-from collections import Counter
+from collections import deque, Counter
+from itertools import islice
+from bisect import insort, bisect_left
+from struct import pack
+from array import array
 
 def generate_event_matrix(fileName, header=True):
     '''write out event matrix from fast5, return False if not present'''
@@ -125,6 +129,53 @@ def generate_fastq(fileName, callID="000"):
                            "_".join((runID,channel,mux,readName)) + " ")
               sys.stdout.write(str(h5File[base2D][()][1:]))
 
+## Running median
+## See [http://code.activestate.com/recipes/578480-running-median-mean-and-mode/]
+def runningMedian(seq, M):
+    if(M % 2 == 0):
+        sys.stderr.write("Error: median window size must be odd")
+        sys.exit(1)
+    seq = iter(seq) 
+    s = []   
+    m = M // 2
+    s = [item for item in islice(seq,M)]    
+    d = deque(s)
+    median = lambda : s[m]# if bool(M&1) else (s[m-1]+s[m])/2
+    s.sort()    
+    medians = [median()]   
+    for item in seq:
+        old = d.popleft()          # pop oldest from left
+        d.append(item)             # push newest in from right
+        del s[bisect_left(s, old)] # locate insertion point and then remove old 
+        insort(s, item)            # insert newest such that new sort is not required        
+        medians.append(median())  
+    return medians
+              
+def generate_raw(fileName, callID="000", medianWindow=21):
+    '''write out raw sequence from fast5, with optional running median
+       smoothing, return False if not present'''
+    try:
+        h5File = h5py.File(fileName, 'r')
+        h5File.close()
+    except:
+        return False
+    with h5py.File(fileName, 'r') as h5File:
+      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
+      eventBase = "/Raw/Reads"
+      if(not eventBase in h5File):
+          return False
+      readNames = h5File[eventBase]
+      readNameStr = ""
+      for readName in readNames:
+        readRawLocation = "%s/%s/Signal" % (eventBase, readName)
+        outData = h5File[readRawLocation][()] # load entire raw data into memory
+        if(medianWindow==1):
+            sys.stdout.write(outData)
+        else:
+            array("H",runningMedian(outData, M=medianWindow)).tofile(sys.stdout)
+
 if len(sys.argv) < 3:
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
     sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
@@ -151,6 +202,9 @@ if(os.path.isdir(fileArg)):
                     generate_event_matrix(os.path.join(dirPath, fileName), not seenHeader)
                 elif(dataType == "fastq"):
                     generate_fastq(os.path.join(dirPath, fileName))
+                elif(dataType == "raw"):
+                    sys.stderr.write(" Error: raw output only works for single files!\n")
+                    sys.exit(1)
                 fc -= 1
                 seenHeader = True
                 if(fc == 1):
@@ -162,6 +216,8 @@ elif(os.path.isfile(fileArg)):
         generate_event_matrix(fileArg)
     elif(dataType == "fastq"):
         generate_fastq(fileArg)
+    elif(dataType == "raw"):
+        generate_raw(fileArg)
 else:
     sys.stderr.write('Error: No file or directory provided in arguments\n\n')
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
