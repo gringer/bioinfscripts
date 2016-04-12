@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 my $mw = 10; # match window
+my $maxChunkSize = 5000; # limit chunk size
 
 my $lastContig="";
 my $start=-($mw+1);
@@ -17,7 +18,7 @@ while(<>){
   my $newStart = $F[1];
   my $newEnd = $F[1] + $F[2];
   my $oldEnd = $start + $length;
-  if(($F[0] eq $lastContig) &&
+  if(($F[0] eq $lastContig) && ($length < ($maxChunkSize-$mw)) &&
      (($start - $mw) < $newStart && ($oldEnd + $mw) > $newStart) ||
      (($oldEnd + $mw) > $newEnd && ($start - $mw) < $newEnd)){
     $start = $newStart if ($start > $newStart);
