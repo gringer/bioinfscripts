@@ -22,8 +22,33 @@ psl_scaffolder.pl - use self-mapped PSL file to scaffold a genome
 sub rc {
   my ($seq) = @_;
   $seq =~ tr/ACGTUYRSWMKDVHBXN-/TGCARYSWKMHBDVXN-/;
+  # work on masked sequences as well
   $seq =~ tr/acgtuyrswmkdvhbxn/tgcaryswkmhbdvxn/;
   return(scalar(reverse($seq)));
+}
+
+sub getConsensus {
+  my ($b1, $b2) = @_;
+  if(($b1 eq $b2) || ($b1 eq " ") || ($b2 eq " ")){
+    ## equal bases, or absent bases, so consensus is easy
+    return($b1);
+  }
+  # if different, convert to upper case to simplify lookup
+  my $bc = uc(($b1 cmp $b2) ? $b1.$b2 : $b2.$b1);
+  my %consensusLookup =
+    (AC => "M",
+     GT => "K",
+     AG => "R",
+     CT => "Y",
+     AT => "W");
+  # if "simple" ambiguity can be found, return that, otherwise return N
+  # (i.e. GT => K, -A => N, YM -> N)
+  return( ($consensusLookup{$bc}) ? $consensusLookup{$bc} : "N");
+}
+
+sub getMatch {
+  my ($b1, $b2) = @_;
+  return(($b1 eq $b2) ? "*" : " ");
 }
 
 
@@ -188,16 +213,20 @@ while(<>){
       my $fillL = $gapLength - $gapL;
       $alSeqS .= ("-" x $fillS) . substr($sSeq, $sBlStarts[$i]-$gapS, $gapS);
       $alSeqL .= ("-" x $fillL) . substr($lSeq, $lBlStarts[$i]-$gapL, $gapL);
-      #print("-" x $fillS, substr($sSeq, $sBlStarts[$i]-$gapS, $gapS)."\n");
-      #print("-" x $fillL, substr($lSeq, $lBlStarts[$i]-$gapL, $gapL)."\n");
       $alSeqS .= substr($sSeq, $sBlStarts[$i], $blSizes[$i]);
       $alSeqL .= substr($lSeq, $lBlStarts[$i], $blSizes[$i]);
-      #print(substr($sSeq, $sBlStarts[$i], $blSizes[$i])."\n");
-      #print(substr($lSeq, $lBlStarts[$i], $blSizes[$i])."\n");
       $lastS = $sBlStarts[$i] + $blSizes[$i];
       $lastL = $lBlStarts[$i] + $blSizes[$i];
     }
+    my $alConsensus = "";
+    my $alMatch = "";
+    for(my $i = 0; $i < length($alSeqS); $i++){
+      $alConsensus .= getConsensus(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
+      $alMatch .= getMatch(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
+    }
     print($alSeqS."\n");
+    print($alConsensus."\n");
+    print($alMatch."\n");
     print($alSeqL."\n");
   }
   #printf("%0.1f\n", $pid);
