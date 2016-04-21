@@ -5,6 +5,7 @@ use strict;
 
 use Pod::Usage; ## uses pod documentation in usage code
 use Getopt::Long qw(:config auto_version auto_help pass_through);
+use List::Util qw(max min); ## for max/min
 
 our $VERSION = "1.00";
 
@@ -17,6 +18,16 @@ psl_scaffolder.pl - use self-mapped PSL file to scaffold a genome
 ./psl_scaffolder.pl -query <file> [options] <mapping.psl>
 
 =cut
+
+sub rc {
+  my ($seq) = @_;
+  $seq =~ tr/ACGTUYRSWMKDVHBXN-/TGCARYSWKMHBDVXN-/;
+  $seq =~ tr/acgtuyrswmkdvhbxn/tgcaryswkmhbdvxn/;
+  return(scalar(reverse($seq)));
+}
+
+
+############### Program starts here
 
 # set default options
 my @pslFiles = ();
@@ -80,15 +91,19 @@ while(<$queryFile>){
 }
 close($queryFile);
 
+my %targetSeqs = %querySeqs;
+
 printf(STDERR " loaded in %d sequences\n", scalar(keys(%querySeqs)));
 
 print(STDERR "Processing results...");
 while(<>){
   chomp;
+  my @fields = split(/\t/);
   my ($matches, $misMatches, $repMatches, $nCount, $qNumInsert,
-      $qBaseInsert, $tNumInsert, $tBaseInsert, $strand, $qName, $qSize,
-      $qStart, $qEnd, $tName, $tSize, $tStart, $tEnd, $blockCount,
-      $blockSizes, $qStarts, $tStarts, @rest) = split(/\t/);
+      $qBaseInsert, $tNumInsert, $tBaseInsert, $strand, $qName,
+      $qSize, $qStart, $qEnd, $tName, $tSize,
+      $tStart, $tEnd, $blockCount, $blockSizes, $qStarts,
+      $tStarts, @rest) = @fields;
   if(!$tStarts){
     pod2usage({-exitVal => 1,
                -message => sprintf(" Error: mapping file doesn't look like a ".
@@ -104,7 +119,86 @@ while(<>){
   my $pid = 100 * ($matches + $repMatches -
                    ($qNumInsert + $tNumInsert + 3*log(1+$sizeDif))) /
                      ($matches + $repMatches + $misMatches);
-  if($pid >= $projOpts->{"pid"}){
+  if(($pid >= $projOpts->{"pid"}) &&
+     $querySeqs{$qName} && $targetSeqs{$tName}){
+    my %meta = ();
+    my $shortTarget = ($qAliSize >= $tAliSize) ? 1 : 0;
+    my $longTarget = ($qAliSize < $tAliSize) ? 1 : 0;
+    my $sName = $fields[9 + ($shortTarget * 4)];
+    my $lName = $fields[9 + ($longTarget * 4)];
+    my $sLen = $fields[10 + ($shortTarget * 4)];
+    my $lLen = $fields[10 + ($longTarget * 4)];
+    my $sStart = $fields[11 + ($shortTarget * 4)];
+    my $lStart = $fields[11 + ($longTarget * 4)];
+    my $sEnd = $fields[12 + ($shortTarget * 4)];
+    my $lEnd = $fields[12 + ($longTarget * 4)];
+    my @sBlStarts = split(/,/, $fields[19 + $shortTarget]);
+    my @lBlStarts = split(/,/, $fields[19 + $longTarget]);
+    my @blSizes = split(/,/, $fields[18]);
+    my ($sSeq, $lSeq) = ($querySeqs{$qName}{sequence},
+                         $querySeqs{$tName}{sequence});
+    if($shortTarget){
+      ($sSeq, $lSeq) = ($lSeq, $sSeq);
+    }
+    my $sPre = substr($sSeq, 0, $sStart);
+    my $lPre = substr($lSeq, 0, $lStart);
+    my $sMid = substr($sSeq, $sStart, $sEnd-$sStart);
+    my $lMid = substr($lSeq, $lStart, $lEnd-$lStart);
+    my $sPost = substr($sSeq, $sEnd);
+    my $lPost = substr($lSeq, $lEnd);
+    my $doRC = ($strand eq "-");
+    if($doRC){
+      if($shortTarget){  # target sequence is assumed to be forward strand
+        ($lPre, $lMid, $lPost) = (rc($lPost), rc($lMid), rc($lPre));
+        $lSeq = rc($lSeq);
+      } else {
+        ($sPre, $sMid, $sPost) = (rc($sPost), rc($sMid), rc($sPre));
+        $sSeq = rc($sSeq);
+      }
+    }
+    my $preLength = max(length($sPre), length($lPre));
+    printf("%s %s\n", $sName, $lName);
+    printf("%d/%d-%d %d/%d-%d\n", $sLen, $sStart, $sEnd, $lLen, $lStart, $lEnd);
+    printf("%d %d\n", length($sSeq), length($lSeq));
+    #printf("%s [%d bp]\n",
+    #      $sSeq, length($sSeq));
+    #printf("%${preLength}s %s %s [%d bp]\n",
+    #      $sPre, $sMid, $sPost, length($sPre.$sMid.$sPost));
+    printf("%s [%d bp]\n",
+           $sMid, length($sMid));
+    #printf("%s [%d bp]\n",
+    #       $lSeq, length($lSeq));
+    #printf("%${preLength}s %s %s [%d bp]\n",
+    #       $lPre, $lMid, $lPost, length($lPre.$lMid.$lPost));
+    printf("%s [%d bp]\n",
+           $lMid, length($lMid));
+    print("Blocks: \n");
+    print(join(" ",@blSizes)."\n");
+    print(join(" ",@sBlStarts)."\n");
+    print(join(" ",@lBlStarts)."\n");
+    my $lastS = $sBlStarts[0];
+    my $lastL = $lBlStarts[0];
+    my $alSeqS = "";
+    my $alSeqL = "";
+    for(my $i = 0; $i <= $#blSizes; $i++){
+      my $gapS = $sBlStarts[$i] - $lastS;
+      my $gapL = $lBlStarts[$i] - $lastL;
+      my $gapLength = max($gapS, $gapL);
+      my $fillS = $gapLength - $gapS;
+      my $fillL = $gapLength - $gapL;
+      $alSeqS .= ("-" x $fillS) . substr($sSeq, $sBlStarts[$i]-$gapS, $gapS);
+      $alSeqL .= ("-" x $fillL) . substr($lSeq, $lBlStarts[$i]-$gapL, $gapL);
+      #print("-" x $fillS, substr($sSeq, $sBlStarts[$i]-$gapS, $gapS)."\n");
+      #print("-" x $fillL, substr($lSeq, $lBlStarts[$i]-$gapL, $gapL)."\n");
+      $alSeqS .= substr($sSeq, $sBlStarts[$i], $blSizes[$i]);
+      $alSeqL .= substr($lSeq, $lBlStarts[$i], $blSizes[$i]);
+      #print(substr($sSeq, $sBlStarts[$i], $blSizes[$i])."\n");
+      #print(substr($lSeq, $lBlStarts[$i], $blSizes[$i])."\n");
+      $lastS = $sBlStarts[$i] + $blSizes[$i];
+      $lastL = $lBlStarts[$i] + $blSizes[$i];
+    }
+    print($alSeqS."\n");
+    print($alSeqL."\n");
   }
   #printf("%0.1f\n", $pid);
 }
