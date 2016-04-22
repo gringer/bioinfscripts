@@ -224,6 +224,7 @@ while(<>){
       for (my $i = 0; $i < length($alSeqS); $i++) {
         $alConsensus .= getConsensus(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
       }
+      my $consensusLength = length($alConsensus);
       $alConsensus =
         substr($sPre, 0, length($sPre) - $preTrim).
           substr($lPre, 0, length($lPre) - $preTrim).
@@ -231,15 +232,21 @@ while(<>){
               substr($sPost, $postTrim).substr($lPost, $postTrim);
       my $newSeqID = sprintf("psl_scaffold_%d", $nextScaffoldID++);
       if(!exists($replacementSeqs{$sName}{score}) ||
-         ($trimTotal < $replacementSeqs{$sName}{score})){
+         ($trimTotal < $replacementSeqs{$sName}{score}) ||
+         (($trimTotal == $replacementSeqs{$sName}{score}) &&
+          ($consensusLength > $replacementSeqs{$sName}{clength}))){
         $replacementSeqs{$sName}{score} = $trimTotal;
+        $replacementSeqs{$sName}{clength} = $consensusLength;
         $replacementSeqs{$sName}{fullName} =
           sprintf("%s [%s %s]", $newSeqID, $sName, $lName);
         $replacementSeqs{$sName}{sequence} = $alConsensus;
       }
       if(!exists($replacementSeqs{$lName}{score}) ||
-         ($trimTotal < $replacementSeqs{$lName}{score})){
+         ($trimTotal < $replacementSeqs{$lName}{score}) ||
+         (($trimTotal == $replacementSeqs{$lName}{score}) &&
+          ($consensusLength > $replacementSeqs{$lName}{clength}))){
         $replacementSeqs{$lName}{score} = $trimTotal;
+        $replacementSeqs{$lName}{clength} = $consensusLength;
         $replacementSeqs{$lName}{fullName} =
           sprintf("%s [%s %s]", $newSeqID, $sName, $lName);
         $replacementSeqs{$lName}{sequence} = $alConsensus;
