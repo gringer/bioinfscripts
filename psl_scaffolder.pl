@@ -62,7 +62,7 @@ my $projOpts =
   {
    "query" => 0, # contig file for query sequences
    "pid" => 90, # percent ID threshold
-   "trimlimit" => 50, # max number of errors outside match region
+   "trimlimit" => 50, # max number of overlapping bases outside match region
   };
 
 GetOptions($projOpts, 'query=s', 'pid=i', 'trimlimit=i');
@@ -120,6 +120,7 @@ while(<$queryFile>){
 close($queryFile);
 
 my %targetSeqs = %querySeqs;
+my $nextScaffoldID = 1;
 
 printf(STDERR " loaded in %d sequences\n", scalar(keys(%querySeqs)));
 
@@ -190,21 +191,20 @@ while(<>){
         $postTrim = min($sStart, $lLen - $lEnd);
       }
     }
-    if((($preTrim + $postTrim) * (101 - $pid) / 100) <
-       $projOpts->{"trimlimit"}){
-      print(STDERR "\n$sName $lName\n");
-      printf(STDERR "PreTrim: %d, PostTrim: %d, pid = %d\n",
-             $preTrim, $postTrim, $pid);
-      printf(STDERR "Short extensions: %d, %d\n",
-             length($sPre), length($sPost));
-      printf(STDERR "Long extensions: %d, %d\n",
-             length($lPre), length($lPost));
+    if(($preTrim + $postTrim) <= $projOpts->{"trimlimit"}){
+      # print(STDERR "\n$sName $lName\n");
+      # printf(STDERR "PreTrim: %d, PostTrim: %d, pid = %d\n",
+      #        $preTrim, $postTrim, $pid);
+      # printf(STDERR "Short extensions: %d, %d\n",
+      #        length($sPre), length($sPost));
+      # printf(STDERR "Long extensions: %d, %d\n",
+      #        length($lPre), length($lPost));
       my $sPreTrim = substr($sPre, length($sPre)-$preTrim);
       my $sPostTrim = substr($sPost, 0, $postTrim);
       my $lPreTrim = substr($lPre, length($lPre)-$preTrim);
       my $lPostTrim = substr($lPost, 0, $postTrim);
-      print(STDERR "$sPreTrim|...|$sPostTrim\n");
-      print(STDERR "$lPreTrim|...|$lPostTrim\n");
+      # print(STDERR "$sPreTrim|...|$sPostTrim\n");
+      # print(STDERR "$lPreTrim|...|$lPostTrim\n");
       my $preLen = max(length($sPre), length($lPre));
       my $postLen = max(length($sPost), length($lPost));
       my $lastS = $sBlStarts[0];
@@ -228,21 +228,20 @@ while(<>){
       #  sprintf("%-${postLen}s",$sPost);
       #$alSeqL = sprintf("%${preLen}s",$lPre) . "|%|" . $alSeqL . "|%|" .
       #  sprintf("%-${postLen}s",$lPost);
-      $alSeqS = sprintf("%${preTrim}s",$sPreTrim) . "|%|" . $alSeqS . "|%|" .
-        sprintf("%-${postTrim}s",$sPostTrim);
-      $alSeqL = sprintf("%${preTrim}s",$lPreTrim) . "|%|" . $alSeqL . "|%|" .
-        sprintf("%-${postTrim}s",$lPostTrim);
+      $alSeqS = $sPreTrim . $alSeqS . $sPostTrim;
+      $alSeqL = $lPreTrim . $alSeqL . $lPostTrim;
       my $alConsensus = "";
       my $alMatch = "";
       for (my $i = 0; $i < length($alSeqS); $i++) {
         $alConsensus .= getConsensus(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
         $alMatch .= getMatch(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
       }
-      print(STDERR "&----&\n");
-      print(STDERR $alSeqS."\n");
-      print(STDERR $alConsensus."\n");
-      print(STDERR $alMatch."\n");
-      print(STDERR $alSeqL."\n");
+      # print(STDERR "&----&\n");
+      # print(STDERR $alSeqS."\n");
+      printf(">psl_scaffold_%d [%s %s]\n%s\n", $nextScaffoldID++,
+             $sName, $lName, $alConsensus);
+      # print(STDERR $alMatch."\n");
+      # print(STDERR $alSeqL."\n");
     }
   }
   #printf("%0.1f\n", $pid);
