@@ -103,8 +103,8 @@ while(<$queryFile>){
   if(/^>((.+?)( .*?\s*)?)$/){
     ## line is sequence header
     $seqID = $2;
-    $querySeqs{$seqID}{"fullName"} = $1;
-    $querySeqs{$seqID}{"sequence"} = "";
+    $querySeqs{$seqID}{fullName} = $1;
+    $querySeqs{$seqID}{sequence} = "";
   } else {
     if(!$seqID){
       pod2usage({-exitVal => 1,
@@ -121,6 +121,8 @@ close($queryFile);
 
 my %targetSeqs = %querySeqs;
 my $nextScaffoldID = 1;
+
+my %replacementSeqs = ();
 
 printf(STDERR " loaded in %d sequences\n", scalar(keys(%querySeqs)));
 
@@ -191,20 +193,12 @@ while(<>){
         $postTrim = min($sStart, $lLen - $lEnd);
       }
     }
-    if(($preTrim + $postTrim) <= $projOpts->{"trimlimit"}){
-      # print(STDERR "\n$sName $lName\n");
-      # printf(STDERR "PreTrim: %d, PostTrim: %d, pid = %d\n",
-      #        $preTrim, $postTrim, $pid);
-      # printf(STDERR "Short extensions: %d, %d\n",
-      #        length($sPre), length($sPost));
-      # printf(STDERR "Long extensions: %d, %d\n",
-      #        length($lPre), length($lPost));
+    my $trimTotal = ($preTrim + $postTrim);
+    if($trimTotal <= $projOpts->{"trimlimit"}){
       my $sPreTrim = substr($sPre, length($sPre)-$preTrim);
       my $sPostTrim = substr($sPost, 0, $postTrim);
       my $lPreTrim = substr($lPre, length($lPre)-$preTrim);
       my $lPostTrim = substr($lPost, 0, $postTrim);
-      # print(STDERR "$sPreTrim|...|$sPostTrim\n");
-      # print(STDERR "$lPreTrim|...|$lPostTrim\n");
       my $preLen = max(length($sPre), length($lPre));
       my $postLen = max(length($sPost), length($lPost));
       my $lastS = $sBlStarts[0];
@@ -224,26 +218,55 @@ while(<>){
         $lastS = $sBlStarts[$i] + $blSizes[$i];
         $lastL = $lBlStarts[$i] + $blSizes[$i];
       }
-      #$alSeqS = sprintf("%${preLen}s",$sPre) . "|%|" . $alSeqS . "|%|" .
-      #  sprintf("%-${postLen}s",$sPost);
-      #$alSeqL = sprintf("%${preLen}s",$lPre) . "|%|" . $alSeqL . "|%|" .
-      #  sprintf("%-${postLen}s",$lPost);
       $alSeqS = $sPreTrim . $alSeqS . $sPostTrim;
       $alSeqL = $lPreTrim . $alSeqL . $lPostTrim;
       my $alConsensus = "";
-      my $alMatch = "";
       for (my $i = 0; $i < length($alSeqS); $i++) {
         $alConsensus .= getConsensus(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
-        $alMatch .= getMatch(substr($alSeqS,$i,1),substr($alSeqL,$i,1));
       }
-      # print(STDERR "&----&\n");
-      # print(STDERR $alSeqS."\n");
-      printf(">psl_scaffold_%d [%s %s]\n%s\n", $nextScaffoldID++,
-             $sName, $lName, $alConsensus);
-      # print(STDERR $alMatch."\n");
-      # print(STDERR $alSeqL."\n");
+      $alConsensus =
+        substr($sPre, 0, length($sPre) - $preTrim).
+          substr($lPre, 0, length($lPre) - $preTrim).
+            $alConsensus.
+              substr($sPost, $postTrim).substr($lPost, $postTrim);
+      my $newSeqID = sprintf("psl_scaffold_%d", $nextScaffoldID++);
+      if(!exists($replacementSeqs{$sName}{score}) ||
+         ($trimTotal < $replacementSeqs{$sName}{score})){
+        $replacementSeqs{$sName}{score} = $trimTotal;
+        $replacementSeqs{$sName}{fullName} =
+          sprintf("%s [%s %s]", $newSeqID, $sName, $lName);
+        $replacementSeqs{$sName}{sequence} = $alConsensus;
+      }
+      if(!exists($replacementSeqs{$lName}{score}) ||
+         ($trimTotal < $replacementSeqs{$lName}{score})){
+        $replacementSeqs{$lName}{score} = $trimTotal;
+        $replacementSeqs{$lName}{fullName} =
+          sprintf("%s [%s %s]", $newSeqID, $sName, $lName);
+        $replacementSeqs{$lName}{sequence} = $alConsensus;
+      }
     }
   }
-  #printf("%0.1f\n", $pid);
 }
-print(STDERR " done\n");
+printf(STDERR " done\n");
+
+my %displayed = ();
+
+foreach my $seqID (sort(keys(%targetSeqs))){
+  my $fullName = $targetSeqs{$seqID}{fullName};
+  my $sequence = $targetSeqs{$seqID}{sequence};
+  if(exists($replacementSeqs{$seqID})){
+    print(STDERR "Found match for $seqID\n");
+    $fullName = $replacementSeqs{$seqID}{fullName};
+    $sequence = $replacementSeqs{$seqID}{sequence};
+  }
+  if(!$displayed{$fullName}){
+    printf(">%s\n%s\n", $fullName, $sequence);
+    $displayed{$fullName} = 1;
+  }
+}
+
+foreach my $seqID (sort(keys(%replacementSeqs))){
+  if(!$displayed{$seqID}){
+    print(STDERR "No match for $seqID\n");
+  }
+}
