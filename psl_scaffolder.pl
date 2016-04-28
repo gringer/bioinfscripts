@@ -6,7 +6,6 @@ use English;
 
 use Pod::Usage; ## uses pod documentation in usage code
 use Getopt::Long qw(:config auto_version auto_help pass_through);
-use List::Util qw(max min); ## for max/min
 
 our $VERSION = "1.00";
 
@@ -19,6 +18,16 @@ psl_scaffolder.pl - use self-mapped PSL file to scaffold a genome
 ./psl_scaffolder.pl -query <file> [options] <mapping.psl>
 
 =cut
+
+sub min {
+  ($a, $b) = @_;
+  return( ($a < $b) ? $a : $b);
+}
+
+sub max {
+  ($a, $b) = @_;
+  return( ($a > $b) ? $a : $b);
+}
 
 sub rc {
   my ($seq) = @_;
@@ -172,29 +181,27 @@ while(<>){
       ($sSeq, $lSeq) = ($lSeq, $sSeq);
     }
     my $doRC = ($strand eq "-");
+    if($doRC){
+        if ($shortTarget) { # target sequence is assumed to be forward strand
+          $lSeq = rc($lSeq);
+          ($lStart, $lEnd) = ($lLen - $lEnd, $lEnd - $lStart);
+        } else {
+          $sSeq = rc($sSeq);
+          ($sStart, $sEnd) = ($sLen - $sEnd, $sEnd - $sStart);
+        }
+    }
     my $preTrim = min($sStart, $lStart);
     my $postTrim = min($sLen - $sEnd, $lLen - $lEnd);
     ## Only continue on if there's a good likelihood that this will work
     ## i.e. trimLength * (1-%id) < threshold
-    my $sPre = substr($sSeq, 0, $sStart);
-    my $lPre = substr($lSeq, 0, $lStart);
-    my $sMid = substr($sSeq, $sStart, $sEnd-$sStart);
-    my $lMid = substr($lSeq, $lStart, $lEnd-$lStart);
-    my $sPost = substr($sSeq, $sEnd);
-    my $lPost = substr($lSeq, $lEnd);
-    if ($doRC) {
-      if ($shortTarget) { # target sequence is assumed to be forward strand
-        ($lSeq, $lPre, $lMid, $lPost) = (rc($lSeq), rc($lPost), rc($lMid), rc($lPre));
-        $preTrim = min($sStart, $lLen - $lEnd);
-        $postTrim = min($sLen - $sEnd, $lStart);
-      } else {
-        ($sSeq, $sPre, $sMid, $sPost) = (rc($sSeq), rc($sPost), rc($sMid), rc($sPre));
-        $preTrim = min($sLen - $sEnd, $lStart);
-        $postTrim = min($sStart, $lLen - $lEnd);
-      }
-    }
     my $trimTotal = ($preTrim + $postTrim);
     if($trimTotal <= $projOpts->{"trimlimit"}){
+      my $sPre = substr($sSeq, 0, $sStart);
+      my $lPre = substr($lSeq, 0, $lStart);
+      my $sMid = substr($sSeq, $sStart, $sEnd-$sStart);
+      my $lMid = substr($lSeq, $lStart, $lEnd-$lStart);
+      my $sPost = substr($sSeq, $sEnd);
+      my $lPost = substr($lSeq, $lEnd);
       my $sPreTrim = substr($sPre, length($sPre)-$preTrim);
       my $sPostTrim = substr($sPost, 0, $postTrim);
       my $lPreTrim = substr($lPre, length($lPre)-$preTrim);
@@ -240,6 +247,7 @@ while(<>){
         $replacementSeqs{$sName}{fullName} =
           sprintf("%s [%s %s]", $newSeqID, $sName, $lName);
         $replacementSeqs{$sName}{sequence} = $alConsensus;
+        # printf(STDERR "Match: $sName\n");
       }
       if(!exists($replacementSeqs{$lName}{score}) ||
          ($trimTotal < $replacementSeqs{$lName}{score}) ||
@@ -250,8 +258,15 @@ while(<>){
         $replacementSeqs{$lName}{fullName} =
           sprintf("%s [%s %s]", $newSeqID, $sName, $lName);
         $replacementSeqs{$lName}{sequence} = $alConsensus;
+        # printf(STDERR "Match: $lName\n");
       }
+    } else {
+      # printf(STDERR "Rejecting match '%s' vs '%s': too many bases trimmed (%d [%d,%d] [%d,%d])\n",
+      #        $qName, $tName, $trimTotal, $sStart, $lStart, $sLen-$sEnd, $lLen-$lEnd);
     }
+  } elsif($pid >= $projOpts->{"pid"}){
+    printf(STDERR "Rejecting match '%s' vs '%s': identity (%f) too low\n",
+           $qName, $tName, $pid);
   }
 }
 printf(STDERR " done\n");
@@ -269,11 +284,5 @@ foreach my $seqID (sort(keys(%targetSeqs))){
   if(!$displayed{$fullName}){
     printf(">%s\n%s\n", $fullName, $sequence);
     $displayed{$fullName} = 1;
-  }
-}
-
-foreach my $seqID (sort(keys(%replacementSeqs))){
-  if(!$displayed{$seqID}){
-    print(STDERR "No match for $seqID\n");
   }
 }
