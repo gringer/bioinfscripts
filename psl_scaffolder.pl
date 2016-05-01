@@ -70,11 +70,12 @@ my @pslFiles = ();
 my $projOpts =
   {
    "query" => 0, # contig file for query sequences
+   "prefix" => "psl_scaffold_", # prefix for contig names
    "pid" => 90, # percent ID threshold
    "trimlimit" => 50, # max number of overlapping bases outside match region
   };
 
-GetOptions($projOpts, 'query=s', 'pid=i', 'trimlimit=i');
+GetOptions($projOpts, 'query=s', 'pid=i', 'trimlimit=i', 'prefix=s');
 
 # process remaining command line arguments (hopefully only PSL files)
 while (@ARGV) {
@@ -146,10 +147,10 @@ while(<>){
       $tStarts, @rest) = @fields;
   if(!$tStarts){
     pod2usage({-exitVal => 1,
-               -message => sprintf(" Error: mapping file doesn't look like a ".
-                                   "PSL file ".
-                                   "(expecting >=21 tab-separated values)",
-                                   $projOpts->{"query"}),
+               -message => sprintf(" Error: mapping file doesn't look ".
+                                   "like a PSL file (expecting".
+                                   ">=21 tab-separated values, got %d)",
+                                  scalar(@fields)),
                -verbose => 0});
   }
   ## calculate percent identity
@@ -237,7 +238,7 @@ while(<>){
           substr($lPre, 0, length($lPre) - $preTrim).
             $alConsensus.
               substr($sPost, $postTrim).substr($lPost, $postTrim);
-      my $newSeqID = sprintf("psl_scaffold_%d", $nextScaffoldID++);
+      my $newSeqID = sprintf("%s_%d", $projOpts->{"prefix"}, $nextScaffoldID++);
       if(!exists($replacementSeqs{$sName}{score}) ||
          ($trimTotal < $replacementSeqs{$sName}{score}) ||
          (($trimTotal == $replacementSeqs{$sName}{score}) &&
@@ -264,9 +265,9 @@ while(<>){
       # printf(STDERR "Rejecting match '%s' vs '%s': too many bases trimmed (%d [%d,%d] [%d,%d])\n",
       #        $qName, $tName, $trimTotal, $sStart, $lStart, $sLen-$sEnd, $lLen-$lEnd);
     }
-  } elsif($pid >= $projOpts->{"pid"}){
-    printf(STDERR "Rejecting match '%s' vs '%s': identity (%f) too low\n",
-           $qName, $tName, $pid);
+  } elsif($pid < $projOpts->{"pid"}){
+    # printf(STDERR "Rejecting match '%s' vs '%s': identity (%f) too low\n",
+    #      $qName, $tName, $pid);
   }
 }
 printf(STDERR " done\n");
