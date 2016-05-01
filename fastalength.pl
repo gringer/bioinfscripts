@@ -53,6 +53,7 @@ if($seq){
   } else {
     printf(">%s [%d bp]\n", $seqID, length($seq));
   }
+  push(@lengths, length($seq));
 }
 
 ## calculate statistics

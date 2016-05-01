@@ -67,8 +67,8 @@ while(<>){
 
 if($seqID){
   if($qual){
-    printf("@%s [rc]\n%s\n+\n%s\n", $seqID, rc($seq), scalar(reverse($qual)));
+    printf("@%s [RC]\n%s\n+\n%s\n", $seqID, rc($seq), scalar(reverse($qual)));
   } else {
-    printf(">%s [rc]\n%s\n", $seqID, rc($seq));
+    printf(">%s [RC]\n%s\n", $seqID, rc($seq));
   }
 }
