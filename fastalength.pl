@@ -2,7 +2,7 @@
 use warnings;
 use strict;
 
-my $sortable = 0; # false
+my $sortable = 1; # true
 
 sub SIConvert{
   my ($val) = @_;
@@ -22,6 +22,11 @@ sub SIConvert{
 if($ARGV[0] eq "-s"){
   shift(@ARGV);
   $sortable = 1; # true
+}
+
+if($ARGV[0] eq "-f"){
+  shift(@ARGV);
+  $sortable = 0; # false
 }
 
 my $seq = "";
