@@ -19,14 +19,15 @@ sub SIConvert{
 }
 
 
-if($ARGV[0] eq "-s"){
-  shift(@ARGV);
-  $sortable = 1; # true
-}
-
-if($ARGV[0] eq "-f"){
-  shift(@ARGV);
-  $sortable = 0; # false
+if(@ARGV){
+  my $arg = shift(@ARGV);
+  if($arg eq "-s"){
+    $sortable = 1; # true
+  }  elsif($arg eq "-f"){
+    $sortable = 0; # false
+  } else {
+    push(@ARGV, $arg);
+  }
 }
 
 my $seq = "";
