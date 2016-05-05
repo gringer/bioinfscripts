@@ -7,8 +7,9 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $idFileName = "";
 my $quiet = 0;
+my $minLength = 0;
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet) or
+GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet, "minLength=i" => \$minLength) or
   die("Error in command line arguments");
 
 my %idsToGet = ();
@@ -54,7 +55,7 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID){
+      if($seqID && (length($seq) > $minLength)){
         if($qual){
           printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
         } else {
@@ -63,7 +64,7 @@ while(<>){
       }
       $seq = "";
       $qual = "";
-      if(exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
+      if(!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
         $seqID = $newSeqID;
       } else {
         $seqID = "";
@@ -82,7 +83,7 @@ while(<>){
   }
 }
 
-if($seqID){
+if($seqID && (length($seq) > $minLength)){
   if($qual){
     printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
   } else {
