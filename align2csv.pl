@@ -41,7 +41,6 @@ while(<>){
       }
     }
     if(!($ins || $del) && ($r ne $q)){
-#    if($r ne $q){
       printf("%s,%s,%05d,%s,%s\n", $nameQ, $nameR, $refPos, $r, $q);
     }
   }
