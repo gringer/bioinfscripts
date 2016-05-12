@@ -206,63 +206,74 @@ if(!@queryNames){
 
 # convert to Entrez query
 my @formattedTerms = map{$_.'[Accession]'} @queryNames;
-my $query = 'term='.join (" OR ", @formattedTerms);
 
-my $ua = LWP::UserAgent->new;
+while(@formattedTerms){
+  ## search for (at most) 200 accessions at a time
+  my @formattedSub = splice(@formattedTerms, 0, 200);
+  my $query = 'term='.join (" OR ", @formattedSub);
+  $totalReceived = 0;
 
-# use equery to get list of IDs
-my $shortenedQuery = $query;
-$shortenedQuery =~ s/^(.{10}).*(.{10})$/$1...$2/;
-printf(STDERR "querying IDs for '%s' in database '%s'... ", 
-       $query, $database);
-#       $shortenedQuery, $database);
-my $searchURL = $esearchURL.join("&",$dbquery,$query,$searchParams);
-printf(STDERR "URL[%s]... ", $searchURL) if ($verbose > 1);
-my %searchResult = %{XMLin(get($searchURL))};
-my %fetchResult = ();
-if(exists($searchResult{'WebEnv'})){
+  my $ua = LWP::UserAgent->new;
+
+  # use equery to get list of IDs
+  my $shortenedQuery = $query;
+  $shortenedQuery =~ s/^(.{50}).*(.{50})$/$1...$2/;
+  printf(STDERR "querying IDs for '%s' in database '%s'... ",
+         $shortenedQuery, $database);
+  my $searchURL = $esearchURL.join("&",$dbquery,$query,$searchParams);
+  printf(STDERR "URL[%s]... ", $searchURL) if ($verbose > 1);
+  my $res = $ua->post($searchURL);
+  if (!$res->is_success) {
+    printf(STDERR "Error: failed to fetch results\n");
+    printf(STDERR "%s\n", $res->status_line);
+    exit(3);
+  }
+  my %searchResult = %{XMLin($res->content)};
+  my %fetchResult = ();
+  if (exists($searchResult{'WebEnv'})) {
     printf(STDERR "done\n");
     # retrieve environment/query for easier retrieval of results
     my $webEnv = 'WebEnv='.$searchResult{'WebEnv'};
     my $queryKey = 'query_key='.$searchResult{'QueryKey'};
-    while($totalReceived < $searchResult{'Count'}){
-        # use efetch to get actual results
-        printf(STDERR "retrieving %d results for '%s' in database '%s' ...",
-               ($searchResult{'Count'} - $totalReceived), $shortenedQuery, 
-               $database);
-        my $resultStart = sprintf("retstart=%d",$totalReceived);
-        my $fetchURL = $efetchURL.join("&",$dbquery,$webEnv,$queryKey,
-                                           $fetchParams,$resultStart);
-        printf(STDERR "URL[%s]...", $fetchURL) if ($verbose > 1);
-        my $res = $ua->get($fetchURL);
-        if($res->is_success){
-            my $content = $res->content;
-            if($content =~ />/){
-                for (split /^/, $content){
-                    if(/^>/){
-                        $resultsReceived++;
-                    }
-                    if(!/^\s*$/){
-                        print;
-                    }
-                }
+    while ($totalReceived < $searchResult{'Count'}) {
+      # use efetch to get actual results
+      printf(STDERR "retrieving %d results for '%s' in database '%s' ...",
+             ($searchResult{'Count'} - $totalReceived), $shortenedQuery, 
+             $database);
+      my $resultStart = sprintf("retstart=%d",$totalReceived);
+      my $fetchURL = $efetchURL.join("&",$dbquery,$webEnv,$queryKey,
+                                     $fetchParams,$resultStart);
+      printf(STDERR "URL[%s]...", $fetchURL) if ($verbose > 1);
+      my $res = $ua->get($fetchURL);
+      if ($res->is_success) {
+        my $content = $res->content;
+        if ($content =~ />/) {
+          for (split /^/, $content) {
+            if (/^>/) {
+              $resultsReceived++;
             }
-            printf(STDERR " done (%d results received)\n", $resultsReceived);
-        } else {
-            printf(STDERR "Error: failed to fetch results\n");
-            exit(3);
+            if (!/^\s*$/) {
+              print;
+            }
+          }
         }
-        if($resultsReceived == 0){
-            printf(STDERR "Warning: no more results received, ".
-                   "but more expected\n");
-            $totalReceived = $searchResult{'Count'};
-        }
-        $totalReceived += $resultsReceived;
-        $resultsReceived = 0;
+        printf(STDERR " done (%d results received)\n", $resultsReceived);
+      } else {
+        printf(STDERR "Error: failed to fetch results\n");
+        exit(3);
+      }
+      if ($resultsReceived == 0) {
+        printf(STDERR "Warning: no more results received, ".
+               "but more expected\n");
+        $totalReceived = $searchResult{'Count'};
+      }
+      $totalReceived += $resultsReceived;
+      $resultsReceived = 0;
     }
-} elsif (exists($searchResult{'ERROR'})) {
+  } elsif (exists($searchResult{'ERROR'})) {
     printf(STDERR "failed to find any results [%s]\n", 
            $searchResult{'ERROR'});
-} else {
+  } else {
     printf(STDERR "failed to find any results\n");
+  }
 }
