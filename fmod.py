@@ -15,6 +15,7 @@ from math import sin, asin, pi, log, exp, sqrt
 
 def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
          speed=1.0, volume=0.8, logScale=True):
+    oldRate = oldRate * speed
     logRange = log(maxFreq) - log(minFreq)
     linRange = maxFreq - minFreq
     meanSig = sum(signal) / len(signal)
@@ -34,7 +35,7 @@ def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
         signal)) if logScale else (
             map(lambda x: (x/100) * linRange + minFreq, signal))
     # number of sound samples per signal sample
-    newPerOld  = (float(newRate) / (float(oldRate) * speed))
+    newPerOld  = (float(newRate) / (float(oldRate)))
     amp = [0] * int(len(signal) * newPerOld)
     # start in first quadrant [0..pi/2)
     quadrant = 0
@@ -79,7 +80,8 @@ with open(sys.argv[1], "rb") as f:
     fmodOut = wave.open('out.wav', 'w')
     fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
     fmod(outFile=fmodOut, signal=data, minFreq=1, maxFreq=rate/2,
-             oldRate=rate, newRate=outRate, volume=0.05)
+         speed=1,
+         oldRate=rate, newRate=outRate, volume=0.05)
     fmodOut.close()
 
     #with open ("out.raw", "wb") as soundFile:
