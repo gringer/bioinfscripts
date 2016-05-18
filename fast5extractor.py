@@ -176,17 +176,23 @@ def generate_raw(fileName, callID="000", medianWindow=21):
         else:
             array("H",runningMedian(outData, M=medianWindow)).tofile(sys.stdout)
 
-if len(sys.argv) < 3:
+def usageQuit():
+    sys.stderr.write('Error: No file or directory provided in arguments\n\n')
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
+    sys.stderr.write('  where <dataType> is one of the following:\n')
+    sys.stderr.write('    fastq    - extract base-called fastq data\n')
+    sys.stderr.write('    event    - extract model event matrix\n')
+    sys.stderr.write('    rawbumpy - extract raw data without smoothing\n')
+    sys.stderr.write('    raw:     - raw data, running-median smoothing\n')
     sys.exit(1)
 
+if len(sys.argv) < 3:
+    usageQuit()
+
 dataType = sys.argv[1]
-if(not dataType in ("fastq","fasta","event","raw")):
+if(not dataType in ("fastq","fasta","event","raw", "rawbumpy")):
     sys.stderr.write('Error: Incorrect dataType\n\n')
-    sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
-    sys.exit(1)
+    usageQuit()
 
 fileArg = sys.argv[2]
 seenHeader = False
@@ -204,7 +210,7 @@ if(os.path.isdir(fileArg)):
                     generate_fastq(os.path.join(dirPath, fileName))
                 elif(dataType == "raw"):
                     sys.stderr.write(" Error: raw output only works for single files!\n")
-                    sys.exit(1)
+                    usageQuit()
                 fc -= 1
                 seenHeader = True
                 if(fc == 1):
@@ -218,8 +224,7 @@ elif(os.path.isfile(fileArg)):
         generate_fastq(fileArg)
     elif(dataType == "raw"):
         generate_raw(fileArg)
+    elif(dataType == "rawbumpy"):
+        generate_raw(fileArg, medianWindow=1)
 else:
-    sys.stderr.write('Error: No file or directory provided in arguments\n\n')
-    sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of {fastq, event, raw}\n')
-    sys.exit(1)
+    usageQuit()
