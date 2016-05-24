@@ -80,6 +80,10 @@ def generate_fastq(fileName, callID="000"):
         readNameStr = str(readName)
       seqBase1D = "/Analyses/Basecall_1D_%s" % callID
       seqBase2D = "/Analyses/Basecall_2D_%s" % callID
+      v1_2File = False
+      if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
+          seqBase1D = seqBase2D
+          v1_2File = True
       badEvt = False
       if(seqBase1D in h5File):
           baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
