@@ -24,7 +24,6 @@ usage <- function(){
   cat("\n");
 }
 
-
 dataFile <- FALSE; # marker chromosome location <other fields> value
 valThreshold <- 0;
 useNormDistForMax <- FALSE;
@@ -42,9 +41,9 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     if(dataFile == FALSE){
       dataFile <- commandArgs(TRUE)[argLoc];
     } else{
-      cat("Error: More than one input file specified\n");
-      usage();
-      quit(save = "no", status=1);
+        cat("Error: More than one input file specified\n",dataFile);
+        usage();
+        quit(save = "no", status=1);
     }
   } else {
     parsed <- FALSE;
@@ -148,21 +147,17 @@ cs.stats$startPoint <- c(0,cumsum(as.numeric(cs.stats$Assembled)))[-length(cs.st
 
 # takes about 10s on melinus with T1D data
 cat("Reading data file...", file = stderr());
-retVal = grep(pattern = "^\\D+$", x = readLines(gzfile(dataFile), n = 1), perl = TRUE);
+retVal = grep(pattern = "^\\D+$", x = readLines(dataFile, n = 1), perl = TRUE);
 marker.statistics <- NULL;
-if(length(retVal) > 0){
-  markers.statistics <- read.table(gzfile(dataFile), header = TRUE);
-} else {
-  markers.statistics <- read.table(gzfile(dataFile), header = FALSE);
-}
+markers.statistics <- read.table(dataFile, header = (length(retVal) > 0));
 colnames(markers.statistics)[1] <- "Marker";
 if(length(grep("/",markers.statistics[1,2])) > 0){
-  colnames(markers.statistics)[2] <- "Mutation";
-  colnames(markers.statistics)[3] <- "Chromosome";
-  colnames(markers.statistics)[4] <- "Location";
+    colnames(markers.statistics)[2] <- "Mutation";
+    colnames(markers.statistics)[3] <- "Chromosome";
+    colnames(markers.statistics)[4] <- "Location";
 } else {
-  colnames(markers.statistics)[2] <- "Chromosome";
-  colnames(markers.statistics)[3] <- "Location";
+    colnames(markers.statistics)[2] <- "Chromosome";
+    colnames(markers.statistics)[3] <- "Location";
 }
 #rownames(markers.statistics) <- markers.statistics$Marker;
 colnames(markers.statistics)[length(colnames(markers.statistics))] <- "Value";
@@ -199,8 +194,9 @@ markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
 markers.filtered$Value[markers.filtered$Value > valRange[2]] <- valRange[2]+0.01;
 cat("done!\n", file = stderr());
 
-cat("Generating PDF...", file = stderr());
-pdf("chromosome_plot.pdf", paper = "a4r", width = 11, height = 8);
+cat("Generating png...", file = stderr());
+X11.options(antialias="gray");
+png("chromosome_plot.png", width = 1280, height = 720, pointsize=12);
 #svg("chromosome_plot.svg", width = 11, height = 8);
 #Cairo_png("chromosome_plot.png", width = 11, height = 8);
 if(!(is.expression(valueText)) && (valueText == FALSE)){

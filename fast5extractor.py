@@ -139,22 +139,23 @@ def runningMedian(seq, M):
     if(M % 2 == 0):
         sys.stderr.write("Error: median window size must be odd")
         sys.exit(1)
-    seq = iter(seq) 
-    s = []   
+    seq = iter(seq)
+    s = []
     m = M // 2
-    s = [item for item in islice(seq,M)]    
+    s = [item for item in islice(seq,M)]
     d = deque(s)
-    median = lambda : s[m]# if bool(M&1) else (s[m-1]+s[m])/2
-    s.sort()    
-    medians = [median()]   
+    median = lambda : s[m] # if bool(M&1) else (s[m-1]+s[m])/2
+    s.sort()
+    medians = [median()] * (m+1) # set initial m samples to median of first M
     for item in seq:
         old = d.popleft()          # pop oldest from left
         d.append(item)             # push newest in from right
-        del s[bisect_left(s, old)] # locate insertion point and then remove old 
-        insort(s, item)            # insert newest such that new sort is not required        
-        medians.append(median())  
+        del s[bisect_left(s, old)] # locate insertion point and then remove old
+        insort(s, item)            # insert newest such that new sort is not required
+        medians.append(median())
+    medians.extend([median()] * (m))
     return medians
-              
+
 def generate_raw(fileName, callID="000", medianWindow=21):
     '''write out raw sequence from fast5, with optional running median
        smoothing, return False if not present'''
@@ -187,7 +188,7 @@ def usageQuit():
     sys.stderr.write('    fastq    - extract base-called fastq data\n')
     sys.stderr.write('    event    - extract model event matrix\n')
     sys.stderr.write('    rawbumpy - extract raw data without smoothing\n')
-    sys.stderr.write('    raw:     - raw data, running-median smoothing\n')
+    sys.stderr.write('    raw      - raw data, running-median smoothing\n')
     sys.exit(1)
 
 if len(sys.argv) < 3:
