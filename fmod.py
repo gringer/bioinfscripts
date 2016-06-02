@@ -79,9 +79,9 @@ with open(sys.argv[1], "rb") as f:
     #print(",".join(map(str,newData[:50])))
     fmodOut = wave.open('out.wav', 'w')
     fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
-    fmod(outFile=fmodOut, signal=data, minFreq=1, maxFreq=rate/2,
-         speed=1,
-         oldRate=rate, newRate=outRate, volume=0.05)
+    fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=rate/4,
+         speed=0.0625,
+         oldRate=rate, newRate=outRate, volume=0.03)
     fmodOut.close()
 
     #with open ("out.raw", "wb") as soundFile:
