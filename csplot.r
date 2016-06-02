@@ -16,6 +16,7 @@ usage <- function(){
   cat("-threshold <value> : Only display data greater than <value>\n");
   cat("-pointsize <value> : Multiplier for size of points in graph\n");
   cat("-invert            : Invert values (lowest value at top of graph)\n");
+  cat("-transparent       : Use slightly transparent points\n");
   cat("-normlimit         : Limit value display to a reasonable normal distribution\n");
   cat("-limit <value>     : Trim values greater than <limit>\n");
   cat("-keep <value>      : Keep a proportion of values below the cutoff value\n");
@@ -29,6 +30,7 @@ valThreshold <- 0;
 useNormDistForMax <- FALSE;
 invertAxis <- FALSE;
 trimLimit <- FALSE;
+transparent <- FALSE;
 sizeMul <- 2;
 filterKeepProp <- 0; # keep this proportion of markers below threshold cutoff
 filterRandom <- (filterKeepProp > 0); # keep a random sampling of markers below threshold cutoff
@@ -67,6 +69,11 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     if(commandArgs(TRUE)[argLoc] == "-invert"){
       invertAxis <- TRUE;
       cat("Using normal distribution to set upper graph limit\n");
+      parsed <- TRUE;
+    }
+    if(commandArgs(TRUE)[argLoc] == "-transparent"){
+      transparent <- TRUE;
+      cat("Points will have partial transparency\n");
       parsed <- TRUE;
     }
     if(commandArgs(TRUE)[argLoc] == "-normlimit"){
@@ -170,7 +177,11 @@ markers.statistics$Chromosome <- sub("Y","24",markers.statistics$Chromosome,
 markers.statistics$Chromosome <- sub("MT?","25",markers.statistics$Chromosome,
                                      ignore.case = TRUE);
 markers.statistics$Chromosome <- as.numeric(markers.statistics$Chromosome);
-markers.statistics$Colour <- rep(c("#0000FF","#00A0FF"),13)[markers.statistics$Chromosome];
+if(transparent){
+    markers.statistics$Colour <- rep(c("#0000FF80","#00A0FF80"),13)[markers.statistics$Chromosome];
+} else {
+    markers.statistics$Colour <- rep(c("#0000FF","#00A0FF"),13)[markers.statistics$Chromosome];
+}
 markers.statistics$startPoint <- cs.stats[markers.statistics$Chromosome,]$startPoint;
 cat("done!\n", file = stderr());
 
@@ -185,18 +196,24 @@ if(!(trimLimit == FALSE)){
 }
 ## valRange <- c(min(markers.statistics$Value, na.rm = TRUE),
 ##               min(maxVal, max(markers.statistics$Value, na.rm = TRUE)));
-valRange <- c(min(markers.statistics$Value, na.rm = TRUE),
+valRange <- c(min(c(0,markers.statistics$Value), na.rm = TRUE),
               min(maxVal, max(markers.statistics$Value, na.rm = TRUE)));
 markers.statistics$randVal <- runif(dim(markers.statistics)[1]);
 markers.filtered <- subset(markers.statistics, (Value >= valThreshold) | (filterRandom & (randVal < filterKeepProp)));
-markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
-  rep(c("#800000","#A04040"),13)[markers.filtered$Chromosome[markers.filtered$Value > valRange[2]]];
+if(transparent){
+    markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
+        rep(c("#80000080","#A0404080"),13)[markers.filtered$Chromosome[markers.filtered$Value > valRange[2]]];
+} else {
+    markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
+        rep(c("#800000","#A04040"),13)[markers.filtered$Chromosome[markers.filtered$Value > valRange[2]]];
+}
 markers.filtered$Value[markers.filtered$Value > valRange[2]] <- valRange[2]+0.01;
 cat("done!\n", file = stderr());
 
 cat("Generating png...", file = stderr());
 X11.options(antialias="gray");
-png("chromosome_plot.png", width = 1280, height = 720, pointsize=12);
+png("chromosome_plot.png", width = 1280, height = 720, pointsize=12,
+    antialias="gray");
 #svg("chromosome_plot.svg", width = 11, height = 8);
 #Cairo_png("chromosome_plot.png", width = 11, height = 8);
 if(!(is.expression(valueText)) && (valueText == FALSE)){
