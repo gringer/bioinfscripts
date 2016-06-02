@@ -23,6 +23,44 @@ from bisect import insort, bisect_left
 from struct import pack
 from array import array
 
+def generate_eventdir_matrix(fileName, header=True, direction=None):
+    '''write out event matrix from fast5, return False if not present'''
+    try:
+        h5File = h5py.File(fileName, 'r')
+        h5File.close()
+    except:
+        return False
+    with h5py.File(fileName, 'r') as h5File:
+      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+      channel = str(channelMeta["channel_number"])
+      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
+      dir = "template" if (direction=="f") else "complement";
+      eventBase = "/Analyses/EventDetection_000/Reads/"
+      readNames = h5File[eventBase]
+      mux = 0
+      # get mux for the read
+      for readName in readNames:
+        readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
+        outMeta = h5File[readMetaLocation].attrs
+        mux = str(outMeta["start_mux"])
+      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir);
+      readNames = h5File[eventLocation]
+      headers = h5File[eventLocation].dtype
+      outData = h5File[eventLocation][()] # load entire array into memory
+      if(header):
+          sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
+      # There *has* to be an easier way to do this while preserving
+      # precision. Reading element by element seems very inefficient
+      for line in outData:
+        res=map(str,line)
+        # data seems to be normalised, but just in case it isn't, here's the formula for
+        # future reference: pA = (raw + offset)*range/digitisation
+        # (using channelMeta[("offset", "range", "digitisation")])
+        # - might also be useful to know start_time from outMeta["start_time"]
+        #   which should be subtracted from event/start
+        sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
+
 def generate_event_matrix(fileName, header=True):
     '''write out event matrix from fast5, return False if not present'''
     try:
@@ -53,6 +91,8 @@ def generate_event_matrix(fileName, header=True):
           # data seems to be normalised, but just in case it isn't, here's the formula for
           # future reference: pA = (raw + offset)*range/digitisation
           # (using channelMeta[("offset", "range", "digitisation")])
+          # - might also be useful to know start_time from outMeta["start_time"]
+          #   which should be subtracted from event/start
           sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
 
 def generate_fastq(fileName, callID="000"):
@@ -98,7 +138,7 @@ def generate_fastq(fileName, callID="000"):
                       moveLoc = index
               outEvt = h5File[eventTemp][:] # load events into memory
               mCount = Counter(map(lambda x: x[moveLoc], outEvt))
-              badThresh = (sum(mCount.values()) * 0.05)
+              badThresh = (sum(mCount.values()) * 0.1)
               #sys.stdout.write("#%s\n" % str(mCount))
               if(((mCount[0] + mCount[2]) < (badThresh*4)) and
                  ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseTemp in h5File)):
@@ -115,7 +155,7 @@ def generate_fastq(fileName, callID="000"):
                       moveLoc = index
               outEvt = h5File[eventComp][:] # load events into memory
               mCount = Counter(map(lambda x: x[moveLoc], outEvt))
-              badThresh = (sum(mCount.values()) * 0.05)
+              badThresh = (sum(mCount.values()) * 0.1)
               #sys.stdout.write("#%s\n" % str(mCount))
               if(((mCount[0] + mCount[2]) < badThresh*4) and
                  ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseComp in h5File)):
@@ -124,6 +164,8 @@ def generate_fastq(fileName, callID="000"):
                   sys.stdout.write(str(h5File[baseComp][()][1:]))
               else:
                   badEvt = True
+          if(badEvt):
+              sys.stderr.write(" [rejected: bad event data] ")
       else:
           sys.stderr.write("seqBase1D [%s] not in file\n" % seqBase1D)
       if((not badEvt) and seqBase2D in h5File):
@@ -186,7 +228,9 @@ def usageQuit():
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
     sys.stderr.write('  where <dataType> is one of the following:\n')
     sys.stderr.write('    fastq    - extract base-called fastq data\n')
-    sys.stderr.write('    event    - extract model event matrix\n')
+    sys.stderr.write('    event    - extract uncalled model event matrix\n')
+    sys.stderr.write('    eventfwd - extract model event matrix (template)\n')
+    sys.stderr.write('    eventrev - extract model event matrix (complement)\n')
     sys.stderr.write('    rawbumpy - extract raw data without smoothing\n')
     sys.stderr.write('    raw      - raw data, running-median smoothing\n')
     sys.exit(1)
@@ -195,7 +239,8 @@ if len(sys.argv) < 3:
     usageQuit()
 
 dataType = sys.argv[1]
-if(not dataType in ("fastq","fasta","event","raw", "rawbumpy")):
+if(not dataType in ("fastq", "fasta", "event", "eventfwd",
+                    "eventrev", "raw", "rawbumpy")):
     sys.stderr.write('Error: Incorrect dataType\n\n')
     usageQuit()
 
@@ -225,6 +270,10 @@ if(os.path.isdir(fileArg)):
 elif(os.path.isfile(fileArg)):
     if(dataType == "event"):
         generate_event_matrix(fileArg)
+    elif(dataType == "eventfwd"):
+        generate_eventdir_matrix(fileArg, direction="f")
+    elif(dataType == "eventrev"):
+        generate_eventdir_matrix(fileArg, direction="r")
     elif(dataType == "fastq"):
         generate_fastq(fileArg)
     elif(dataType == "raw"):
