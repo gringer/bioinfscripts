@@ -85,10 +85,11 @@ while(<>){
   }
 }
 
-if($seqID && ($reverse xor ($seq =~ /$filterSeqs/))){
-  if($qual){
-    printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
-  } else {
-    printf(">%s\n%s\n", $seqID, $seq);
-  }
+if($seqID && (!$filterSeqs || ($reverse xor ($seq =~ /$filterSeqs/)))
+   && (!$filterIDs || ($reverse xor ($seqID =~ /$filterIDs/)))){
+    if($qual){
+	printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+    } else {
+	printf(">%s\n%s\n", $seqID, $seq);
+    }
 }
