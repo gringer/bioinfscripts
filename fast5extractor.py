@@ -139,8 +139,9 @@ def generate_fastq(fileName, callID="000"):
               outEvt = h5File[eventTemp][:] # load events into memory
               mCount = Counter(map(lambda x: x[moveLoc], outEvt))
               badThresh = (sum(mCount.values()) * 0.1)
-              #sys.stdout.write("#%s\n" % str(mCount))
-              if(((mCount[0] + mCount[2]) < (badThresh*4)) and
+              zeroThresh = (sum(mCount.values()) * 0.9)
+              # With R9, moves of 0 are more common, so ignore them unless it's *really* bad
+              if(((mCount[2]) < (badThresh*2)) and (mCount[0] < zeroThresh) and
                  ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseTemp in h5File)):
                   sys.stdout.write("@1Dtemp_"+
                                    "_".join((runID,channel,mux,readName)) + " ")
@@ -156,8 +157,8 @@ def generate_fastq(fileName, callID="000"):
               outEvt = h5File[eventComp][:] # load events into memory
               mCount = Counter(map(lambda x: x[moveLoc], outEvt))
               badThresh = (sum(mCount.values()) * 0.1)
-              #sys.stdout.write("#%s\n" % str(mCount))
-              if(((mCount[0] + mCount[2]) < badThresh*4) and
+              # ignore 0 moves for R9 (unless they're *really* bad
+              if(((mCount[2]) < badThresh*2) and (mCount[0] < zeroThresh) and
                  ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseComp in h5File)):
                   sys.stdout.write("@1Dcomp_"+
                                    "_".join((runID,channel,mux,readName)) + " ")
