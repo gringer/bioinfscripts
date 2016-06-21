@@ -124,7 +124,7 @@ def generate_fastq(fileName, callID="000"):
       if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
           seqBase1D = seqBase2D
           v1_2File = True
-      badEvt = False
+      badEvt = 0
       if(seqBase1D in h5File):
           baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
           baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
@@ -147,7 +147,7 @@ def generate_fastq(fileName, callID="000"):
                                    "_".join((runID,channel,mux,readName)) + " ")
                   sys.stdout.write(str(h5File[baseTemp][()][1:]))
               else:
-                  badEvt = True
+                  badEvt += 1
           if(eventComp in h5File):
               headers = h5File[eventComp].dtype
               moveLoc = -1
@@ -164,12 +164,12 @@ def generate_fastq(fileName, callID="000"):
                                    "_".join((runID,channel,mux,readName)) + " ")
                   sys.stdout.write(str(h5File[baseComp][()][1:]))
               else:
-                  badEvt = True
-          if(badEvt):
+                  badEvt += 1
+          if(badEvt == 2):
               sys.stderr.write(" [rejected: bad event data] ")
       else:
           sys.stderr.write("seqBase1D [%s] not in file\n" % seqBase1D)
-      if((not badEvt) and seqBase2D in h5File):
+      if((badEvt < 2) and seqBase2D in h5File):
           base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
           if((base2D in h5File)):
               sys.stdout.write("@2Dcons_"+
@@ -199,6 +199,44 @@ def runningMedian(seq, M):
     medians.extend([median()] * (m))
     return medians
 
+def generate_telemetry(fileName, callID="000"):
+    '''Create telemetry matrix from read files; any per-read summary 
+       statistics that would be useful to know'''
+    try:
+        h5File = h5py.File(fileName, 'r')
+        h5File.close()
+    except:
+        return False
+    with h5py.File(fileName, 'r') as h5File:
+      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+      channel = str(channelMeta["channel_number"])
+      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
+      eventBase = "/Analyses/EventDetection_000/Reads/"
+      readNames = h5File[eventBase]
+      mux = 0
+      # get mux for the read
+      for readName in readNames:
+        readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
+        outMeta = h5File[readMetaLocation].attrs
+        mux = str(outMeta["start_mux"])
+      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir);
+      readNames = h5File[eventLocation]
+      headers = h5File[eventLocation].dtype
+      outData = h5File[eventLocation][()] # load entire array into memory
+      if(header):
+          sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
+      # There *has* to be an easier way to do this while preserving
+      # precision. Reading element by element seems very inefficient
+      for line in outData:
+        res=map(str,line)
+        # data seems to be normalised, but just in case it isn't, here's the formula for
+        # future reference: pA = (raw + offset)*range/digitisation
+        # (using channelMeta[("offset", "range", "digitisation")])
+        # - might also be useful to know start_time from outMeta["start_time"]
+        #   which should be subtracted from event/start
+        sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
+
 def generate_raw(fileName, callID="000", medianWindow=21):
     '''write out raw sequence from fast5, with optional running median
        smoothing, return False if not present'''
@@ -227,13 +265,14 @@ def generate_raw(fileName, callID="000", medianWindow=21):
 def usageQuit():
     sys.stderr.write('Error: No file or directory provided in arguments\n\n')
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
-    sys.stderr.write('  where <dataType> is one of the following:\n')
-    sys.stderr.write('    fastq    - extract base-called fastq data\n')
-    sys.stderr.write('    event    - extract uncalled model event matrix\n')
-    sys.stderr.write('    eventfwd - extract model event matrix (template)\n')
-    sys.stderr.write('    eventrev - extract model event matrix (complement)\n')
-    sys.stderr.write('    rawbumpy - extract raw data without smoothing\n')
-    sys.stderr.write('    raw      - raw data, running-median smoothing\n')
+    sys.stderr.write(' where <dataType> is one of the following:\n')
+    sys.stderr.write('  fastq     - extract base-called fastq data\n')
+    sys.stderr.write('  event     - extract uncalled model event matrix\n')
+    sys.stderr.write('  eventfwd  - extract model event matrix (template)\n')
+    sys.stderr.write('  eventrev  - extract model event matrix (complement)\n')
+    sys.stderr.write('  telemetry - extract read statistics matrix\n')
+    sys.stderr.write('  rawbumpy  - extract raw data without smoothing\n')
+    sys.stderr.write('  raw       - raw data, running-median smoothing\n')
     sys.exit(1)
 
 if len(sys.argv) < 3:
@@ -241,7 +280,7 @@ if len(sys.argv) < 3:
 
 dataType = sys.argv[1]
 if(not dataType in ("fastq", "fasta", "event", "eventfwd",
-                    "eventrev", "raw", "rawbumpy")):
+                    "eventrev", "telemetry", "raw", "rawbumpy")):
     sys.stderr.write('Error: Incorrect dataType\n\n')
     usageQuit()
 
@@ -257,6 +296,8 @@ if(os.path.isdir(fileArg)):
                 sys.stderr.write("  Processing file '%s'..." % fileName)
                 if(dataType == "event"):
                     generate_event_matrix(os.path.join(dirPath, fileName), not seenHeader)
+                elif(dataType == "telemetry"):
+                    generate_telemetry_matrix(os.path.join(dirPath, fileName), not seenHeader)
                 elif(dataType == "fastq"):
                     generate_fastq(os.path.join(dirPath, fileName))
                 elif(dataType == "raw"):
@@ -275,6 +316,8 @@ elif(os.path.isfile(fileArg)):
         generate_eventdir_matrix(fileArg, direction="f")
     elif(dataType == "eventrev"):
         generate_eventdir_matrix(fileArg, direction="r")
+    elif(dataType == "telemetry"):
+        generate_telemetry_matrix(fileArg)
     elif(dataType == "fastq"):
         generate_fastq(fileArg)
     elif(dataType == "raw"):
