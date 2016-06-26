@@ -2,8 +2,6 @@
 use warnings;
 use strict;
 
-my $sortable = 1; # true
-
 sub SIConvert{
   my ($val) = @_;
   my @largePrefixes = ("k", "M", "G");
@@ -18,48 +16,43 @@ sub SIConvert{
   return(sprintf("%.12g %s", $val, $prefix));
 }
 
-
-if(@ARGV){
-  my $arg = shift(@ARGV);
-  if($arg eq "-s"){
-    $sortable = 1; # true
-  }  elsif($arg eq "-f"){
-    $sortable = 0; # false
-  } else {
-    push(@ARGV, $arg);
-  }
-}
-
-my $seq = "";
-my $seqID = "";
-my $keep = 0;
 my @lengths = ();
+my $inQual = 0; # false
+my $seqID = "";
+my $qualID = "";
+my $seq = "";
+my $qual = "";
 while(<>){
   chomp;
-  if(/^>((.+?)( .*?\s*)?)$/){
-    my $newID = $1;
-    my $newShortID = $2;
-    if($seq){
-      if($sortable){
+  chomp;
+  if(!$inQual){
+    if(/^(>|@)((.+?)( .*?\s*)?)$/){
+      my $newSeqID = $2;
+      my $newShortID = $3;
+      if($seqID){
         printf("%d %s\n", length($seq), $seqID);
-      } else {
-        printf(">%s [%d bp]\n", $seqID, length($seq));
+	push(@lengths, length($seq));
       }
-      push(@lengths, length($seq));
+      $seq = "";
+      $qual = "";
+      $seqID = $newSeqID;
+    } elsif(/^\+(.*)$/) {
+      $inQual = 1; # true
+      $qualID = $1;
+    } else {
+      $seq .= $_;
     }
-    $seq = "";
-    $seqID = $newID;
   } else {
-    $seq .= $_;
+    $qual .= $_;
+    if(length($qual) >= length($seq)){
+      $inQual = 0; # false
+    }
   }
 }
-if($seq){
-  if($sortable){
+
+if($seqID){
     printf("%d %s\n", length($seq), $seqID);
-  } else {
-    printf(">%s [%d bp]\n", $seqID, length($seq));
-  }
-  push(@lengths, length($seq));
+    push(@lengths, length($seq));
 }
 
 ## calculate statistics
