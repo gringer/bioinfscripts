@@ -28,6 +28,9 @@ while(@ARGV){
 
 if($idFileName){
   # read sequence IDs from input file
+  if(!$quiet){
+    printf(STDERR "Attempting to read from input file ($idFileName)\n");
+  }
   my $idFile = new IO::Uncompress::Gunzip "$idFileName" or
     die "Unable to open $idFileName\n";
   while(<$idFile>){
