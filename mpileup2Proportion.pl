@@ -22,16 +22,22 @@ use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
 my $colourChange = 0;
-my $minCoverage = 0;
+my $minCoverage = -1;
 my $writeCounts = 0;
+my $writeConsensus = 0;
 
 GetOptions("mincoverage=i" => \$minCoverage,
 	   "samplename=s" => \$sampleName,
+           "fasta=s" => \$writeConsensus,
            "colour!" => \$colourChange,
            "counts!" => \$writeCounts) or
   die("Error in command line arguments");
 
 my $assembly = "";
+
+if($writeConsensus && !$sampleName){
+  $sampleName = "samplename";
+}
 
 if($sampleName){
   printf("%s,", "Sample");
@@ -40,22 +46,86 @@ if($colourChange){
   warn("Warning: Colour change calculations are not yet properly implemented");
   printf("%s,%s,%s,%s,%s,%s\n",
          "Assembly", "Position", "Coverage", "ref", "cR",
-         "0,1,2,3,d,i");
+         "0,1,2,3,d,i,InsMode");
 } else {
   printf("%s,%s,%s,%s,%s,%s\n",
          "Assembly", "Position", "Coverage", "ref", "cR",
-         "pR,A,C,G,T,d,i");
+         "pR,A,C,G,T,d,i,InsMode");
+}
+
+my %refSeqs = ();
+if($writeConsensus){
+  if(!(-f $writeConsensus)){
+    die("ERROR: Reference fasta sequence '${writeConsensus}' does not exist");
+  }
+  open(my $refFile, "<", $writeConsensus);
+  my $seqID = "";
+  while($refFile){ # parse FASTA file
+    chomp;
+    if(/^>(.+)$/){
+      $seqID = $1;
+      $refSeqs{$seqID} = "*"; # placeholder to simplify substr
+    } else {
+      $refSeqs{$seqID} .= $_;
+    }
+  }
+  close($refFile);
 }
 
 my %deletions = ();
+my $oldRefName = "";
+my $lastBase = 0;
+my $consensusFileName = $sampleName.".cons.fasta";
+my $consensusFile = 0;
+
+if($writeConsensus){
+ if(!(-f $consensusFileName)){
+    warn("Warning: Consensus output file '${consensusFileName}' already exists, choosing another name:");
+    my $nextID = 0;
+    while(-f $consensusFileName){
+      $consensusFileName = $sampleName.($nextID++).".cons.fasta";
+    }
+    warn("  chosen '${consensusFileName}'");
+  }
+ open($consensusFile, ">", $consensusFileName);
+}
 
 while(<>){
-#  print(STDERR $_);
   chomp;
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
+  if($oldRefName ne $refName){ ## complete old sequence (if any)
+    if($oldRefName){
+      print($consensusFile substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+    }
+    $oldRefName = $refName;
+    $lastBase = 0;
+    if($writeConsensus){ ## write new sequence header
+      print($consensusFile ">${refName}\n");
+    }
+  }
+  if($writeConsensus){
+    if(++$lastBase < $pos){  ## print sequence from the intervening gap
+      print($consensusFile substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase))."\n");
+    }
+    print($consensusFile $refAllele); ## print current reference allele
+    $lastBase = $pos;
+  }
   $_ = uc($bases);
-  my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
-  s/\^.//g;
+  ## process insertions
+  my %insertCounts = ();
+  my $i = 0;
+  my $maxInserts = 0;
+  my $maxInsertSeq = "";
+  while(s/\+[0-9]+([ACGTNacgtn]+)//){
+    my $insertSeq = $1;
+    $insertCounts{$insertSeq}++;
+    if($insertCounts{$insertSeq} > $maxInserts){
+      $maxInsertSeq = $insertSeq;
+      $maxInserts = $insertCounts{$insertSeq};
+    }
+    $i++;
+  }
+  s/\^.//g; # remove "start of read" + "read mapping quality" indicators
   ## process deletions
   while(s/-([0-9]+)[ACGTNacgtn]+//){
       ## deletions are a special case, because *all* deletions are replaced with a single '*'
@@ -65,7 +135,7 @@ while(<>){
 	  $deletions{$pos+$i}++;
       }
   }
-  ## remove insertions
+  ## remove stray insertions and deletions (which shouldn't exist...)
   s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
   my $r = tr/,.//;
   #my $d = tr/*//;
@@ -76,7 +146,9 @@ while(<>){
   my $g = tr/gG//;
   my $t = tr/tT//;
   my ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = (0, 0, 0, 0, 0, 0, 0);
-  my $total = $i+$r+$d+$a+$c+$g+$t;
+  # note: insertions don't count towards total coverage,
+  #       they are additional features attached to a read base
+  my $total = $r+$d+$a+$c+$g+$t;
   # if($refAllele eq "A"){
   #   $a = $r;
   # } elsif($refAllele eq "C"){
@@ -97,11 +169,25 @@ while(<>){
       }
       printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
       if($writeCounts){
-        printf("%d,%0.2f,%d,%d,%d,%d,%d,%d\n",
+        printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
                $r, $pr, $a, $c, $g, $t, $d, $i);
+        if($maxInsertSeq){
+          printf(",%s;%d", $maxInsertSeq, $maxInserts);
+        }
       } else {
-        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
+        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
                $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+        if($maxInsertSeq){
+          printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $i);
+        }
       }
+      print("\n");
   }
+}
+
+if($writeConsensus){
+  if($oldRefName){
+    print($consensusFile substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+  }
+  close($consensusFile);
 }
