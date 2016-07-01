@@ -22,7 +22,7 @@ use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
 my $colourChange = 0;
-my $minCoverage = -1;
+my $minCoverage = 0;
 my $writeCounts = 0;
 my $writeConsensus = 0;
 
@@ -93,6 +93,9 @@ if($writeConsensus){
 while(<>){
   chomp;
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
+  if($cov < $minCoverage){
+    next;
+  }
   if($oldRefName ne $refName){ ## complete old sequence (if any)
     if($oldRefName){
       print($consensusFile substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
@@ -163,26 +166,24 @@ while(<>){
     ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = map {$_ / $total}
       ($r, $i, $d, $a, $c, $g, $t);
   }
-  if($cov > $minCoverage){
-      if($sampleName){
-	  printf("%s,", $sampleName);
-      }
-      printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-      if($writeCounts){
-        printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
-               $r, $pr, $a, $c, $g, $t, $d, $i);
-        if($maxInsertSeq){
-          printf(",%s;%d", $maxInsertSeq, $maxInserts);
-        }
-      } else {
-        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
-               $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
-        if($maxInsertSeq){
-          printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $i);
-        }
-      }
-      print("\n");
+  if($sampleName){
+    printf("%s,", $sampleName);
   }
+  printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
+  if($writeCounts){
+    printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
+           $r, $pr, $a, $c, $g, $t, $d, $i);
+    if($maxInsertSeq){
+      printf(",%s;%d", $maxInsertSeq, $maxInserts);
+    }
+  } else {
+    printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+           $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+    if($maxInsertSeq){
+      printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $i);
+    }
+  }
+  print("\n");
 }
 
 if($writeConsensus){
