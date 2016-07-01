@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
+use Data::Dumper::Simple;
 
 # mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
 #   output from 'samtools mpileup'
@@ -25,6 +26,7 @@ my $colourChange = 0;
 my $minCoverage = 0;
 my $writeCounts = 0;
 my $writeConsensus = 0;
+my $consThresholdCov = 5;
 
 GetOptions("mincoverage=i" => \$minCoverage,
 	   "samplename=s" => \$sampleName,
@@ -110,13 +112,12 @@ while(<>){
     if(++$lastBase < $pos){  ## print sequence from the intervening gap
       print($consensusFile substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
     }
-    print($consensusFile $refAllele); ## print current reference allele
     $lastBase = $pos;
   }
   $_ = uc($bases);
   ## process insertions
   my %insertCounts = ();
-  my $i = 0;
+  my $ic = 0;
   my $maxInserts = 0;
   my $maxInsertSeq = "";
   while(s/\+[0-9]+([ACGTNacgtn]+)//){
@@ -126,7 +127,7 @@ while(<>){
       $maxInsertSeq = $insertSeq;
       $maxInserts = $insertCounts{$insertSeq};
     }
-    $i++;
+    $ic++;
   }
   s/\^.//g; # remove "start of read" + "read mapping quality" indicators
   ## process deletions
@@ -140,31 +141,31 @@ while(<>){
   }
   ## remove stray insertions and deletions (which shouldn't exist...)
   s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
-  my $r = tr/,.//;
-  #my $d = tr/*//;
-  my $d = $deletions{$pos}?$deletions{$pos}:0;
+  my $rc = tr/,.//;
+  #my $dc = tr/*//;
+  my $dc = $deletions{$pos}?$deletions{$pos}:0;
   delete($deletions{$pos});
-  my $a = tr/aA//;
-  my $c = tr/cC//;
-  my $g = tr/gG//;
-  my $t = tr/tT//;
+  my $ac = tr/aA//;
+  my $cc = tr/cC//;
+  my $gc = tr/gG//;
+  my $tc = tr/tT//;
   my ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = (0, 0, 0, 0, 0, 0, 0);
   # note: insertions don't count towards total coverage,
   #       they are additional features attached to a read base
-  my $total = $r+$d+$a+$c+$g+$t;
+  my $total = $rc+$dc+$ac+$cc+$gc+$tc;
   # if($refAllele eq "A"){
-  #   $a = $r;
+  #   $ac = $rc;
   # } elsif($refAllele eq "C"){
-  #   $c = $r;
+  #   $cc = $rc;
   # } elsif($refAllele eq "G"){
-  #   $g = $r;
+  #   $gc = $rc;
   # } elsif($refAllele eq "T"){
-  #   $t = $r;
+  #   $tc = $rc;
   # }
   # was previously $coverage, not $total
   if($total > 0){
     ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = map {$_ / $total}
-      ($r, $i, $d, $a, $c, $g, $t);
+      ($rc, $ic, $dc, $ac, $cc, $gc, $tc);
   }
   if($sampleName){
     printf("%s,", $sampleName);
@@ -172,15 +173,39 @@ while(<>){
   printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
   if($writeCounts){
     printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
-           $r, $pr, $a, $c, $g, $t, $d, $i);
+           $rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
     if($maxInsertSeq){
       printf(",%s;%d", $maxInsertSeq, $maxInserts);
     }
   } else {
     printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
-           $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+           $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
     if($maxInsertSeq){
-      printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $i);
+      printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+    }
+  }
+  if($writeConsensus){
+    ## determine consensus allele
+    my $consAllele = $refAllele;
+    if(($total > $consThresholdCov) && ($pr < 0.5)){
+      my %consCounts =
+        (r => $rc,
+         A => $ac,
+         C => $cc,
+         G => $gc,
+         T => $tc,
+         d => $dc);
+      my @sortedAlleles = sort {$consCounts{$b} <=> $consCounts{$a}} keys(%consCounts);
+      if($sortedAlleles[0] eq "d"){
+        $consAllele = "";
+      } elsif($sortedAlleles[0] ne "r"){
+        $consAllele = $sortedAlleles[0];
+      }
+    }
+    #print(",$consAllele");
+    print($consensusFile $consAllele); ## print current reference allele
+    if($pi > 0.5){ ## more than 50% of reads suggest insertion
+      print($consensusFile uc($maxInsertSeq));
     }
   }
   print("\n");
