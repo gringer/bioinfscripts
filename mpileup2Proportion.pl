@@ -60,7 +60,7 @@ if($writeConsensus){
   }
   open(my $refFile, "<", $writeConsensus);
   my $seqID = "";
-  while($refFile){ # parse FASTA file
+  while(<$refFile>){ # parse FASTA file
     chomp;
     if(/^>(.+)$/){
       $seqID = $1;
@@ -76,10 +76,10 @@ my %deletions = ();
 my $oldRefName = "";
 my $lastBase = 0;
 my $consensusFileName = $sampleName.".cons.fasta";
-my $consensusFile = 0;
+my $consensusFile = undef;
 
 if($writeConsensus){
- if(!(-f $consensusFileName)){
+ if(-f $consensusFileName){
     warn("Warning: Consensus output file '${consensusFileName}' already exists, choosing another name:");
     my $nextID = 0;
     while(-f $consensusFileName){
@@ -105,7 +105,7 @@ while(<>){
   }
   if($writeConsensus){
     if(++$lastBase < $pos){  ## print sequence from the intervening gap
-      print($consensusFile substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase))."\n");
+      print($consensusFile substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
     }
     print($consensusFile $refAllele); ## print current reference allele
     $lastBase = $pos;
