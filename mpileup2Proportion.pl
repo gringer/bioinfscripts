@@ -66,7 +66,7 @@ if($writeConsensus){
   my $seqID = "";
   while(<$refFile>){ # parse FASTA file
     chomp;
-    if(/^>(.+)$/){
+    if(/^>(.+?)( .*)?$/){
       $seqID = $1;
       $refSeqs{$seqID} = "*"; # placeholder to simplify substr
     } else {
