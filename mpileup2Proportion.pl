@@ -41,18 +41,20 @@ if($writeConsensus && !$sampleName){
   $sampleName = "samplename";
 }
 
-if($sampleName){
-  printf("%s,", "Sample");
-}
-if($colourChange){
-  warn("Warning: Colour change calculations are not yet properly implemented");
-  printf("%s,%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "ref", "cR",
-         "0,1,2,3,d,i,InsMode");
-} else {
-  printf("%s,%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "ref", "cR",
-         "pR,A,C,G,T,d,i,InsMode");
+if(!$writeConsensus){
+  if($sampleName){
+    printf("%s,", "Sample");
+  }
+  if($colourChange){
+    warn("Warning: Colour change calculations are not yet properly implemented");
+    printf("%s,%s,%s,%s,%s,%s\n",
+           "Assembly", "Position", "Coverage", "ref", "cR",
+           "0,1,2,3,d,i,InsMode");
+  } else {
+    printf("%s,%s,%s,%s,%s,%s\n",
+           "Assembly", "Position", "Coverage", "ref", "cR",
+           "pR,A,C,G,T,d,i,InsMode");
+  }
 }
 
 my %refSeqs = ();
@@ -77,20 +79,6 @@ if($writeConsensus){
 my %deletions = ();
 my $oldRefName = "";
 my $lastBase = 0;
-my $consensusFileName = $sampleName.".cons.fasta";
-my $consensusFile = undef;
-
-if($writeConsensus){
- if(-f $consensusFileName){
-    warn("Warning: Consensus output file '${consensusFileName}' already exists, choosing another name:");
-    my $nextID = 0;
-    while(-f $consensusFileName){
-      $consensusFileName = $sampleName.($nextID++).".cons.fasta";
-    }
-    warn("  chosen '${consensusFileName}'");
-  }
- open($consensusFile, ">", $consensusFileName);
-}
 
 while(<>){
   chomp;
@@ -100,17 +88,17 @@ while(<>){
   }
   if($oldRefName ne $refName){ ## complete old sequence (if any)
     if($oldRefName){
-      print($consensusFile substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+      print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
     }
     $oldRefName = $refName;
     $lastBase = 0;
     if($writeConsensus){ ## write new sequence header
-      print($consensusFile ">${refName}\n");
+      print(">${refName}\n");
     }
   }
   if($writeConsensus){
     if(++$lastBase < $pos){  ## print sequence from the intervening gap
-      print($consensusFile substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
+      print(substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
     }
     $lastBase = $pos;
   }
@@ -167,23 +155,6 @@ while(<>){
     ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = map {$_ / $total}
       ($rc, $ic, $dc, $ac, $cc, $gc, $tc);
   }
-  if($sampleName){
-    printf("%s,", $sampleName);
-  }
-  printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-  if($writeCounts){
-    printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
-           $rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
-    if($maxInsertSeq){
-      printf(",%s;%d", $maxInsertSeq, $maxInserts);
-    }
-  } else {
-    printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
-           $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
-    if($maxInsertSeq){
-      printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
-    }
-  }
   if($writeConsensus){
     ## determine consensus allele
     my $consAllele = $refAllele;
@@ -201,19 +172,43 @@ while(<>){
       } elsif($sortedAlleles[0] ne "r"){
         $consAllele = $sortedAlleles[0];
       }
+      printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
+      printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+             $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      if($maxInsertSeq){
+        printf(STDERR ",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+      }
+      print(STDERR "\n");
     }
     #print(",$consAllele");
-    print($consensusFile $consAllele); ## print current reference allele
+    print($consAllele); ## print current reference allele
     if($pi > 0.5){ ## more than 50% of reads suggest insertion
-      print($consensusFile uc($maxInsertSeq));
+      print(uc($maxInsertSeq));
     }
+  } else {
+    if($sampleName){
+      printf("%s,", $sampleName);
+    }
+    printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
+    if($writeCounts){
+      printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
+             $rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
+      if($maxInsertSeq){
+        printf(",%s;%d", $maxInsertSeq, $maxInserts);
+      }
+    } else {
+      printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+             $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      if($maxInsertSeq){
+        printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+      }
+    }
+    print("\n");
   }
-  print("\n");
 }
 
 if($writeConsensus){
   if($oldRefName){
-    print($consensusFile substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+    print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
   }
-  close($consensusFile);
 }
