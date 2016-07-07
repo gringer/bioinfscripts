@@ -262,9 +262,9 @@ close($jobInFile);
 print(STDERR "done!\n");
 
 $templateFields{"logoLocation"} =
-  $Bin."/../Work/images/gringene_8_logo_imageonly.pdf";
+  "/bioinf/Work/images/gringene_8_logo_imageonly.pdf";
 if(!$templateFields{"invNumber"}){
-  my $invoicePath = $Bin."/../invnumber.txt";
+  my $invoicePath = "../invnumber.txt";
   $templateFields{"invNumber"} = qx{cat ${invoicePath}};
   chomp($templateFields{"invNumber"});
   $templateFields{"invNumber"}++;

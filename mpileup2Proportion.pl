@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
+use Data::Dumper::Simple;
 
 # mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
 #   output from 'samtools mpileup'
@@ -24,38 +25,99 @@ my $sampleName = "";
 my $colourChange = 0;
 my $minCoverage = 0;
 my $writeCounts = 0;
+my $writeConsensus = 0;
+my $consThresholdCov = 5;
 
 GetOptions("mincoverage=i" => \$minCoverage,
 	   "samplename=s" => \$sampleName,
+           "fasta=s" => \$writeConsensus,
            "colour!" => \$colourChange,
            "counts!" => \$writeCounts) or
   die("Error in command line arguments");
 
 my $assembly = "";
 
-if($sampleName){
-  printf("%s,", "Sample");
+if($writeConsensus && !$sampleName){
+  $sampleName = "samplename";
 }
-if($colourChange){
-  warn("Warning: Colour change calculations are not yet properly implemented");
-  printf("%s,%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "ref", "cR",
-         "0,1,2,3,d,i");
-} else {
-  printf("%s,%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "ref", "cR",
-         "pR,A,C,G,T,d,i");
+
+if(!$writeConsensus){
+  if($sampleName){
+    printf("%s,", "Sample");
+  }
+  if($colourChange){
+    warn("Warning: Colour change calculations are not yet properly implemented");
+    printf("%s,%s,%s,%s,%s,%s\n",
+           "Assembly", "Position", "Coverage", "ref", "cR",
+           "0,1,2,3,d,i,InsMode");
+  } else {
+    printf("%s,%s,%s,%s,%s,%s\n",
+           "Assembly", "Position", "Coverage", "ref", "cR",
+           "pR,A,C,G,T,d,i,InsMode");
+  }
+}
+
+my %refSeqs = ();
+if($writeConsensus){
+  if(!(-f $writeConsensus)){
+    die("ERROR: Reference fasta sequence '${writeConsensus}' does not exist");
+  }
+  open(my $refFile, "<", $writeConsensus);
+  my $seqID = "";
+  while(<$refFile>){ # parse FASTA file
+    chomp;
+    if(/^>(.+?)( .*)?$/){
+      $seqID = $1;
+      $refSeqs{$seqID} = "*"; # placeholder to simplify substr
+    } else {
+      $refSeqs{$seqID} .= $_;
+    }
+  }
+  close($refFile);
 }
 
 my %deletions = ();
+my $oldRefName = "";
+my $lastBase = 0;
 
 while(<>){
-#  print(STDERR $_);
   chomp;
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
+  if($cov < $minCoverage){
+    next;
+  }
+  if($oldRefName ne $refName){ ## complete old sequence (if any)
+    if($oldRefName){
+      print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+    }
+    $oldRefName = $refName;
+    $lastBase = 0;
+    if($writeConsensus){ ## write new sequence header
+      print(">${refName}\n");
+    }
+  }
+  if($writeConsensus){
+    if(++$lastBase < $pos){  ## print sequence from the intervening gap
+      print(substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
+    }
+    $lastBase = $pos;
+  }
   $_ = uc($bases);
-  my $i = scalar(m/\+[0-9]+[ACGTNacgtn]+/g);
-  s/\^.//g;
+  ## process insertions
+  my %insertCounts = ();
+  my $ic = 0;
+  my $maxInserts = 0;
+  my $maxInsertSeq = "";
+  while(s/\+[0-9]+([ACGTNacgtn]+)//){
+    my $insertSeq = $1;
+    $insertCounts{$insertSeq}++;
+    if($insertCounts{$insertSeq} > $maxInserts){
+      $maxInsertSeq = $insertSeq;
+      $maxInserts = $insertCounts{$insertSeq};
+    }
+    $ic++;
+  }
+  s/\^.//g; # remove "start of read" + "read mapping quality" indicators
   ## process deletions
   while(s/-([0-9]+)[ACGTNacgtn]+//){
       ## deletions are a special case, because *all* deletions are replaced with a single '*'
@@ -65,43 +127,88 @@ while(<>){
 	  $deletions{$pos+$i}++;
       }
   }
-  ## remove insertions
+  ## remove stray insertions and deletions (which shouldn't exist...)
   s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
-  my $r = tr/,.//;
-  #my $d = tr/*//;
-  my $d = $deletions{$pos}?$deletions{$pos}:0;
+  my $rc = tr/,.//;
+  #my $dc = tr/*//;
+  my $dc = $deletions{$pos}?$deletions{$pos}:0;
   delete($deletions{$pos});
-  my $a = tr/aA//;
-  my $c = tr/cC//;
-  my $g = tr/gG//;
-  my $t = tr/tT//;
+  my $ac = tr/aA//;
+  my $cc = tr/cC//;
+  my $gc = tr/gG//;
+  my $tc = tr/tT//;
   my ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = (0, 0, 0, 0, 0, 0, 0);
-  my $total = $i+$r+$d+$a+$c+$g+$t;
+  # note: insertions don't count towards total coverage,
+  #       they are additional features attached to a read base
+  my $total = $rc+$dc+$ac+$cc+$gc+$tc;
   # if($refAllele eq "A"){
-  #   $a = $r;
+  #   $ac = $rc;
   # } elsif($refAllele eq "C"){
-  #   $c = $r;
+  #   $cc = $rc;
   # } elsif($refAllele eq "G"){
-  #   $g = $r;
+  #   $gc = $rc;
   # } elsif($refAllele eq "T"){
-  #   $t = $r;
+  #   $tc = $rc;
   # }
   # was previously $coverage, not $total
   if($total > 0){
     ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = map {$_ / $total}
-      ($r, $i, $d, $a, $c, $g, $t);
+      ($rc, $ic, $dc, $ac, $cc, $gc, $tc);
   }
-  if($cov > $minCoverage){
-      if($sampleName){
-	  printf("%s,", $sampleName);
+  if($writeConsensus){
+    ## determine consensus allele
+    my $consAllele = $refAllele;
+    if(($total > $consThresholdCov) && ($pr < 0.5)){
+      my %consCounts =
+        (r => $rc,
+         A => $ac,
+         C => $cc,
+         G => $gc,
+         T => $tc,
+         d => $dc);
+      my @sortedAlleles = sort {$consCounts{$b} <=> $consCounts{$a}} keys(%consCounts);
+      if($sortedAlleles[0] eq "d"){
+        $consAllele = "";
+      } elsif($sortedAlleles[0] ne "r"){
+        $consAllele = $sortedAlleles[0];
       }
-      printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-      if($writeCounts){
-        printf("%d,%0.2f,%d,%d,%d,%d,%d,%d\n",
-               $r, $pr, $a, $c, $g, $t, $d, $i);
-      } else {
-        printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f\n",
-               $r, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
+      printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+             $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      if($maxInsertSeq){
+        printf(STDERR ",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
       }
+      print(STDERR "\n");
+    }
+    #print(",$consAllele");
+    print($consAllele); ## print current reference allele
+    if($pi > 0.5){ ## more than 50% of reads suggest insertion
+      print(uc($maxInsertSeq));
+    }
+  } else {
+    if($sampleName){
+      printf("%s,", $sampleName);
+    }
+    printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
+    if($writeCounts){
+      printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
+             $rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
+      if($maxInsertSeq){
+        printf(",%s;%d", $maxInsertSeq, $maxInserts);
+      }
+    } else {
+      printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+             $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      if($maxInsertSeq){
+        printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+      }
+    }
+    print("\n");
+  }
+}
+
+if($writeConsensus){
+  if($oldRefName){
+    print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
   }
 }
