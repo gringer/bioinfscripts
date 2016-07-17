@@ -13,7 +13,11 @@ use SVG;
 
 use POSIX qw(fmod);
 
-our $VERSION = "1.94";
+## more verbose traceback on errors
+use Carp 'verbose'; 
+$SIG{ __DIE__ } = \&Carp::confess;
+
+our $VERSION = "1.95";
 
 =head1 NAME
 
@@ -107,7 +111,7 @@ Zoom to projected extents of shape(s)
 
 =item B<-zoom> I<minX,Y,maxX,Y>
 
-Zoom to projected extents
+Zoom to projected extents, typically with I<X> = longitude, I<Y> = latitude
 
 =item B<-nokey>
 
@@ -257,12 +261,16 @@ sub project {
   foreach my $inPoint (@input) {
     my $newLong = 0;
     my $newLat = 0;
-    if (UNIVERSAL::can($inPoint,'isa')) {
+    if ((ref($inPoint) eq "Geo::ShapeFile::Point") || 
+	(ref($inPoint) eq "HASH")) {
       $newLong = $inPoint->X;
       $newLat = $inPoint->Y;
-    } else {
+    } elsif (ref($inPoint) eq "ARRAY") {
       $newLong = $inPoint->[0];
       $newLat = $inPoint->[1];
+    } else {
+	my $ptRefType = ref($inPoint);
+	die("Error: expecting a reference to an array or a hash [actual reference type: $ptRefType]");
     }
     my $pt = transform($options, [$newLong, $newLat]);
     my $px = ($pt -> [0]) * $xScale * $projWidth;
@@ -757,9 +765,12 @@ GetOptions($projOpts, 'lines!', 'key!', 'pointSize|psize=f', 'roundDP|round=i',
            'landcol=s' => \$landColour,
            'seacol=s' => \$seaColour,
            'bordcol=s' => \$borderColour,
-           'subjects|sub=s@' => sub { $subjectNames{$_} = 1},
-           'politicals|pol=s@' => sub { $politicalNames{$_} = 1},
-           'only=s@' => sub { $onlyNames{$_} = 1},
+           'subjects|sub=s' => sub { my ($opt,$val) = @_;
+				     $subjectNames{$val} = 1},
+           'politicals|pol=s' => sub { my ($opt,$val) = @_;
+				       $politicalNames{$val} = 1},
+           'only=s' => sub { my ($opt,$val) = @_;
+			     $onlyNames{$val} = 1},
            'data=s@' => \@dataFiles,
            'man' => sub { pod2usage({-verbose => 3}) }
           );
@@ -777,7 +788,7 @@ while (@ARGV) {
     pod2usage({-exitVal => 2, -message => "Error: Invalid file extension for '$argument'. ".
                "Please use files with '.shp' extension\n"});
   } else {
-    pod2usage({-exitVal => 1, -message => "Error: Unknown command-line option or non-existent file, ".
+    pod2usage({-exitVal => 3, -message => "Error: Unknown command-line option or non-existent file, ".
             "'$argument'\n", -verbose => 0});
   }
 }
@@ -1105,13 +1116,15 @@ $printLines = 0 if ($printLines eq "");
 if ($projOpts->{"zoomed"}) {
   if($projOpts->{"manualZoom"}){
     warn("Detected a manual zoom\n") if $debugLevel > 0;
-    my @tmpPoints = (($projOpts->{"minX"},$projOpts->{"minY"}),
-                     ($projOpts->{"maxX"},$projOpts->{"maxY"}));
+    my @tmpPoints = ([$projOpts->{"minX"},$projOpts->{"minY"}],
+                     [$projOpts->{"maxX"},$projOpts->{"maxY"}]);
     my @projectedPoints = project($projOpts, \@tmpPoints);
-    for my $i ([0..3]){
-      printf(STDERR "$i: %0.2f -> %0.2f\n", $tmpPoints[$i], $projectedPoints[$i])
-        if($debugLevel > 0);
-    }
+    printf(STDERR "  min: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n", 
+	   $tmpPoints[0][0], $tmpPoints[0][1],
+	   $projectedPoints[0][0], $projectedPoints[0][1]);
+    printf(STDERR "  max: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n", 
+	   $tmpPoints[1][0], $tmpPoints[1][1],
+	   $projectedPoints[1][0], $projectedPoints[1][1]);
   }
   printf(STDERR "old SVG width: %0.2f\n", $projOpts->{"svgWidth"});
   printf(STDERR "old SVG height: %0.2f\n", $projOpts->{"svgHeight"});
@@ -1835,4 +1848,4 @@ PERFORMANCE OF THIS SOFTWARE.
 
 The most recent version of this code can be found at
 
-http://en.wikipedia.org/wiki/User:Gringer/perlshaper
+https://github.com/gringer/bioinfscripts/blob/master/perlshaper.pl
