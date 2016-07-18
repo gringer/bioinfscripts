@@ -1003,8 +1003,8 @@ if ($centreCountry) {
     for my $shapeNum (1 .. ($shapeCount)) { # 1-based indexing
       my %data = $shp->get_dbf_record($shapeNum);
       my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-      if (($countryName eq $countryMatch) || ($sovName eq $countryMatch) ||
-	  ("$sovName/$countryName" eq $countryMatch)) {
+      if (($countryName eq $centreCountry) || ($sovName eq $centreCountry) ||
+	  ("$sovName/$countryName" eq $centreCountry)) {
         # found it, so find polygon extents in degrees
         my $shape = $shp->get_shp_record($shapeNum);
         my @shapePoints = $shape->points();
