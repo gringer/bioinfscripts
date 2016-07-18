@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose'; 
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "1.95";
+our $VERSION = "1.96";
 
 =head1 NAME
 
@@ -51,7 +51,7 @@ Identify centre of map (by longitude/latitude)
 
 =item B<-centre> I<ISO 3A-code>
 
-Identify centre of map (by target country)
+Identify centre of map (by target country). The target can be specified as 'I<sovCode>/I<countryCode>' for a stricter match.
 
 =item B<-data> I<file>
 
@@ -1003,7 +1003,8 @@ if ($centreCountry) {
     for my $shapeNum (1 .. ($shapeCount)) { # 1-based indexing
       my %data = $shp->get_dbf_record($shapeNum);
       my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-      if (($countryName eq $centreCountry) || ($sovName eq $centreCountry)) {
+      if (($countryName eq $countryMatch) || ($sovName eq $countryMatch) ||
+	  ("$sovName/$countryName" eq $countryMatch)) {
         # found it, so find polygon extents in degrees
         my $shape = $shp->get_shp_record($shapeNum);
         my @shapePoints = $shape->points();
@@ -1034,8 +1035,17 @@ if ($centreCountry) {
         my $midLat = ($minY + $maxY) / 2;
         $projOpts->{"centreLn"} = $midLong;
         $projOpts->{"centreLt"} = $midLat;
-        printf(STDERR "Found centre feature for '%s' at point (%s,%s)... ",
-               $countryName, $midLong, $midLat) if ($debugLevel> 0);
+	if($countryName eq $sovName){
+	    printf(STDERR "Found centre feature for ".
+		   "'%s' at point (%s,%s)... ",
+		   $countryName,
+		   $midLong, $midLat) if ($debugLevel> 0);
+	} else {
+	    printf(STDERR "Found centre feature for ".
+		   "'%s/%s' at point (%s,%s)... ",
+		   $sovName, $countryName,
+		   $midLong, $midLat) if ($debugLevel> 0);
+	}
       }
     }
     print(STDERR "done.\n") if ($debugLevel> 0);
@@ -1077,7 +1087,8 @@ if (keys(%zoomNames)) {
     for my $shapeNum (1 .. ($shapeCount)) { # 1-based indexing
       my %data = $shp->get_dbf_record($shapeNum);
       my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-      if (($zoomNames{$countryName}) || ($zoomNames{$sovName})) {
+      if (($zoomNames{$countryName}) || ($zoomNames{$sovName}) ||
+	  ($zoomNames{"$sovName/$countryName"})) {
         my $shape = $shp->get_shp_record($shapeNum);
         my @tmpPoints = $shape->points();
         my $pointCount = scalar(@tmpPoints);
@@ -1096,7 +1107,10 @@ if (keys(%zoomNames)) {
           $projOpts->{"maxY"} = $tmaxY
             if ((!exists($projOpts->{"maxY"}))
                 || ($projOpts->{"maxY"} < $tmaxY));
-          printf(STDERR "Found extent for '$countryName ($regionName)', ".
+	  my $findString = ($sovName eq $countryName) ? $sovName
+	      : "$sovName/$countryName";
+	  $findString .= " ($regionName)" if $regionName;
+          printf(STDERR "Found extent for '$findString', ".
                  "adjusting zoom box to (%s,%s)-(%s,%s)...",
                  $projOpts->{"minX"} + $projOpts->{"xAdj"},
                  $projOpts->{"minY"} + $projOpts->{"yAdj"},
@@ -1486,7 +1500,7 @@ foreach my $shpFileBase (@shpFileBases) {
       printf(STDERR "s") if ($debugLevel > 1);
     }
     my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-    if (keys(%onlyNames) &&
+    if (keys(%onlyNames) && !$onlyNames{"$sovName/$countryName"} &&
         !$onlyNames{$countryName} && !$onlyNames{$sovName}) {
       # if this country shouldn't be displayed, then don't proceed further
       next;
@@ -1553,6 +1567,7 @@ foreach my $shpFileBase (@shpFileBases) {
       my $fillCol = $landColour;
       my $strkCol = $borderColour;
       if (($politicalNames{$sovName}) || ($politicalNames{$countryName}) ||
+          ($politicalNames{"$sovName/$countryName"}) ||
           ($politicalNames{$regionName})) {
         # order makes sure if subject is political as well, it
         # will be coloured as a subject
@@ -1561,6 +1576,7 @@ foreach my $shpFileBase (@shpFileBases) {
         $partClass .= ' political';
       }
       if (($subjectNames{$sovName}) || ($subjectNames{$countryName}) ||
+          ($subjectNames{"$sovName/$countryName"}) ||
           ($subjectNames{$regionName})) {
         $fillCol = $subLandColour;
         $strkCol = $intBordColour;
