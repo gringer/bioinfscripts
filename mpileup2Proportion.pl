@@ -91,19 +91,19 @@ while(<>){
   if($cov < $minCoverage){
     next;
   }
-  if($oldRefName ne $refName){ ## complete old sequence (if any)
-    if(!$refSeqs{$oldRefName}){
-      print(STDERR "Warning: reference '${oldRefName}' not found\n");
-    } else {
-      if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
-        print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+  if($oldRefName ne $refName){
+    if($writeConsensus){  ## complete old sequence (if any)
+      if(!$refSeqs{$oldRefName}){
+        print(STDERR "Warning: reference '${oldRefName}' not found\n");
+      } else {
+        if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
+          print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+        }
       }
+      print(">${refName}\n"); ## write new sequence header
     }
     $oldRefName = $refName;
     $lastBase = 0;
-    if($writeConsensus){ ## write new sequence header
-      print(">${refName}\n");
-    }
   }
   if($writeConsensus){
     if(++$lastBase < $pos){  ## print sequence from the intervening gap
