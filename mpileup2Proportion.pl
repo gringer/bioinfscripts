@@ -55,6 +55,10 @@ if(!$writeConsensus){
            "Assembly", "Position", "Coverage", "ref", "cR",
            "pR,A,C,G,T,d,i,InsMode");
   }
+} else {
+    printf(STDERR "%s,%s,%s,%s,%s,%s\n",
+           "Assembly", "Position", "Coverage", "ref", "cR",
+           "pR,A,C,G,T,d,i,InsMode,Variant");
 }
 
 my %refSeqs = ();
@@ -83,12 +87,17 @@ my $lastBase = 0;
 while(<>){
   chomp;
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
+  my $observedDiff = 0; # false
   if($cov < $minCoverage){
     next;
   }
   if($oldRefName ne $refName){ ## complete old sequence (if any)
-    if($oldRefName){
-      print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+    if(!$refSeqs{$oldRefName}){
+      print(STDERR "Warning: reference '${oldRefName}' not found\n");
+    } else {
+      if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
+        print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+      }
     }
     $oldRefName = $refName;
     $lastBase = 0;
@@ -158,7 +167,7 @@ while(<>){
   if($writeConsensus){
     ## determine consensus allele
     my $consAllele = $refAllele;
-    if(($total > $consThresholdCov) && ($pr < 0.5)){
+    if(($total > $consThresholdCov) && (($pr < 0.5) || ($pi > 0.5))){
       my %consCounts =
         (r => $rc,
          A => $ac,
@@ -177,6 +186,10 @@ while(<>){
              $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
       if($maxInsertSeq){
         printf(STDERR ",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+        printf(STDERR ",[Insert %s]", $maxInsertSeq);
+      } else {
+        printf(STDERR ",");
+        printf(STDERR ",[%s -> %s]", $refAllele, $consAllele);
       }
       print(STDERR "\n");
     }
