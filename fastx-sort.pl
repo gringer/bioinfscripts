@@ -36,8 +36,8 @@ while(<>){
     if(/^(>|@)(.*)$/){
       my $newSeqID = $2;
       if($seqID){
-        if($newSeqID =~ /$searchPattern/){
-          $fastXStrs{$1} = ($qual) ?
+        if($seqID =~ /$searchPattern/){
+          $fastXStrs{$seqID} = ($qual) ?
             sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
             sprintf(">%s\n%s\n", $seqID, $seq);
         } else {
@@ -63,7 +63,7 @@ while(<>){
 
 if($seqID){
   if($seqID =~ /$searchPattern/){
-    $fastXStrs{$1} = ($qual) ?
+    $fastXStrs{$seqID} = ($qual) ?
       sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
       sprintf(">%s\n%s\n", $seqID, $seq);
   } else {
