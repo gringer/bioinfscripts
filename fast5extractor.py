@@ -278,7 +278,10 @@ def generate_dir_raw(fileName, callID="000", medianWindow=1, direction=None):
           return False
       seqBase1D = "/Analyses/Basecall_1D_%s" % callID
       dir = "complement" if (direction=="r") else "template"
-      eventMeta = h5File["%s/BaseCalled_%s/Events" % (seqBase1D, dir)].attrs
+      eventMetaBase = "%s/BaseCalled_%s/Events" % (seqBase1D, dir)
+      if(not eventMetaBase in h5File):
+          return False
+      eventMeta = h5File[eventMetaBase].attrs
       absRawStart = eventMeta["start_time"] * channelMeta["sampling_rate"]
       absRawEnd = (eventMeta["start_time"]
                 + eventMeta["duration"]) * channelMeta["sampling_rate"]
