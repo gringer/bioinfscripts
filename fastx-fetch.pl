@@ -8,8 +8,9 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 my $idFileName = "";
 my $quiet = 0;
 my $minLength = 0;
+my $maxLength = 10 ** 12; # 1 Tbp
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet, "minLength=i" => \$minLength) or
+GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet, "minLength=i" => \$minLength, "maxLength=i" => \$maxLength) or
   die("Error in command line arguments");
 
 my %idsToGet = ();
@@ -58,7 +59,7 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID && (length($seq) > $minLength)){
+      if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
         if($qual){
           printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
         } else {
@@ -86,7 +87,7 @@ while(<>){
   }
 }
 
-if($seqID && (length($seq) > $minLength)){
+if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
   if($qual){
     printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
   } else {
