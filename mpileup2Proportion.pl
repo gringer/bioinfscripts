@@ -22,16 +22,16 @@ use Data::Dumper::Simple;
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
-my $colourChange = 0;
 my $minCoverage = 0;
 my $writeCounts = 0;
 my $writeConsensus = 0;
 my $consThresholdCov = 5;
+my $deletionSens = 0.15;
 
 GetOptions("mincoverage=i" => \$minCoverage,
 	   "samplename=s" => \$sampleName,
+           "deletionsensitivity=s" => \$deletionSens,
            "fasta=s" => \$writeConsensus,
-           "colour!" => \$colourChange,
            "counts!" => \$writeCounts) or
   die("Error in command line arguments");
 
@@ -45,20 +45,13 @@ if(!$writeConsensus){
   if($sampleName){
     printf("%s,", "Sample");
   }
-  if($colourChange){
-    warn("Warning: Colour change calculations are not yet properly implemented");
-    printf("%s,%s,%s,%s,%s,%s\n",
-           "Assembly", "Position", "Coverage", "ref", "cR",
-           "0,1,2,3,d,i,InsMode");
-  } else {
-    printf("%s,%s,%s,%s,%s,%s\n",
-           "Assembly", "Position", "Coverage", "ref", "cR",
-           "pR,A,C,G,T,d,i,InsMode");
-  }
+  printf("%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "cR",
+         "pR,A,C,G,T,d,i,InsMode");
 } else {
-    printf(STDERR "%s,%s,%s,%s,%s,%s\n",
-           "Assembly", "Position", "Coverage", "ref", "cR",
-           "pR,A,C,G,T,d,i,InsMode,Variant");
+  printf(STDERR "%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "cR",
+         "pR,A,C,G,T,d,i,InsMode,Variant");
 }
 
 my %refSeqs = ();
@@ -94,7 +87,7 @@ while(<>){
   if($oldRefName ne $refName){
     if($writeConsensus){  ## complete old sequence (if any)
       if(!$refSeqs{$oldRefName}){
-        print(STDERR "Warning: reference '${oldRefName}' not found\n");
+        print(STDERR "Warning: reference '${oldRefName}' not found\n") unless ($oldRefName eq "");
       } else {
         if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
           print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
@@ -147,6 +140,7 @@ while(<>){
   my $gc = tr/gG//;
   my $tc = tr/tT//;
   my ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = (0, 0, 0, 0, 0, 0, 0);
+  my ($p0, $p1, $p2, $p3) = (0, 0, 0, 0);
   # note: insertions don't count towards total coverage,
   #       they are additional features attached to a read base
   my $total = $rc+$dc+$ac+$cc+$gc+$tc;
@@ -167,7 +161,8 @@ while(<>){
   if($writeConsensus){
     ## determine consensus allele
     my $consAllele = $refAllele;
-    if(($total > $consThresholdCov) && (($pr < 0.5) || ($pi > 0.5))){
+    if(($total > $consThresholdCov) &&
+       (($pr < 0.5) || ($pd > $deletionSens) || ($pi > 0.5))){
       my %consCounts =
         (r => $rc,
          A => $ac,
@@ -176,7 +171,7 @@ while(<>){
          T => $tc,
          d => $dc);
       my @sortedAlleles = sort {$consCounts{$b} <=> $consCounts{$a}} keys(%consCounts);
-      if($sortedAlleles[0] eq "d"){
+      if(($sortedAlleles[0] eq "d") || ($pd > $deletionSens)){
         $consAllele = "";
       } elsif($sortedAlleles[0] ne "r"){
         $consAllele = $sortedAlleles[0];
@@ -211,7 +206,7 @@ while(<>){
       }
     } else {
       printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
-             $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+               $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
       if($maxInsertSeq){
         printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
       }
