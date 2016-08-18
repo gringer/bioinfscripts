@@ -35,7 +35,7 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
       channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       channel = str(channelMeta["channel_number"])
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
-      dir = "template" if (direction=="f") else "complement";
+      dir = "complement" if (direction=="r") else "template"
       eventBase = "/Analyses/EventDetection_000/Reads/"
       readNames = h5File[eventBase]
       mux = 0
@@ -44,7 +44,7 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
         readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
         outMeta = h5File[readMetaLocation].attrs
         mux = str(outMeta["start_mux"])
-      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir);
+      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir)
       readNames = h5File[eventLocation]
       headers = h5File[eventLocation].dtype
       outData = h5File[eventLocation][()] # load entire array into memory
@@ -200,7 +200,7 @@ def runningMedian(seq, M):
     return medians
 
 def generate_telemetry(fileName, callID="000"):
-    '''Create telemetry matrix from read files; any per-read summary 
+    '''Create telemetry matrix from read files; any per-read summary
        statistics that would be useful to know'''
     try:
         h5File = h5py.File(fileName, 'r')
@@ -220,7 +220,7 @@ def generate_telemetry(fileName, callID="000"):
         readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
         outMeta = h5File[readMetaLocation].attrs
         mux = str(outMeta["start_mux"])
-      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir);
+      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir)
       readNames = h5File[eventLocation]
       headers = h5File[eventLocation].dtype
       outData = h5File[eventLocation][()] # load entire array into memory
@@ -262,6 +262,46 @@ def generate_raw(fileName, callID="000", medianWindow=21):
         else:
             array("H",runningMedian(outData, M=medianWindow)).tofile(sys.stdout)
 
+def generate_dir_raw(fileName, callID="000", medianWindow=1, direction=None):
+    '''write out directional raw sequence from fast5, return False if not present'''
+    try:
+        h5File = h5py.File(fileName, 'r')
+        h5File.close()
+    except:
+        return False
+    with h5py.File(fileName, 'r') as h5File:
+      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
+      eventBase = "/Raw/Reads"
+      if(not eventBase in h5File):
+          return False
+      seqBase1D = "/Analyses/Basecall_1D_%s" % callID
+      dir = "complement" if (direction=="r") else "template"
+      eventMeta = h5File["%s/BaseCalled_%s/Events" % (seqBase1D, dir)].attrs
+      absRawStart = eventMeta["start_time"] * channelMeta["sampling_rate"]
+      absRawEnd = (eventMeta["start_time"]
+                + eventMeta["duration"]) * channelMeta["sampling_rate"]
+      readNames = h5File[eventBase]
+      readNameStr = ""
+      for readName in readNames:
+        readRawMeta = h5File["%s/%s" % (eventBase, readName)].attrs
+        relRawStart = int(absRawStart - readRawMeta["start_time"])
+        relRawEnd = int(absRawEnd - readRawMeta["start_time"])
+        sys.stderr.write("Writing (%d..%d) from %s\n" %
+                         (relRawStart, relRawEnd, readName))
+        readRawLocation = "%s/%s/Signal" % (eventBase, readName)
+        signal = h5File[readRawLocation][relRawStart:relRawEnd] # subset for direction
+        ## Remove extreme values from signal
+        meanSig = sum(signal) / len(signal)
+        madSig = sum(map(lambda x: abs(x - meanSig), signal)) / len(signal)
+        minSig = meanSig - madSig * 6
+        maxSig = meanSig + madSig * 6
+        rangeFilt = numpy.vectorize(lambda x: meanSig if
+                                    ((x < minSig) or (x > maxSig)) else x);
+        signal = rangeFilt(signal)
+        sys.stdout.write(signal) # write to file
+
 def usageQuit():
     sys.stderr.write('Error: No file or directory provided in arguments\n\n')
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
@@ -271,8 +311,10 @@ def usageQuit():
     sys.stderr.write('  eventfwd  - extract model event matrix (template)\n')
     sys.stderr.write('  eventrev  - extract model event matrix (complement)\n')
     sys.stderr.write('  telemetry - extract read statistics matrix\n')
-    sys.stderr.write('  rawbumpy  - extract raw data without smoothing\n')
-    sys.stderr.write('  raw       - raw data, running-median smoothing\n')
+    sys.stderr.write('  raw       - extract raw data without smoothing\n')
+    sys.stderr.write('  rawfwd    - extract raw data from template\n')
+    sys.stderr.write('  rawrev    - extract raw data from complement\n')
+    sys.stderr.write('  rawsmooth - raw data, running-median smoothing\n')
     sys.exit(1)
 
 if len(sys.argv) < 3:
@@ -280,7 +322,7 @@ if len(sys.argv) < 3:
 
 dataType = sys.argv[1]
 if(not dataType in ("fastq", "fasta", "event", "eventfwd",
-                    "eventrev", "telemetry", "raw", "rawbumpy")):
+                    "eventrev", "telemetry", "raw", "rawfwd", "rawrev", "rawsmooth")):
     sys.stderr.write('Error: Incorrect dataType\n\n')
     usageQuit()
 
@@ -320,9 +362,13 @@ elif(os.path.isfile(fileArg)):
         generate_telemetry_matrix(fileArg)
     elif(dataType == "fastq"):
         generate_fastq(fileArg)
+    elif(dataType == "rawsmooth"):
+        generate_raw(fileArg, medianWindow=21)
     elif(dataType == "raw"):
         generate_raw(fileArg)
-    elif(dataType == "rawbumpy"):
-        generate_raw(fileArg, medianWindow=1)
+    elif(dataType == "rawfwd"):
+        generate_dir_raw(fileArg, direction="f")
+    elif(dataType == "rawrev"):
+        generate_dir_raw(fileArg, direction="r")
 else:
     usageQuit()
