@@ -45,6 +45,8 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
         outMeta = h5File[readMetaLocation].attrs
         mux = str(outMeta["start_mux"])
       eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir)
+      if(not eventLocation in h5File):
+          return False
       readNames = h5File[eventLocation]
       headers = h5File[eventLocation].dtype
       outData = h5File[eventLocation][()] # load entire array into memory
