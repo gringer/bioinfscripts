@@ -201,7 +201,7 @@ def runningMedian(seq, M):
     medians.extend([median()] * (m))
     return medians
 
-def generate_telemetry(fileName, callID="000"):
+def generate_telemetry(fileName, callID="000", header=True):
     '''Create telemetry matrix from read files; any per-read summary
        statistics that would be useful to know'''
     try:
@@ -214,30 +214,30 @@ def generate_telemetry(fileName, callID="000"):
       channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       channel = str(channelMeta["channel_number"])
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
-      eventBase = "/Analyses/EventDetection_000/Reads/"
+      eventBase = "/Analyses/EventDetection_%s/Reads/" % (callID)
       readNames = h5File[eventBase]
-      mux = 0
+      mux = ""
+      startTime = ""
+      duration = ""
+      lastReadName = ""
       # get mux for the read
       for readName in readNames:
-        readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
+        readMetaLocation = "/Analyses/EventDetection_%s/Reads/%s" % (callID,readName)
         outMeta = h5File[readMetaLocation].attrs
         mux = str(outMeta["start_mux"])
-      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir)
-      readNames = h5File[eventLocation]
-      headers = h5File[eventLocation].dtype
-      outData = h5File[eventLocation][()] # load entire array into memory
+        startTime = str(outMeta["start_time"])
+        duration = str(outMeta["duration"])
+        lastReadName = readName
+      eventLocation = "/Analyses/Basecall_1D_%s/BaseCalled_%s/Events" % (callID,dir)
       if(header):
-          sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
-      # There *has* to be an easier way to do this while preserving
-      # precision. Reading element by element seems very inefficient
-      for line in outData:
-        res=map(str,line)
-        # data seems to be normalised, but just in case it isn't, here's the formula for
-        # future reference: pA = (raw + offset)*range/digitisation
-        # (using channelMeta[("offset", "range", "digitisation")])
-        # - might also be useful to know start_time from outMeta["start_time"]
-        #   which should be subtracted from event/start
-        sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
+          sys.stdout.write("runID,channel,mux,read,start,length,offset,range,digitisation,sampleRate\n")
+      # here's the raw to pA formula for future reference: pA = (raw + offset)*range/digitisation
+      # (using channelMeta[("offset", "range", "digitisation")])
+      # - might also be useful to know start_time from outMeta["start_time"]
+      #   which should be subtracted from event/start
+      sys.stdout.write(",".join((runID, channel, mux, lastReadName, startTime, duration,
+                                 str(channelMeta["offset"]), str(channelMeta["range"]),
+                                 str(channelMeta["digitisation"]), str(channelMeta["sampling_rate"]))) + "\n")
 
 def generate_raw(fileName, callID="000", medianWindow=21):
     '''write out raw sequence from fast5, with optional running median
@@ -342,9 +342,9 @@ if(os.path.isdir(fileArg)):
             if(fileName.endswith(".fast5")): # only process fast5 files
                 sys.stderr.write("  Processing file '%s'..." % fileName)
                 if(dataType == "event"):
-                    generate_event_matrix(os.path.join(dirPath, fileName), not seenHeader)
+                    generate_event_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
                 elif(dataType == "telemetry"):
-                    generate_telemetry_matrix(os.path.join(dirPath, fileName), not seenHeader)
+                    generate_telemetry(os.path.join(dirPath, fileName), header=not seenHeader)
                 elif(dataType == "fastq"):
                     generate_fastq(os.path.join(dirPath, fileName))
                 elif(dataType == "raw"):
@@ -364,7 +364,7 @@ elif(os.path.isfile(fileArg)):
     elif(dataType == "eventrev"):
         generate_eventdir_matrix(fileArg, direction="r")
     elif(dataType == "telemetry"):
-        generate_telemetry_matrix(fileArg)
+        generate_telemetry(fileArg)
     elif(dataType == "fastq"):
         generate_fastq(fileArg)
     elif(dataType == "rawsmooth"):
