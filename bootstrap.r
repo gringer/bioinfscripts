@@ -64,7 +64,7 @@ usage <- function(){
   cat("\n");
 }
 
-canDoParallel <- require(snow);
+canDoParallel <- require(BiocParallel);
 threadCount <- 1;
 
 argLoc <- 1;
@@ -166,9 +166,8 @@ if(!createReplicates && (!file.exists(rep.case.outFile) || !file.exists(rep.cont
   quit(save = "no", status=1);
 }
 
-cl <- NULL;
 if((canDoParallel) && (threadCount > 1)){
-    cl <- makeCluster(threadCount);
+    register(MulticoreParam(workers = 10), default = TRUE);
 } else {
     threadCount <- 1;
 }
@@ -201,37 +200,25 @@ vector.chisq <- function(in.vector, tStrictChi){
 
 GTCalc <- function(in.genotypes, columns.pop1, columns.pop2, method = "Adelta"){
   num.reps <- dim(columns.pop1)[2];
+  if(length(in.genotypes) == 0){ # no individuals
+    return(rep(NA, num.reps));
+  }
   ## make everything upper case (simplifies search expressions)
-  in.genotypes <- toupper(in.genotypes);
+  in.genotypes <- factor(toupper(in.genotypes));
   if(combineComplementary){
-    ## substitute complementary alleles
-    in.genotypes <- gsub("T","A",in.genotypes);
-    in.genotypes <- gsub("G","C",in.genotypes);
-    in.genotypes <- gsub("CA","AC",in.genotypes);
+      ## substitute complementary alleles
+      levels(in.genotypes) <- chartr("GT","CA",levels(in.genotypes));
+      levels(in.genotypes)[levels(in.genotypes) == "CA"] <- "AC";
   }
   ## calculate major/minor alleles
-  gt.counts <- table(in.genotypes);
-  if(sum(gt.counts) == 0){ # no individuals
-    return(rep(NA, num.reps));
-  }
-  allele.names <- unique(sub("(A|C|G|T)","",names(gt.counts)));
-  homozygous.counts <- sort(gt.counts[paste(allele.names, allele.names, sep="")]);
-  if(sum(homozygous.counts) == 0){ # no homozygous individuals
-    return(rep(NA, num.reps));
-  }
-  minor.allele <- substr(names(homozygous.counts[1]),1,1);
-  major.allele <- substr(names(homozygous.counts[length(homozygous.counts)]),1,1);
-  if(major.allele == minor.allele){ # no minor allele (from homozygous counts)
-    het.potentials <- names(gt.counts[grep(major.allele,names(gt.counts))]);
-    if(length(het.potentials) == 1){ # no heterozygotes found, so no minor allele
-      minor.allele <- "";
-#      return(rep(NA, num.reps));
-    } else {
-      het.name <- het.potentials[het.potentials !=
-                                 paste(major.allele, major.allele, sep="")];
-      minor.allele <- sub(major.allele, "", het.name);
-    }
-  }
+  allele.counts <- sort(table(unlist(strsplit(as.character(in.genotypes),""))), decreasing=TRUE);
+  major.allele <- names(allele.counts)[1];
+  minor.allele <-
+      if(length(allele.counts) > 1){
+          names(allele.counts)[2];
+      } else {
+          "";
+      }
   ## recode tables as Major/minor (as plink says it *should* be doing)
   ## by substituting alleles for M/m
   ## Note: everything that isn't M/m is considered an invalid
@@ -239,11 +226,11 @@ GTCalc <- function(in.genotypes, columns.pop1, columns.pop2, method = "Adelta"){
   ## the most frequent homozygotes and least frequent homozygotes will
   ## be counted
   if(minor.allele != ""){
-    in.genotypes <- gsub(major.allele,"M",gsub(minor.allele,"m",in.genotypes));
+    levels(in.genotypes) <- chartr(paste0(major.allele,minor.allele),"Mm", levels(in.genotypes));
   } else {
-    in.genotypes <- gsub(major.allele,"M",in.genotypes);
+    levels(in.genotypes) <- chartr(major.allele,"M",levels(in.genotypes));
   }
-  in.genotypes <- sub("Mm","mM",in.genotypes); # make heterozygotes consistently mM
+  levels(in.genotypes)[levels(in.genotypes)=="Mm"] <- "mM"; # make heterozygotes consistently mM
   in.genotypes <- factor(in.genotypes, levels = c("MM","mM","mm", NA));
   ## generate table based on genotype frequencies
   table1 <- apply(columns.pop1, 2, function(x){
@@ -429,8 +416,7 @@ matmap <- function(vector.in, matrix.indices){
 
 ## carries out allele frequency based delta on a single line of simplegt input
 processLine <-
-  function(in.line, popSamples1, popSamples2, output.file = "",
-           append = TRUE, GTmethod = "Adelta", sortbyValue = FALSE){
+  function(in.line, popSamples1, popSamples2, GTmethod = "Adelta", sortbyValue = FALSE){
       marker.name <- in.line[1];
       genotypes <- in.line[-1];
 #  cat(dim(popSamples1), "\n", file=stderr());
@@ -448,18 +434,12 @@ processLine <-
   } else {
     bs.order <- 1:length(bs.results);
   }
-  if((GTmethod == "ShowValues") && (append == FALSE)){
-    cat("marker,bs.run,CA.chisq,geno.test,mult.test,dom.test,rec.test\n",
-        file = output.file, append = FALSE);
-    write.table(data.frame(marker = marker.name, bs.run = bs.order,
-                           bs.value = bs.results[bs.order]),
-                output.file, sep = ",", quote = FALSE, append = TRUE,
-                col.names = FALSE, row.names = FALSE);
+  if(GTmethod == "ShowValues"){
+    return(data.frame(marker = marker.name, bs.run = bs.order,
+                      bs.value = bs.results[bs.order]));
   } else {
-    write.table(data.frame(marker = marker.name, bs.run = bs.order,
-                           bs.value = bs.results[bs.order]),
-                output.file, sep = ",", quote = FALSE, append = append,
-                col.names = !append, row.names = FALSE);
+    return(data.frame(marker = marker.name, bs.run = bs.order,
+                      bs.value = bs.results[bs.order]));
   }
   return(invisible(NULL));
 }
@@ -529,34 +509,46 @@ while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
   input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
 }
 
+if(grepl("\\.gz$",bootstraps.outFile)){
+    bootstraps.outFile <- gzfile(bootstraps.outFile, open="wt");
+} else {
+    bootstraps.outFile <- file(boostraps.outFile, open="wt");
+}
+
+
 num.indivs <- length(input.line[-1]);
 if(num.indivs != (length(cases.columns) + length(controls.columns))){
   cat(sprintf("Warning: number of individuals detected on first line (%d) is not the same as number of cases (%d) + number of controls (%d)\n", num.indivs, length(cases.columns), length(controls.columns)), file = stderr());
 }
 
 ## process line *without* append (creates header)
-processLine(input.line, cases.samples, controls.samples,
-            append = FALSE, output.file = bootstraps.outFile,
-            GTmethod = processMethod, sortbyValue = sortValues);
+res <- processLine(input.line, cases.samples, controls.samples,
+                   GTmethod = processMethod, sortbyValue = sortValues);
+write.table(res, file = bootstraps.outFile,
+       sep = ",", quote = FALSE, append = FALSE, col.names = TRUE,
+       row.names = FALSE);
 input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
 while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
   input.line <- list(scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE));
 }
 line.number <- 1;
 input.lines <- list(input.line);
+
 while(length(input.lines) > 0){
     ## process line *with* append (no header)
-    if(threadCount > 1){
-        parLapply(input.lines,
-                  processLine, cases.samples, controls.samples,
-                  append = TRUE, output.file = bootstraps.outFile,
-                  GTmethod = processMethod, sortbyValue = sortValues);
-    } else {
-        lapply(input.lines,
-               processLine, cases.samples, controls.samples,
-               append = TRUE, output.file = bootstraps.outFile,
-               GTmethod = processMethod, sortbyValue = sortValues);
-    }
+    res <-
+        if(threadCount > 1){
+            bplapply(input.lines,
+                      processLine, cases.samples, controls.samples,
+                      GTmethod = processMethod, sortbyValue = sortValues);
+        } else {
+            lapply(input.lines,
+                   processLine, cases.samples, controls.samples,
+                   GTmethod = processMethod, sortbyValue = sortValues);
+        }
+    lapply(res, write.table, file = bootstraps.outFile,
+           sep = ",", quote = FALSE, append = TRUE, col.names = FALSE,
+           row.names = FALSE);
     line.number <- line.number+length(input.lines);
     if(line.number %% 1000 == 0){
         cat(".", file = stderr());
@@ -575,18 +567,15 @@ while(length(input.lines) > 0){
         }
     }, simplify=FALSE);
     input.lines <- Filter(function(x){!is.null(x)}, input.lines);
-    print(length(input.lines));
 }
 if(genotypes.inFile != ""){
   close(genotypes.con);
 }
 
+close(bootstraps.outFile);
+
 if(line.number > 1){
   cat("(",line.number," lines processed)\n", file = stderr(), sep = "");
 } else {
   cat("(",line.number," line processed)\n", file = stderr(), sep = "");
-}
-
-if(threadCount > 1){
-    stopCluster(cl);
 }
