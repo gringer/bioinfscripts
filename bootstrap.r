@@ -60,8 +60,12 @@ usage <- function(){
   cat("-output             : output file for results\n");
   cat("-method             : method to use for calculating results\n");
   cat("                      (Adelta, GTdelta, gChisq, Chisqmax, ChisqmaxAll, ShowValues)\n");
+  cat("-threads <n>        : number of processing threads to run\n");
   cat("\n");
 }
+
+canDoParallel <- require(snow);
+threadCount <- 1;
 
 argLoc <- 1;
 
@@ -129,6 +133,10 @@ while(!is.na(commandArgs()[argLoc])){
       processMethod <- commandArgs()[argLoc+1];
       argLoc <- argLoc + 1;
     }
+    else if(commandArgs()[argLoc] == "-threads"){
+      threadCount <- as.numeric(commandArgs()[argLoc+1]);
+      argLoc <- argLoc + 1;
+    }
     else {
       cat("Error: Argument '",commandArgs()[argLoc],
           "' is not understood by this program\n\n", sep="");
@@ -158,9 +166,16 @@ if(!createReplicates && (!file.exists(rep.case.outFile) || !file.exists(rep.cont
   quit(save = "no", status=1);
 }
 
+cl <- NULL;
+if((canDoParallel) && (threadCount > 1)){
+    cl <- makeCluster(threadCount);
+} else {
+    threadCount <- 1;
+}
+
 ## carries out a chisquare test of a vector, assuming entries 1..n/2
 ## are observed, n/2+1..n are expected counts.
-vector.chisq <- function(in.vector){
+vector.chisq <- function(in.vector, tStrictChi){
   if(!is.vector(in.vector)){
     stop("Can only be called on a vector");
   }
@@ -175,7 +190,7 @@ vector.chisq <- function(in.vector){
   chisq.values <- (obs-E)^2/E;
   ## !is.nan removes NaN values from result, so cells with zero
   ## !expected counts are ignored
-  if(!strictChi){
+  if(!tStrictChi){
     return(sum(chisq.values[!is.nan(chisq.values)]));
   }  else {
     return(sum((obs-E)^2/E));
@@ -231,8 +246,10 @@ GTCalc <- function(in.genotypes, columns.pop1, columns.pop2, method = "Adelta"){
   in.genotypes <- sub("Mm","mM",in.genotypes); # make heterozygotes consistently mM
   in.genotypes <- factor(in.genotypes, levels = c("MM","mM","mm", NA));
   ## generate table based on genotype frequencies
-  table1 <- apply(columns.pop1, 2, function(x){table(in.genotypes[x], exclude = NULL)})
-  table2 <- apply(columns.pop2, 2, function(x){table(in.genotypes[x], exclude = NULL)})
+  table1 <- apply(columns.pop1, 2, function(x){
+      table(in.genotypes[x], exclude = NULL)});
+  table2 <- apply(columns.pop2, 2, function(x){
+                    table(in.genotypes[x], exclude = NULL)});
   ## replace <NA> row name with "XX"
   rownames(table1)[is.na(rownames(table1))] <- "XX";
   rownames(table2)[is.na(rownames(table2))] <- "XX";
@@ -362,29 +379,30 @@ GTCalc <- function(in.genotypes, columns.pop1, columns.pop2, method = "Adelta"){
       retVal <-
         apply(rbind(
                     CA.chisq,
-                    apply(dom.test,2,vector.chisq),
-                    apply(rec.test,2,vector.chisq),
+                    apply(dom.test,2,vector.chisq, tStrictChi=strictChi),
+                    apply(rec.test,2,vector.chisq, tStrictChi=strictChi),
                     -Inf),2,max, na.rm = TRUE);
     } else if (method == "gChisq") {
-      retVal <-
-        apply(geno.test,2,vector.chisq);
+        retVal <- apply(geno.test,2,
+                        vector.chisq, tStrictChi=strictChi);
     } else if (method == "ChisqmaxAll") {
       retVal <-
         apply(rbind(
                     CA.chisq,
-                    apply(geno.test,2,vector.chisq),
-                    apply(mult.test,2,vector.chisq),
-                    apply(dom.test,2,vector.chisq),
-                    apply(rec.test,2,vector.chisq),
+            apply(geno.test,2, vector.chisq, tStrictChi=strictChi),
+                    apply(mult.test,2,vector.chisq, tStrictChi=strictChi),
+                    apply(dom.test,2,vector.chisq, tStrictChi=strictChi),
+                    apply(rec.test,2,vector.chisq, tStrictChi=strictChi),
                     -Inf),2,max, na.rm = TRUE);
     } else if (method == "ShowValues") {
       retVal <-
         apply(rbind(
                     CA.chisq,
-                    apply(geno.test,2,vector.chisq),
-                    apply(mult.test,2,vector.chisq),
-                    apply(dom.test,2,vector.chisq),
-                    apply(rec.test,2,vector.chisq)),2,paste, collapse = ",");
+                    apply(geno.test,2,vector.chisq, tStrictChi=strictChi),
+                    apply(mult.test,2,vector.chisq, tStrictChi=strictChi),
+                    apply(dom.test,2,vector.chisq, tStrictChi=strictChi),
+            apply(rec.test,2,vector.chisq, tStrictChi=strictChi)),
+            2,paste, collapse = ",");
     }
   } else {
     retVal <- NULL;
@@ -411,8 +429,10 @@ matmap <- function(vector.in, matrix.indices){
 
 ## carries out allele frequency based delta on a single line of simplegt input
 processLine <-
-  function(marker.name, genotypes, popSamples1, popSamples2, output.file = "",
+  function(in.line, popSamples1, popSamples2, output.file = "",
            append = TRUE, GTmethod = "Adelta", sortbyValue = FALSE){
+      marker.name <- in.line[1];
+      genotypes <- in.line[-1];
 #  cat(dim(popSamples1), "\n", file=stderr());
   if(length(marker.name) > 1){
     stop("Cannot process more than one line at a time");
@@ -441,6 +461,7 @@ processLine <-
                 output.file, sep = ",", quote = FALSE, append = append,
                 col.names = !append, row.names = FALSE);
   }
+  return(invisible(NULL));
 }
 
 casecontrolColumns.con <- file(casecontrolColumns.inFile);
@@ -514,27 +535,47 @@ if(num.indivs != (length(cases.columns) + length(controls.columns))){
 }
 
 ## process line *without* append (creates header)
-processLine(input.line[1], input.line[-1], cases.samples, controls.samples,
+processLine(input.line, cases.samples, controls.samples,
             append = FALSE, output.file = bootstraps.outFile,
             GTmethod = processMethod, sortbyValue = sortValues);
 input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
 while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
-  input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
+  input.line <- list(scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE));
 }
 line.number <- 1;
-while(length(input.line) > 0){
-  ## process line *with* append (no header)
-  processLine(input.line[1], input.line[-1], cases.samples, controls.samples,
-              append = TRUE, output.file = bootstraps.outFile,
-              GTmethod = processMethod, sortbyValue = sortValues);
-  line.number <- line.number+1;
-  if(line.number %% 1000 == 0){
-    cat(".", file = stderr());
-  }
-  input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
-  while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
-    input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
-  }
+input.lines <- list(input.line);
+while(length(input.lines) > 0){
+    ## process line *with* append (no header)
+    if(threadCount > 1){
+        parLapply(input.lines,
+                  processLine, cases.samples, controls.samples,
+                  append = TRUE, output.file = bootstraps.outFile,
+                  GTmethod = processMethod, sortbyValue = sortValues);
+    } else {
+        lapply(input.lines,
+               processLine, cases.samples, controls.samples,
+               append = TRUE, output.file = bootstraps.outFile,
+               GTmethod = processMethod, sortbyValue = sortValues);
+    }
+    line.number <- line.number+length(input.lines);
+    if(line.number %% 1000 == 0){
+        cat(".", file = stderr());
+    }
+    input.lines <- replicate(1000,{
+        input.line <- scan(genotypes.con, what = character(),
+             nlines = 1, quiet = TRUE);
+        while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
+            input.line <- scan(genotypes.con, what = character(),
+                               nlines = 1, quiet = TRUE);
+        }
+        if(length(input.line) == 0){
+            return(NULL);
+        } else {
+            return(input.line);
+        }
+    }, simplify=FALSE);
+    input.lines <- Filter(function(x){!is.null(x)}, input.lines);
+    print(length(input.lines));
 }
 if(genotypes.inFile != ""){
   close(genotypes.con);
@@ -544,4 +585,8 @@ if(line.number > 1){
   cat("(",line.number," lines processed)\n", file = stderr(), sep = "");
 } else {
   cat("(",line.number," line processed)\n", file = stderr(), sep = "");
+}
+
+if(threadCount > 1){
+    stopCluster(cl);
 }
