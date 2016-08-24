@@ -50,10 +50,10 @@ usage <- function(){
   cat("-controlfile        : File containing column data for cases/controls\n");
   cat("-repfiles <f1> <f2> : Files containing replicate columns (for repeat experiments)\n");
   cat("-controlsfirst      : case/control file has controls as first line\n");
-  cat("-count              : Number of bootstrapts to carry out\n");
-  cat("-casereps           : case subpopulation size for boostraps (overrides proportion)\n");
-  cat("-controlreps        : control subpopulation size for boostraps (overrides proportion)\n");
-  cat("-proportion         : proportion of individuals for boostraps (currently ", replicates.proportion,")\n", sep="");
+  cat("-count              : Number of bootstraps to carry out\n");
+  cat("-casereps           : case subpopulation size for bootstraps (overrides proportion)\n");
+  cat("-controlreps        : control subpopulation size for bootstraps (overrides proportion)\n");
+  cat("-proportion         : proportion of individuals for bootstraps (currently ", replicates.proportion,")\n", sep="");
   cat("-sort               : sort bootstrap results by value\n");
   cat("-strictGT           : Keep complementary alleles separate (don't combine)\n");
   cat("-strictChi          : Respect zero counts in chi^2 table, creates null results\n");
@@ -199,6 +199,8 @@ vector.chisq <- function(in.vector, tStrictChi){
 }
 
 GTCalc <- function(in.genotypes, columns.pop1, columns.pop2, method = "Adelta"){
+    ## Note: many methods have been ported from PLINK code, vectorised,
+    ##       and modified to work with this data format
   num.reps <- dim(columns.pop1)[2];
   if(length(in.genotypes) == 0){ # no individuals
     return(rep(NA, num.reps));
@@ -476,7 +478,7 @@ if(is.null(replicates.controls)){
 ## file to place subsample columns into
 cases.samples <- NULL;
 controls.samples <- NULL;
-if(createReplicates){
+if(createReplicates && (bootstrap.count > 1)){
   rep.case.outFile = paste("caseReplicates",bootstraps.outFile,sep="_");
   rep.control.outFile = paste("controlReplicates",bootstraps.outFile,sep="_");
   cases.samples <- replicate(bootstrap.count,
@@ -488,6 +490,9 @@ if(createReplicates){
               col.names = FALSE);
   write.table(t(controls.samples),rep.control.outFile, quote = FALSE,
               col.names = FALSE);
+} else if(bootstrap.count == 1){ ## one bootstrap; don't sub-sample
+    cases.samples <- replicate(1,cases.columns);
+    controls.samples <- replicate(1,controls.columns);
 } else {
   cases.samples <- t(read.table(rep.case.outFile, row.names = 1));
   controls.samples <- t(read.table(rep.control.outFile, row.names = 1));
@@ -512,7 +517,7 @@ while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
 if(grepl("\\.gz$",bootstraps.outFile)){
     bootstraps.outFile <- gzfile(bootstraps.outFile, open="wt");
 } else {
-    bootstraps.outFile <- file(boostraps.outFile, open="wt");
+    bootstraps.outFile <- file(bootstraps.outFile, open="wt");
 }
 
 
