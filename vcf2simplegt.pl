@@ -57,7 +57,7 @@ while(<>){
 	}
       }
     }
-    printf("##<Individual/Column IDs: %s > ##\n",
+    printf("## <Individual/Column IDs: %s > ##\n",
 	join(" ", @idOrder));
     next;
   }
