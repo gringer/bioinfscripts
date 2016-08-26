@@ -13,13 +13,6 @@
 # has been read, which can consume large amounts of memory when the
 # requested marker set is large.
 
-# [accepts from STDIN as well]
-# 2008-05-22
-# - Modified to use \s, so Affy chip style markers work better
-#   [should handle other separators as well]
-# 2010-09-09
-# - Changed command line argument parser to be more robust
-
 use strict;
 use warnings;
 
@@ -54,7 +47,7 @@ while(@ARGV){
             $markFile = new IO::Uncompress::Gunzip "$fileName" or
                 die "Unable to open $fileName\n";
             while(<$markFile>){
-                if(/^(\"?.*?\"?)[\s,]+/){
+                if(/^\"?(.*?)\"?[\s,]+/){
                     my $marker = $1;
                     # print(STDERR "adding marker $marker\n");
                     $markers{$marker} = 1;

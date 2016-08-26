@@ -3,11 +3,14 @@ use warnings;
 use strict;
 
 use Getopt::Long qw(:config auto_help pass_through);
+use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $idFileName = "";
 my $quiet = 0;
+my $minLength = 0;
+my $maxLength = 10 ** 12; # 1 Tbp
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet) or
+GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet, "minLength=i" => \$minLength, "maxLength=i" => \$maxLength) or
   die("Error in command line arguments");
 
 my %idsToGet = ();
@@ -26,7 +29,11 @@ while(@ARGV){
 
 if($idFileName){
   # read sequence IDs from input file
-  open(my $idFile, "<", $idFileName);
+  if(!$quiet){
+    printf(STDERR "Attempting to read from input file ($idFileName)\n");
+  }
+  my $idFile = new IO::Uncompress::Gunzip "$idFileName" or
+    die "Unable to open $idFileName\n";
   while(<$idFile>){
     chomp;
     s/^[>@]//;
@@ -52,7 +59,7 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID){
+      if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
         if($qual){
           printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
         } else {
@@ -61,7 +68,7 @@ while(<>){
       }
       $seq = "";
       $qual = "";
-      if(exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
+      if(!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
         $seqID = $newSeqID;
       } else {
         $seqID = "";
@@ -80,7 +87,7 @@ while(<>){
   }
 }
 
-if($seqID){
+if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
   if($qual){
     printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
   } else {

@@ -16,6 +16,7 @@ usage <- function(){
   cat("-threshold <value> : Only display data greater than <value>\n");
   cat("-pointsize <value> : Multiplier for size of points in graph\n");
   cat("-invert            : Invert values (lowest value at top of graph)\n");
+  cat("-transparent       : Use slightly transparent points\n");
   cat("-normlimit         : Limit value display to a reasonable normal distribution\n");
   cat("-limit <value>     : Trim values greater than <limit>\n");
   cat("-keep <value>      : Keep a proportion of values below the cutoff value\n");
@@ -24,12 +25,12 @@ usage <- function(){
   cat("\n");
 }
 
-
 dataFile <- FALSE; # marker chromosome location <other fields> value
 valThreshold <- 0;
 useNormDistForMax <- FALSE;
 invertAxis <- FALSE;
 trimLimit <- FALSE;
+transparent <- FALSE;
 sizeMul <- 2;
 filterKeepProp <- 0; # keep this proportion of markers below threshold cutoff
 filterRandom <- (filterKeepProp > 0); # keep a random sampling of markers below threshold cutoff
@@ -42,9 +43,9 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     if(dataFile == FALSE){
       dataFile <- commandArgs(TRUE)[argLoc];
     } else{
-      cat("Error: More than one input file specified\n");
-      usage();
-      quit(save = "no", status=1);
+        cat("Error: More than one input file specified\n",dataFile);
+        usage();
+        quit(save = "no", status=1);
     }
   } else {
     parsed <- FALSE;
@@ -68,6 +69,11 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     if(commandArgs(TRUE)[argLoc] == "-invert"){
       invertAxis <- TRUE;
       cat("Using normal distribution to set upper graph limit\n");
+      parsed <- TRUE;
+    }
+    if(commandArgs(TRUE)[argLoc] == "-transparent"){
+      transparent <- TRUE;
+      cat("Points will have partial transparency\n");
       parsed <- TRUE;
     }
     if(commandArgs(TRUE)[argLoc] == "-normlimit"){
@@ -148,21 +154,17 @@ cs.stats$startPoint <- c(0,cumsum(as.numeric(cs.stats$Assembled)))[-length(cs.st
 
 # takes about 10s on melinus with T1D data
 cat("Reading data file...", file = stderr());
-retVal = grep(pattern = "^\\D+$", x = readLines(gzfile(dataFile), n = 1), perl = TRUE);
+retVal = grep(pattern = "^\\D+$", x = readLines(dataFile, n = 1), perl = TRUE);
 marker.statistics <- NULL;
-if(length(retVal) > 0){
-  markers.statistics <- read.table(gzfile(dataFile), header = TRUE);
-} else {
-  markers.statistics <- read.table(gzfile(dataFile), header = FALSE);
-}
+markers.statistics <- read.table(dataFile, header = (length(retVal) > 0));
 colnames(markers.statistics)[1] <- "Marker";
 if(length(grep("/",markers.statistics[1,2])) > 0){
-  colnames(markers.statistics)[2] <- "Mutation";
-  colnames(markers.statistics)[3] <- "Chromosome";
-  colnames(markers.statistics)[4] <- "Location";
+    colnames(markers.statistics)[2] <- "Mutation";
+    colnames(markers.statistics)[3] <- "Chromosome";
+    colnames(markers.statistics)[4] <- "Location";
 } else {
-  colnames(markers.statistics)[2] <- "Chromosome";
-  colnames(markers.statistics)[3] <- "Location";
+    colnames(markers.statistics)[2] <- "Chromosome";
+    colnames(markers.statistics)[3] <- "Location";
 }
 #rownames(markers.statistics) <- markers.statistics$Marker;
 colnames(markers.statistics)[length(colnames(markers.statistics))] <- "Value";
@@ -175,7 +177,11 @@ markers.statistics$Chromosome <- sub("Y","24",markers.statistics$Chromosome,
 markers.statistics$Chromosome <- sub("MT?","25",markers.statistics$Chromosome,
                                      ignore.case = TRUE);
 markers.statistics$Chromosome <- as.numeric(markers.statistics$Chromosome);
-markers.statistics$Colour <- rep(c("#0000FF","#00A0FF"),13)[markers.statistics$Chromosome];
+if(transparent){
+    markers.statistics$Colour <- rep(c("#0000FF80","#00A0FF80"),13)[markers.statistics$Chromosome];
+} else {
+    markers.statistics$Colour <- rep(c("#0000FF","#00A0FF"),13)[markers.statistics$Chromosome];
+}
 markers.statistics$startPoint <- cs.stats[markers.statistics$Chromosome,]$startPoint;
 cat("done!\n", file = stderr());
 
@@ -190,17 +196,24 @@ if(!(trimLimit == FALSE)){
 }
 ## valRange <- c(min(markers.statistics$Value, na.rm = TRUE),
 ##               min(maxVal, max(markers.statistics$Value, na.rm = TRUE)));
-valRange <- c(min(markers.statistics$Value, na.rm = TRUE),
+valRange <- c(min(c(0,markers.statistics$Value), na.rm = TRUE),
               min(maxVal, max(markers.statistics$Value, na.rm = TRUE)));
 markers.statistics$randVal <- runif(dim(markers.statistics)[1]);
 markers.filtered <- subset(markers.statistics, (Value >= valThreshold) | (filterRandom & (randVal < filterKeepProp)));
-markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
-  rep(c("#800000","#A04040"),13)[markers.filtered$Chromosome[markers.filtered$Value > valRange[2]]];
+if(transparent){
+    markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
+        rep(c("#80000080","#A0404080"),13)[markers.filtered$Chromosome[markers.filtered$Value > valRange[2]]];
+} else {
+    markers.filtered$Colour[markers.filtered$Value > valRange[2]] <-
+        rep(c("#800000","#A04040"),13)[markers.filtered$Chromosome[markers.filtered$Value > valRange[2]]];
+}
 markers.filtered$Value[markers.filtered$Value > valRange[2]] <- valRange[2]+0.01;
 cat("done!\n", file = stderr());
 
-cat("Generating PDF...", file = stderr());
-pdf("chromosome_plot.pdf", paper = "a4r", width = 11, height = 8);
+cat("Generating png...", file = stderr());
+X11.options(antialias="gray");
+png("chromosome_plot.png", width = 1280, height = 720, pointsize=12,
+    antialias="gray");
 #svg("chromosome_plot.svg", width = 11, height = 8);
 #Cairo_png("chromosome_plot.png", width = 11, height = 8);
 if(!(is.expression(valueText)) && (valueText == FALSE)){

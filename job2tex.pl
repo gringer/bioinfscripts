@@ -44,7 +44,6 @@ my $outputBaseName = 0; # false
 my $updateInvoiceNum = 1; # true
 my $amendedInvoice = 0; # false
 my $jobType = "waged";
-my $advanceText = "";
 my $invoicePaid = 0; # false
 my $gstRate = 0.15;
 my $gstExclusive = 1; # true
@@ -55,6 +54,7 @@ my %templateFields = ();
 my %templateRemoveFlags = ();
 
 $templateFields{"unitRate"} = ""; # false
+$templateFields{"advanceText"} = "";
 $templateFields{"totalUnits"} = 0;
 $templateFields{"payType"} = "hour";
 
@@ -82,7 +82,7 @@ while(@ARGV){
       }
     }
     elsif($argument eq "-advance"){
-      $advanceText = " proposed";
+      $templateFields{"advanceText"} = " proposed";
     }
     elsif($argument eq "-paid"){
       $invoicePaid = 1; # true
@@ -262,9 +262,9 @@ close($jobInFile);
 print(STDERR "done!\n");
 
 $templateFields{"logoLocation"} =
-  $Bin."/../Work/images/gringene_7_logo_imageonly.pdf";
+  "/bioinf/Work/images/gringene_8_logo_imageonly.pdf";
 if(!$templateFields{"invNumber"}){
-  my $invoicePath = $Bin."/../invnumber.txt";
+  my $invoicePath = "../invnumber.txt";
   $templateFields{"invNumber"} = qx{cat ${invoicePath}};
   chomp($templateFields{"invNumber"});
   $templateFields{"invNumber"}++;

@@ -13,7 +13,11 @@ use SVG;
 
 use POSIX qw(fmod);
 
-our $VERSION = "1.94";
+## more verbose traceback on errors
+use Carp 'verbose'; 
+$SIG{ __DIE__ } = \&Carp::confess;
+
+our $VERSION = "1.96";
 
 =head1 NAME
 
@@ -47,7 +51,7 @@ Identify centre of map (by longitude/latitude)
 
 =item B<-centre> I<ISO 3A-code>
 
-Identify centre of map (by target country)
+Identify centre of map (by target country). The target can be specified as 'I<sovCode>/I<countryCode>' for a stricter match.
 
 =item B<-data> I<file>
 
@@ -107,7 +111,7 @@ Zoom to projected extents of shape(s)
 
 =item B<-zoom> I<minX,Y,maxX,Y>
 
-Zoom to projected extents
+Zoom to projected extents, typically with I<X> = longitude, I<Y> = latitude
 
 =item B<-nokey>
 
@@ -257,12 +261,16 @@ sub project {
   foreach my $inPoint (@input) {
     my $newLong = 0;
     my $newLat = 0;
-    if (UNIVERSAL::can($inPoint,'isa')) {
+    if ((ref($inPoint) eq "Geo::ShapeFile::Point") || 
+	(ref($inPoint) eq "HASH")) {
       $newLong = $inPoint->X;
       $newLat = $inPoint->Y;
-    } else {
+    } elsif (ref($inPoint) eq "ARRAY") {
       $newLong = $inPoint->[0];
       $newLat = $inPoint->[1];
+    } else {
+	my $ptRefType = ref($inPoint);
+	die("Error: expecting a reference to an array or a hash [actual reference type: $ptRefType]");
     }
     my $pt = transform($options, [$newLong, $newLat]);
     my $px = ($pt -> [0]) * $xScale * $projWidth;
@@ -757,9 +765,12 @@ GetOptions($projOpts, 'lines!', 'key!', 'pointSize|psize=f', 'roundDP|round=i',
            'landcol=s' => \$landColour,
            'seacol=s' => \$seaColour,
            'bordcol=s' => \$borderColour,
-           'subjects|sub=s@' => sub { $subjectNames{$_} = 1},
-           'politicals|pol=s@' => sub { $politicalNames{$_} = 1},
-           'only=s@' => sub { $onlyNames{$_} = 1},
+           'subjects|sub=s' => sub { my ($opt,$val) = @_;
+				     $subjectNames{$val} = 1},
+           'politicals|pol=s' => sub { my ($opt,$val) = @_;
+				       $politicalNames{$val} = 1},
+           'only=s' => sub { my ($opt,$val) = @_;
+			     $onlyNames{$val} = 1},
            'data=s@' => \@dataFiles,
            'man' => sub { pod2usage({-verbose => 3}) }
           );
@@ -777,7 +788,7 @@ while (@ARGV) {
     pod2usage({-exitVal => 2, -message => "Error: Invalid file extension for '$argument'. ".
                "Please use files with '.shp' extension\n"});
   } else {
-    pod2usage({-exitVal => 1, -message => "Error: Unknown command-line option or non-existent file, ".
+    pod2usage({-exitVal => 3, -message => "Error: Unknown command-line option or non-existent file, ".
             "'$argument'\n", -verbose => 0});
   }
 }
@@ -992,7 +1003,8 @@ if ($centreCountry) {
     for my $shapeNum (1 .. ($shapeCount)) { # 1-based indexing
       my %data = $shp->get_dbf_record($shapeNum);
       my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-      if (($countryName eq $centreCountry) || ($sovName eq $centreCountry)) {
+      if (($countryName eq $centreCountry) || ($sovName eq $centreCountry) ||
+	  ("$sovName/$countryName" eq $centreCountry)) {
         # found it, so find polygon extents in degrees
         my $shape = $shp->get_shp_record($shapeNum);
         my @shapePoints = $shape->points();
@@ -1023,8 +1035,17 @@ if ($centreCountry) {
         my $midLat = ($minY + $maxY) / 2;
         $projOpts->{"centreLn"} = $midLong;
         $projOpts->{"centreLt"} = $midLat;
-        printf(STDERR "Found centre feature for '%s' at point (%s,%s)... ",
-               $countryName, $midLong, $midLat) if ($debugLevel> 0);
+	if($countryName eq $sovName){
+	    printf(STDERR "Found centre feature for ".
+		   "'%s' at point (%s,%s)... ",
+		   $countryName,
+		   $midLong, $midLat) if ($debugLevel> 0);
+	} else {
+	    printf(STDERR "Found centre feature for ".
+		   "'%s/%s' at point (%s,%s)... ",
+		   $sovName, $countryName,
+		   $midLong, $midLat) if ($debugLevel> 0);
+	}
       }
     }
     print(STDERR "done.\n") if ($debugLevel> 0);
@@ -1066,7 +1087,8 @@ if (keys(%zoomNames)) {
     for my $shapeNum (1 .. ($shapeCount)) { # 1-based indexing
       my %data = $shp->get_dbf_record($shapeNum);
       my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-      if (($zoomNames{$countryName}) || ($zoomNames{$sovName})) {
+      if (($zoomNames{$countryName}) || ($zoomNames{$sovName}) ||
+	  ($zoomNames{"$sovName/$countryName"})) {
         my $shape = $shp->get_shp_record($shapeNum);
         my @tmpPoints = $shape->points();
         my $pointCount = scalar(@tmpPoints);
@@ -1085,7 +1107,10 @@ if (keys(%zoomNames)) {
           $projOpts->{"maxY"} = $tmaxY
             if ((!exists($projOpts->{"maxY"}))
                 || ($projOpts->{"maxY"} < $tmaxY));
-          printf(STDERR "Found extent for '$countryName ($regionName)', ".
+	  my $findString = ($sovName eq $countryName) ? $sovName
+	      : "$sovName/$countryName";
+	  $findString .= " ($regionName)" if $regionName;
+          printf(STDERR "Found extent for '$findString', ".
                  "adjusting zoom box to (%s,%s)-(%s,%s)...",
                  $projOpts->{"minX"} + $projOpts->{"xAdj"},
                  $projOpts->{"minY"} + $projOpts->{"yAdj"},
@@ -1105,13 +1130,15 @@ $printLines = 0 if ($printLines eq "");
 if ($projOpts->{"zoomed"}) {
   if($projOpts->{"manualZoom"}){
     warn("Detected a manual zoom\n") if $debugLevel > 0;
-    my @tmpPoints = (($projOpts->{"minX"},$projOpts->{"minY"}),
-                     ($projOpts->{"maxX"},$projOpts->{"maxY"}));
+    my @tmpPoints = ([$projOpts->{"minX"},$projOpts->{"minY"}],
+                     [$projOpts->{"maxX"},$projOpts->{"maxY"}]);
     my @projectedPoints = project($projOpts, \@tmpPoints);
-    for my $i ([0..3]){
-      printf(STDERR "$i: %0.2f -> %0.2f\n", $tmpPoints[$i], $projectedPoints[$i])
-        if($debugLevel > 0);
-    }
+    printf(STDERR "  min: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n", 
+	   $tmpPoints[0][0], $tmpPoints[0][1],
+	   $projectedPoints[0][0], $projectedPoints[0][1]);
+    printf(STDERR "  max: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n", 
+	   $tmpPoints[1][0], $tmpPoints[1][1],
+	   $projectedPoints[1][0], $projectedPoints[1][1]);
   }
   printf(STDERR "old SVG width: %0.2f\n", $projOpts->{"svgWidth"});
   printf(STDERR "old SVG height: %0.2f\n", $projOpts->{"svgHeight"});
@@ -1473,7 +1500,7 @@ foreach my $shpFileBase (@shpFileBases) {
       printf(STDERR "s") if ($debugLevel > 1);
     }
     my ($sovName, $countryName, $regionName) = shapeNames(\%data);
-    if (keys(%onlyNames) &&
+    if (keys(%onlyNames) && !$onlyNames{"$sovName/$countryName"} &&
         !$onlyNames{$countryName} && !$onlyNames{$sovName}) {
       # if this country shouldn't be displayed, then don't proceed further
       next;
@@ -1540,6 +1567,7 @@ foreach my $shpFileBase (@shpFileBases) {
       my $fillCol = $landColour;
       my $strkCol = $borderColour;
       if (($politicalNames{$sovName}) || ($politicalNames{$countryName}) ||
+          ($politicalNames{"$sovName/$countryName"}) ||
           ($politicalNames{$regionName})) {
         # order makes sure if subject is political as well, it
         # will be coloured as a subject
@@ -1548,6 +1576,7 @@ foreach my $shpFileBase (@shpFileBases) {
         $partClass .= ' political';
       }
       if (($subjectNames{$sovName}) || ($subjectNames{$countryName}) ||
+          ($subjectNames{"$sovName/$countryName"}) ||
           ($subjectNames{$regionName})) {
         $fillCol = $subLandColour;
         $strkCol = $intBordColour;
@@ -1835,4 +1864,4 @@ PERFORMANCE OF THIS SOFTWARE.
 
 The most recent version of this code can be found at
 
-http://en.wikipedia.org/wiki/User:Gringer/perlshaper
+https://github.com/gringer/bioinfscripts/blob/master/perlshaper.pl
