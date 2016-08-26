@@ -8,15 +8,14 @@ use strict;
 use Getopt::Long qw(:config auto_help pass_through);
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
-my %colIDs = ();
+my %colNums = ();
 
 my $idFileName = "";
-my %ids = ();
 my @idOrder = ();
 my $idsSpecified = 0; # false
 
 my %excludeCols = (
-  "#CHROM" => 1, "POS" => 1,  "REF" => 1,
+  "#CHROM" => 1, "ID" => 1, "POS" => 1,  "REF" => 1,
   "ALT" => 1, "QUAL" => 1,  "FILTER" => 1,
   "INFO" => 1, "FORMAT" => 1);
 
@@ -32,36 +31,41 @@ if($idFileName){
   while(<$idFile>){
     if(/^\"?(.*?)\"?[\s,]+/){
       my $id = $1;
-      $ids{$id} = 1;
       push(@idOrder, $id);
     }
   }
   close($idFile);
-  print(STDERR keys(%ids)." id names extracted\n");
+  print(STDERR scalar(@idOrder)." id names extracted\n");
 }
+
+my $nextAlleleNum = 0;
+my %alleleNums = ();
+my @alleles = ();
 
 while(<>){
   chomp;
   my @F = split(/\t/, $_);
-  if(!$colIDs{"ID"}){
+  if(!defined($colNums{"ID"})){
     if(!(/ID/)){
       next;
     }
     my $colNum = 0;
     foreach my $colName (@F){
-      if(!$excludeCols{$colName}){
-	$colIDs{$colName} = $colNum++;
-	$ids{$colName} = 1;
-	if(!$idsSpecified && ($colName ne "ID")){
+	$colNums{$colName} = $colNum;
+	if(!$idsSpecified && (!$excludeCols{$colName})){
 	    push(@idOrder, $colName);
-	  }
 	}
-      }
+	$colNum++;
     }
+    @idOrder = grep {defined($colNums{$_})} @idOrder;
     printf("## <Individual/Column IDs: %s > ##\n",
 	join(" ", @idOrder));
     next;
   }
   ## by this time, @idOrder should be populated with column IDs
-  printf("%-15s %s\n", $F[$ids{"ID"}], join(" ",@F[@ids{@idOrder}]));
+  ## identify alleles
+  @alleles = ($F[$colNums{"REF"}], split(/,/, $F[$colNums{"ALT"}]), ".");
+  grep {$_ =~ s/\./$#alleles/ge} @alleles;
+  printf("%-15s %s\n", $F[$colNums{"ID"}],
+	 join(" ",map {join("",@alleles[split(/\|/, $_)])} @F[@colNums{@idOrder}]));
 }
