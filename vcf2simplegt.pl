@@ -51,9 +51,10 @@ while(<>){
     foreach my $colName (@F){
       if(!$excludeCols{$colName}){
 	$colIDs{$colName} = $colNum++;
+	$ids{$colName} = 1;
 	if(!$idsSpecified && ($colName ne "ID")){
-	  $ids{$colName} = 1;
-	  push(@idOrder, $colName);
+	    push(@idOrder, $colName);
+	  }
 	}
       }
     }
