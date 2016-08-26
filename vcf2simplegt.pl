@@ -61,4 +61,6 @@ while(<>){
 	join(" ", @idOrder));
     next;
   }
+  ## by this time, @idOrder should be populated with column IDs
+  printf("%-15s %s\n", $F[$ids{"ID"}], join(" ",@F[@ids{@idOrder}]));
 }
