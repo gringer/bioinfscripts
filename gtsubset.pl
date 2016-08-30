@@ -17,11 +17,11 @@ GetOptions(
 my @fileArgs = ();
 
 foreach my $arg (@ARGV){
-  if(-f $arg){
-    push(@fileArgs, $arg);
-  } else {
-    %ids{$arg} = 1;
-  }
+    if(-f $arg){
+	$idFileName = $arg;
+    } else {
+	$ids{$arg} = 1;
+    }
 }
 
 @ARGV = @fileArgs;
@@ -31,14 +31,17 @@ if($idFileName){
   open(my $idFile, "< $idFileName")
   or die("cannot open $idFileName for reading");
   while(<$idFile>){
-    chomp;
-    my @data = split(/\s+/, $_);
-    foreach my $id (@data){
-      $ids{$id} = 1;
-    }
+      chomp;
+      s/(\s|,).*$//;
+      $ids{$_} = 1;
   }
   close($idFile);
   print(STDERR "done!\n");
+}
+
+if(!%ids){
+    print(STDERR "Error: no IDs specified. Cannot continue.\n");
+    exit(1);
 }
 
 my %filteredIDs = ();
@@ -61,13 +64,17 @@ while(<>){
         push(@colOrder, $i);
       }
     }
+    if(!(@idOrder)){
+	print(STDERR "Error: no specified IDs found. Cannot continue.\n");
+	exit(1);
+    }
     if(scalar(@idOrder) < scalar(keys(%ids))){
-      printf(STDERR "Warning: some ID values were not found");
+      printf(STDERR "Warning: some ID values were not found\n");
     }
     printf("## <Individual/Column IDs: %s > ##\n", join(" ",@idOrder));
     next;
   }
   my ($marker, @gts) = split(/\s+/);
-  printf("%-15s %s\n", @gts[@colOrder]);
+  printf("%-15s %s\n", $marker, join(" ", @gts[@colOrder]));
 }
 
