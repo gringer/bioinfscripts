@@ -68,6 +68,6 @@ while(<>){
     next;
   }
   my ($marker, @gts) = split(/\s+/);
-  printf("%-15s %s", @gts[@colOrder]);
+  printf("%-15s %s\n", @gts[@colOrder]);
 }
 
