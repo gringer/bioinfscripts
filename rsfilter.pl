@@ -86,7 +86,7 @@ my %markerlines = ();
 if($complement){ # tests are in outer loop to slightly reduce processor effort
     while (<>){
         my $line = $_;
-        if($line =~ /^(.*?)[\s,]+/){
+        if($line =~ /^(\"?.*?\"?)[\s,]+/){
             if (!$markers{$1}){
                 print($line);
             }
@@ -96,7 +96,7 @@ if($complement){ # tests are in outer loop to slightly reduce processor effort
     if(!$order){
         while (<>){
             my $line = $_;
-            if($line =~ /^(.*?)[\s,]+/){
+	    if($line =~ /^(\"?.*?\"?)[\s,]+/){
                 if ($markers{$1}){
                     print($line);
                 }
@@ -105,7 +105,7 @@ if($complement){ # tests are in outer loop to slightly reduce processor effort
     } else {
         while (<>){
             my $line = $_;
-            if($line =~ /^(.*?)[\s,]/){
+	    if($line =~ /^(\"?.*?\"?)[\s,]+/){
                 if ($markers{$1}){
                     my $marker = $1;
                     $markerlines{$1} = $line;
