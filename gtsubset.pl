@@ -69,7 +69,13 @@ while(<>){
 	exit(1);
     }
     if(scalar(@idOrder) < scalar(keys(%ids))){
-      printf(STDERR "Warning: some ID values were not found\n");
+	printf(STDERR "Warning: some ID values were not found:\n");
+	for my $id (keys(%ids)){
+	    if(!$filteredIDs{$id}){
+		print(STDERR " $id");
+	    }
+	}
+	print(STDERR "\n");
     }
     printf("## <Individual/Column IDs: %s > ##\n", join(" ",@idOrder));
     next;

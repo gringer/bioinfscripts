@@ -43,12 +43,12 @@ my %alleleNums = ();
 my @alleles = ();
 
 while(<>){
+  if(/^##/){
+    next;
+  }
   chomp;
   my @F = split(/\t/, $_);
-  if(!defined($colNums{"ID"})){
-    if(!(/ID/)){
-      next;
-    }
+  if(/(^|\s)ID(\s|$)/){
     my $colNum = 0;
     foreach my $colName (@F){
 	$colNums{$colName} = $colNum;
@@ -61,6 +61,8 @@ while(<>){
     printf("## <Individual/Column IDs: %s > ##\n",
 	join(" ", @idOrder));
     next;
+  } elsif(!defined($colNums{"ID"})){
+      die("IDs have not been defined / found");
   }
   ## by this time, @idOrder should be populated with column IDs
   ## identify alleles
