@@ -79,7 +79,7 @@ argLoc <- grep("--args",commandArgs()) + 1; # hack to get around R v2.4
                                             # issue stopping
                                             # commandArgs(TRUE) from
                                         # working
-if(length(commandArgs()) < argLoc){
+if(is.na(argLoc)){
       usage();
       quit(save = "no", status=0);
 }
