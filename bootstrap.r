@@ -467,8 +467,8 @@ processLine <-
 }
 
 if((vcfCases.inFile != "") && (vcfControls.inFile != "")){
-    vcfCases.inFile <- file(casecontrolColumns.inFile, open="r");
-    vcfControls.inFile <- file(casecontrolColumns.inFile, open="r");
+    vcfCases.inFile <- file(vcfCases.inFile, open="r");
+    vcfControls.inFile <- file(vcfControls.inFile, open="r");
     headLine.cases <- "";
     headLine.controls <- "";
     while(!startsWith(headLine.cases,"#CHROM")){
