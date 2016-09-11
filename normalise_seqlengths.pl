@@ -12,8 +12,8 @@ our $DEBUG = 0;
 
 =head1 NAME
 
-normalise_seqlengths.pl -- converts all sequences in a FASTA file to
-the same length
+normalise_seqlengths.pl -- converts all sequences in a FASTA/FASTQ
+file to the same length
 
 =head1 SYNOPSIS
 
@@ -34,6 +34,10 @@ Target fragment length (in base-pairs, default 2000)
 =item B<-overlap>
 
 Minimum overlap length (in base-pairs, default 200)
+
+=item B<-short>
+
+Keep short sequences (shorter than I<fraglength>)
 
 =back
 
@@ -166,6 +170,7 @@ my $options =
 GetOptions($options,
            'fraglength|f=i',
            'overlap|o=i',
+           'short!',
            'debug!' => \$DEBUG,
 ) or pod2usage(1);
 

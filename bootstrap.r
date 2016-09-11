@@ -10,6 +10,10 @@ genotypes.inFile = "";
 ## (first value is ignored, so can be used as a group identifier)
 casecontrolColumns.inFile = "cases_controls.txt";
 
+## VCF input file
+vcfCases.inFile = "";
+vcfControls.inFile = "";
+
 ## number of subsamples to use for bootstrapping
 replicates.proportion = 0.50;
 replicates.cases = NULL; # if NULL, will be replicates.proportion or 5 less, whichever is smaller
@@ -46,8 +50,10 @@ usage <- function(){
       "<case/control column file> [options]\n");
   cat("\nOther Options:\n");
   cat("-help               : Only display this help message\n");
-  cat("-input              : File containing genotype data\n");
-  cat("-controlfile        : File containing column data for cases/controls\n");
+  cat("-input <file>       : File containing genotype data\n");
+  cat("-controlfile <file> : File containing column data for cases/controls\n");
+  cat("-VCFcases <file>    : VCF File containing case data\n");
+  cat("-VCFcontrols <file> : VCF File containing control data\n");
   cat("-repfiles <f1> <f2> : Files containing replicate columns (for repeat experiments)\n");
   cat("-controlsfirst      : case/control file has controls as first line\n");
   cat("-count              : Number of bootstraps to carry out\n");
@@ -83,6 +89,14 @@ while(!is.na(commandArgs()[argLoc])){
     }
     else if(commandArgs()[argLoc] == "-input"){
       genotypes.inFile <- commandArgs()[argLoc+1];
+      argLoc <- argLoc + 1;
+    }
+    else if(commandArgs()[argLoc] == "-VCFcases"){
+      vcfCases.inFile <- commandArgs()[argLoc+1];
+      argLoc <- argLoc + 1;
+    }
+    else if(commandArgs()[argLoc] == "-VCFcontrols"){
+      vcfControls.inFile <- commandArgs()[argLoc+1];
       argLoc <- argLoc + 1;
     }
     else if(commandArgs()[argLoc] == "-controlfile"){
@@ -147,7 +161,8 @@ while(!is.na(commandArgs()[argLoc])){
   argLoc <- argLoc + 1;
 }
 
-if(!file.exists(casecontrolColumns.inFile)){
+if(!file.exists(casecontrolColumns.inFile) &&
+   (!file.exists(vcfCases.inFile) || !file.exists(vcfControls.inFile))){
   cat("Error: No valid case/control column file given\n\n");
   usage();
   quit(save = "no", status=1);
@@ -446,21 +461,38 @@ processLine <-
   return(invisible(NULL));
 }
 
-casecontrolColumns.con <- file(casecontrolColumns.inFile);
-open(casecontrolColumns.con);
-
-if(controlsFirst){
-  controls.columns <-
-    as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
-  cases.columns <-
-    as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
+if((vcfCases.inFile != "") && (vcfControls.inFile != "")){
+    vcfCases.inFile <- file(casecontrolColumns.inFile, open="r");
+    vcfControls.inFile <- file(casecontrolColumns.inFile, open="r");
+    headLine.cases <- "";
+    headLine.controls <- "";
+    while(!startsWith(headLine.cases,"#CHROM")){
+        headLine.cases <- readLines(vcfCases.inFile, n=1);
+    }
+    while(!startsWith(headLine.controls,"#CHROM")){
+        headLine.controls <- readLines(vcfControls.inFile, n=1);
+    }
+    cases.columns <- 1:(length(unlist(strsplit(headLine.cases, "\t")))-9);
+    controls.columns <-
+        1:(length(unlist(strsplit(headLine.controls, "\t")))-9) +
+        length(cases.columns);
 } else {
-  cases.columns <-
-    as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
-  controls.columns <-
-    as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
+    casecontrolColumns.con <- file(casecontrolColumns.inFile);
+    open(casecontrolColumns.con);
+
+    if(controlsFirst){
+        controls.columns <-
+            as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
+        cases.columns <-
+            as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
+    } else {
+        cases.columns <-
+            as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
+        controls.columns <-
+            as.numeric((strsplit(readLines(casecontrolColumns.con, n = 1)," ")[[1]])[-1]);
+    }
+    close(casecontrolColumns.con);
 }
-close(casecontrolColumns.con);
 
 if(is.null(replicates.cases)){
   replicates.cases <- min(length(cases.columns) - 5,
@@ -502,16 +534,51 @@ if(createReplicates && (bootstrap.count > 1)){
 }
 
 if(genotypes.inFile != ""){
-  genotypes.con <- gzfile(genotypes.inFile);
-  open(genotypes.con)
+    genotypes.con <- gzfile(genotypes.inFile);
+    open(genotypes.con);
+} else if((vcfCases.inFile != "") && (vcfCases.inFile != "")){
+    genotypes.con <- "VCF";
 } else {
   genotypes.con <- file("stdin");
   open(genotypes.con)
 }
 
-input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
-while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
-  input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
+getVCFline <- function(case.file, control.file){
+    line.cases <- scan(case.file, what=character(), nlines=1, sep="\t",
+                       quiet=TRUE);
+    line.controls <- scan(control.file, what=character(), nlines=1, sep="\t",
+                          quiet=TRUE);
+    if(length(line.cases) == 0){
+        return(NULL);
+    }
+    marker.cases <- sprintf("%s_%s_%s",line.cases[3], line.cases[1],
+                            line.cases[2]);
+    marker.controls <- sprintf("%s_%s_%s",line.controls[3], line.controls[1],
+                               line.controls[2]);
+    if(marker.cases != marker.controls){
+        stop(sprintf("Error: case/control markers do not match: \n  %s vs %s",
+                     marker.cases, marker.controls));
+    }
+    gts.cases <- sub("/","",line.cases[-(1:9)]);
+    gts.controls <- sub("/","",line.controls[-(1:9)]);
+    for(i in 1:length(marker.lookup.cases)){
+        gts.cases <- sub(i,marker.lookup.cases[i],gts.cases);
+    }
+    for(i in 1:length(marker.lookup.controls)){
+        gts.controls <- sub(i,marker.lookup.controls[i],gts.controls);
+    }
+    return(c(marker.cases,gts.cases,gts.controls));
+}
+
+if(genotypes.con == "VCF"){
+    input.line <- getVCFline(vcfCases.inFile, vcfControls.inFile);
+} else {
+    input.line <- scan(genotypes.con, what = character(),
+                       nlines = 1, quiet = TRUE);
+    while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
+        input.line <- scan(genotypes.con, what = character(),
+                           nlines = 1, quiet = TRUE);
+    }
 }
 
 if(grepl("\\.gz$",bootstraps.outFile)){
@@ -532,9 +599,15 @@ res <- processLine(input.line, cases.samples, controls.samples,
 write.table(res, file = bootstraps.outFile,
        sep = ",", quote = FALSE, append = FALSE, col.names = TRUE,
        row.names = FALSE);
-input.line <- scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE);
-while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
-  input.line <- list(scan(genotypes.con, what = character(), nlines = 1, quiet = TRUE));
+if(genotypes.con == "VCF"){
+    input.line <- getVCFline(vcfCases.inFile, vcfControls.inFile);
+} else {
+    input.line <- scan(genotypes.con, what = character(),
+                       nlines = 1, quiet = TRUE);
+    while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
+        input.line <- scan(genotypes.con, what = character(),
+                           nlines = 1, quiet = TRUE);
+    }
 }
 line.number <- 1;
 input.lines <- list(input.line);
@@ -559,11 +632,15 @@ while(length(input.lines) > 0){
         cat(".", file = stderr());
     }
     input.lines <- replicate(1000,{
-        input.line <- scan(genotypes.con, what = character(),
-             nlines = 1, quiet = TRUE);
-        while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
+        if(genotypes.con == "VCF"){
+            input.line <- getVCFline(vcfCases.inFile, vcfControls.inFile);
+        } else {
             input.line <- scan(genotypes.con, what = character(),
                                nlines = 1, quiet = TRUE);
+            while((length(input.line)>0) && (substr(input.line[1],1,1) == "#")){
+                input.line <- scan(genotypes.con, what = character(),
+                                   nlines = 1, quiet = TRUE);
+            }
         }
         if(length(input.line) == 0){
             return(NULL);
@@ -574,7 +651,11 @@ while(length(input.lines) > 0){
     input.lines <- Filter(function(x){!is.null(x)}, input.lines);
 }
 if(genotypes.inFile != ""){
-  close(genotypes.con);
+    if(genotypes.inFile == "VCF"){
+        close(vcfCases.inFile);
+        close(vcfControls.inFile);
+    }
+    close(genotypes.con);
 }
 
 close(bootstraps.outFile);
