@@ -78,7 +78,12 @@ argLoc <- 1;
 argLoc <- grep("--args",commandArgs()) + 1; # hack to get around R v2.4
                                             # issue stopping
                                             # commandArgs(TRUE) from
-                                            # working
+                                        # working
+if(length(commandArgs()) < argLoc){
+      usage();
+      quit(save = "no", status=0);
+}
+
 while(!is.na(commandArgs()[argLoc])){
   if(file.exists(commandArgs()[argLoc])){ # file existence check
     casecontrolColumns.inFile <- commandArgs()[argLoc];
