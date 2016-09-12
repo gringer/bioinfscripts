@@ -564,6 +564,10 @@ getVCFline <- function(case.file, control.file){
         stop(sprintf("Error: case/control markers do not match: \n  %s vs %s",
                      marker.cases, marker.controls));
     }
+    marker.lookup.cases <-
+        c(line.cases[4], unlist(strsplit(line.cases[5],","));
+    marker.lookup.controls <-
+        c(line.controls[4], unlist(strsplit(line.controls[5],","));
     gts.cases <- sub("/","",line.cases[-(1:9)]);
     gts.controls <- sub("/","",line.controls[-(1:9)]);
     for(i in 1:length(marker.lookup.cases)){
