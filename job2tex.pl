@@ -11,6 +11,7 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 use Time::localtime;
 use Text::CSV;
 use FindBin qw($Bin);
+use File::Temp qw(tempfile);
 
 sub usage {
   print("usage: ./job2tex.pl <input file> [options]\n");
@@ -610,16 +611,25 @@ EOT
   my @args = ("-output-directory",$outDir,
               "-interaction","batchmode",
               $outFileName);
-  my $retVal = system("pdflatex",@args);
+  my $retVal = system("pdflatex", "-draftmode",
+                      @args, "2>&1");
   if($retVal == 0){
     # run twice again to correct indexes
     system("pdflatex",@args);
     system("pdflatex",@args);
     printf(STDERR "done, '(%s)' should now exist!\n", $outPDFName);
   } else {
-    printf(STDERR "Error running script to generate file: %s\n", $outPDFName);
+    printf(STDERR "**** Error running script to generate file: %s ****\n",
+           $outPDFName);
     print(STDERR "Command run was:\n");
     print(STDERR "pdflatex ".join(" ",@args)."\n");
+    print(STDERR "\n##############################\n\n");
+    @args = ("-output-directory",$outDir,
+                "-interaction","nonstopmode",
+                $outFileName);
+    my $retVal = system("pdflatex", "-draftmode",
+                        @args, "2>&1");
+    print(STDERR "\n##############################\n\n");
   }
 } else {
   printf(STDERR "Error: output base name (%s) does not match ".
