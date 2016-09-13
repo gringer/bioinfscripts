@@ -571,10 +571,10 @@ getVCFline <- function(case.file, control.file){
     gts.cases <- sub("/","",line.cases[-(1:9)]);
     gts.controls <- sub("/","",line.controls[-(1:9)]);
     for(i in 1:length(marker.lookup.cases)){
-        gts.cases <- sub(i,marker.lookup.cases[i],gts.cases);
+        gts.cases <- gsub(i-1,marker.lookup.cases[i],gts.cases);
     }
     for(i in 1:length(marker.lookup.controls)){
-        gts.controls <- sub(i,marker.lookup.controls[i],gts.controls);
+        gts.controls <- gsub(i-1,marker.lookup.controls[i],gts.controls);
     }
     return(c(marker.cases,gts.cases,gts.controls));
 }
@@ -601,6 +601,8 @@ num.indivs <- length(input.line[-1]);
 if(num.indivs != (length(cases.columns) + length(controls.columns))){
   cat(sprintf("Warning: number of individuals detected on first line (%d) is not the same as number of cases (%d) + number of controls (%d)\n", num.indivs, length(cases.columns), length(controls.columns)), file = stderr());
 }
+
+cat(input.line,"\n");
 
 ## process line *without* append (creates header)
 res <- processLine(input.line, cases.samples, controls.samples,
