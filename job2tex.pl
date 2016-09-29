@@ -151,6 +151,7 @@ if(!$outputBaseName){
   }
 }
 
+
 if($templateFields{"priorInvDate"}){
   $templateFields{"amendDate"} =
     sprintf("%04d-%03s-%02d",
@@ -176,7 +177,7 @@ print(STDERR "Reading job file ($jobInFilename)... ");
 my $jobInFile = new IO::Uncompress::Gunzip "$jobInFilename" or
     die "Unable to open $jobInFilename\n";
 
-my $csv = Text::CSV->new();
+my $csv = Text::CSV->new({binary => 1, auto_diag => 1});
 my @lineData = ();
 my %colHeadings = ();
 my $firstLine = 1; # true
@@ -295,117 +296,78 @@ $templateFields{"GSTNumber"} = "73-199-131"; # GST registration number
 $templateFields{"currency"} = "NZD";
 my $country = "nz";
 
-my %clientBusinessNames =
-  (
-   GU => 'Griffith University',
-   QUT => 'Queensland University of Technology',
-  );
-
 my $detailsHeader = "\\textbf{Sub-job Details} & \\textbf{Hours}\\\\";
 
 $templateFields{"bankMessage"} = "Please transfer payment to the following bank account:";
+
+if(!$templateFields{"invNumber"}){
+  my $invoicePath = "../invnumber.txt";
+  $templateFields{"invNumber"} = qx{cat ${invoicePath}};
+  chomp($templateFields{"invNumber"});
+  $templateFields{"invNumber"}++;
+  if($updateInvoiceNum){
+    open(INVOICEFILE, "> ${invoicePath}")
+      or die("Cannot open invoice number file for writing");
+    print(INVOICEFILE ($templateFields{"invNumber"})."\n");
+    close(INVOICEFILE);
+  } else {
+    $templateFields{"invNumber"} = "DRAFT";
+  }
+}
+
+my %fieldLookup = ();
+my %clientLookup = ();
+{
+  my $clientLookupPath = "clientlookup.csv";
+  open(my $clientFile, "< ${clientLookupPath}");
+  while(my $row = $csv->getline($clientFile)){
+    if($row->[0] eq "clientCode"){
+      my $fieldIndex = 0;
+      foreach my $field (@{$row}){
+        $fieldLookup{$field} = $fieldIndex++;
+      }
+    } else {
+      grep {s/\\n/\n/g} @{$row};
+      print(STDERR "Adding ".join(";",@{$row})."\n");
+      foreach my $field (keys(%fieldLookup)){
+        my $data = $row->[$fieldLookup{$field}];
+        $clientLookup{$row->[$fieldLookup{clientCode}]}{$field} =
+          $data;
+      }
+    }
+  }
+  close($clientFile);
+}
+
+my %codeLookup = ();
+{
+  my $codeLookupPath = "codelookup.csv";
+  my %fieldLookup = ();
+  open(my $codeFile, "< ${codeLookupPath}");
+  while(my $row = $csv->getline($codeFile)){
+    if($row->[0] ne "clientCode"){
+      $codeLookup{$row->[0]}{$row->[1]} = $row->[2];
+    }
+  }
+  close($codeFile);
+}
 
 if($outputBaseName =~
    m#(([A-Z]+)-([0-9]{6}|20[0-9]{2}-[A-Z][a-z]{2}-[0-9]{2})-([A-Z]+))/#){
   printf(STDERR "Found an appropriate job code\n");
   $templateFields{"jobID"} = $1;
+  my $clientCode = $2;
   $templateFields{"clientBusinessName"} = $2;
   $codeName = $4;
-  if ($templateFields{"clientBusinessName"} eq 'GU') {
-    $templateFields{"clientBusinessName"} = 'Griffith University';
-    $templateFields{"clientAddress"} =
-      "Professor Lyn Griffiths\n".
-        "Genomics Research Centre\n".
-          "Griffith University\n";
-    $country = "au";
-  } elsif ($templateFields{"clientBusinessName"} eq 'ONT') {
-    $templateFields{"clientBusinessName"} = 'Oxford Nanopore Technologies';
-    $templateFields{"jobDesc"} = "Purchase Order";
-    $templateFields{"payType"} = "item";
-    $templateFields{"clientAddress"} =
-      "Delivery / Billing: \n\n".
-      "David Eccles\n".
-      "Malaghan Institute of Medical Research\n".
-      "Gate 7, Victoria University, Kelburn Parade\n".
-      "Wellington, 6012\n".
-      "New Zealand\n\n".
-      "\\textbf{Ph}: +64 4 499 6914\n".
-      "\\textbf{Fx}: +64 4 499 6915\n";
-    $country = "us";
-  } elsif ($templateFields{"clientBusinessName"} eq 'QUT') {
-    $templateFields{"clientBusinessName"} =
-      'Queensland University of Technology';
-    $templateFields{"clientAddress"} =
-      "Professor Lyn Griffiths\n".
-        "Institute of Health and Biomedical Innovation\n".
-          "Queeensland University of Technology\n".
-            "2 George Street, Brisbane Qld 4001\n";
-    $templateFields{"jobDesc"} =
-      "GRC informatics system development\\break\n".
-        "GRC informatics system administration\\break\n".
-          "Applied genomics data analysis\\break\n".
-            "General bioinformatics services";
-    $country = "au";
-  } elsif ($templateFields{"clientBusinessName"} eq 'CALD') {
-    $templateFields{"clientBusinessName"} =
-      'Caldera Health Ltd';
-    $templateFields{"clientName"} = "Kristen Chalmet";
-    $templateFields{"clientAddress"} =
-      "Caldera Health Ltd\n".
-        "74 Leonard Road\n".
-          "Mt Wellinton\n".
-            "Auckland 1060\n".
-              "New Zealand\n";
-    $country = "nz";
-  } elsif ($templateFields{"clientBusinessName"} eq 'ESR') {
-    $templateFields{"clientBusinessName"} =
-      'Environmental Science and Research Ltd';
-    $templateFields{"clientAddress"} =
-      "P O Box 50-348\n".
-        "Porirua 5240\n".
-          "New Zealand\n";
-    $country = "nz";
-  } elsif ($templateFields{"clientBusinessName"} eq 'MIMR') {
-    $templateFields{"clientBusinessName"} =
-      'Malaghan Institute of Medical Research';
-    if ($codeName eq "FRCA") {
-      $templateFields{"clientName"} = "Franca Ronchese";
-    } elsif ($codeName eq "OXNP") {
-      $templateFields{"clientName"} = "Graham LeGros";
-    } elsif ($codeName eq "MIKE") {
-      $templateFields{"clientName"} = "Mike Berridge";
+  if(defined($clientLookup{$clientCode})){
+    foreach my $field (keys(%fieldLookup)){
+      if($clientLookup{$clientCode}{$field}){
+        $templateFields{$field} = $clientLookup{$clientCode}{$field};
+      }
     }
-    $templateFields{"clientAddress"} .=
-      "Malaghan Institute of Medical Research\n".
-        "PO Box 7060\n".
-          "Newtown\n".
-            "Wellington 6242\n".
-              "New Zealand\n";
-    $country = "nz";
-  } elsif ($templateFields{"clientBusinessName"} eq 'MPI') {
-    $templateFields{"clientBusinessName"} =
-      'Max Planck Institute for Molecular Biomedicine';
-    if ($codeName eq "BART") {
-      $templateFields{"clientName"} = "Kerstin Bartscherer";
-    } elsif ($codeName eq "LEID") {
-      $templateFields{"clientName"} = "Sebastian Leidel";
-    }
-    $templateFields{"clientAddress"} .=
-      "Max Planck Institute for Molecular Biomedicine\n".
-        "R\\\"ontgenstra\\ss{}e 20\n".
-          "48149 M\\\"unster\n".
-            "Germany\n";
-    if ($codeName eq "BARC") {
-      $templateFields{"clientBusinessName"} =
-        "Departament de Gen\\\`{e}tica";
-      $templateFields{"clientAddress"} =
-        "Francesc Cebri\\\`{a}, PhD\n".
-          "Departament de Gen\\\`{e}tica\n".
-            "Facultat de Biologia, Universidad de Barcelona\n".
-              "Av. Diagonal 643, edifici annex 1a planta\n".
-                "08028 Barcelona\n";
-    }
-    $country = "de";
+  }
+  if(defined($codeLookup{$clientCode}{$codeName})){
+    $templateFields{clientName} = $codeLookup{$clientCode}{$codeName};
   }
   if ($country eq "de") {
     $templateFields{"currency"} = "EUR";
