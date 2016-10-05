@@ -4,6 +4,7 @@ import sys
 import array
 import struct
 import wave
+import csv
 from math import sin, asin, pi, log, exp, sqrt
 
 ## Carry out frequency modulation; vary the frequency of a wave based
@@ -73,16 +74,31 @@ def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
 
 rate=int(sys.argv[2])
 
-with open(sys.argv[1], "rb") as f:
-    outRate = rate*15
-    data = array.array('H', f.read())
-    #print(",".join(map(str,newData[:50])))
-    fmodOut = wave.open('out.wav', 'w')
-    fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
-    fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=rate/4,
-         speed=0.0625,
-         oldRate=rate, newRate=outRate, volume=0.03)
-    fmodOut.close()
+if(".csv" in sys.argv[1]):
+    with open(sys.argv[1], newline='') as csvfile:
+        myreader = csv.reader(csvfile, delimiter=",", quotechar='"')
+        data = array.array('f')
+        for row in myreader:
+            data.append(row[1])
+        outRate = 44100
+        fmodOut = wave.open('out.wav', 'w')
+        fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
+        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=rate/4,
+             speed=1.0,
+             oldRate=rate, newRate=outRate, volume=0.03)
+        fmodOut.close()
+    pass
+else:
+    with open(sys.argv[1], "rb") as f:
+        outRate = 44100
+        data = array.array('H', f.read())
+        #print(",".join(map(str,newData[:50])))
+        fmodOut = wave.open('out.wav', 'w')
+        fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
+        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=rate/4,
+             speed=1.0,
+             oldRate=rate, newRate=outRate, volume=0.03)
+        fmodOut.close()
 
     #with open ("out.raw", "wb") as soundFile:
     #    soundFile.write(newData)
