@@ -74,7 +74,9 @@ printf(STDERR "Total sequences: %d\n", scalar(@lengths));
 printf(STDERR "Total length: %sbp\n", SIConvert($sum));
 printf(STDERR "Longest sequence: %sbp\n", SIConvert($lengths[0]));
 printf(STDERR "Shortest sequence: %sbp\n", SIConvert($lengths[$#lengths]));
+printf(STDERR "Mean Length: %sbp\n", SIConvert(sprintf("%d", ($sum) / scalar(@lengths))));
+printf(STDERR "Median Length: %sbp\n", SIConvert($lengths[$#lengths / 2]));
 printf(STDERR "N50: %d sequences; L50: %sbp\n",
-     ($L50LengthNum+1), SIConvert($cumLengths[$L50LengthNum]));
+     ($L50LengthNum+1), SIConvert($lengths[$L50LengthNum]));
 printf(STDERR "N90: %d sequences; L90: %sbp\n",
-     ($L90LengthNum+1), SIConvert($cumLengths[$L90LengthNum]));
+     ($L90LengthNum+1), SIConvert($lengths[$L90LengthNum]));

@@ -16,6 +16,8 @@ from math import sin, asin, pi, log, exp, sqrt
 
 def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
          speed=1.0, volume=0.8, logScale=True):
+    print(",".join(map(str,signal[0:20])))
+    print(",".join(map(str,(newRate, oldRate))))
     oldRate = oldRate * speed
     logRange = log(maxFreq) - log(minFreq)
     linRange = maxFreq - minFreq
@@ -27,17 +29,21 @@ def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
         minSig = min(signal)
     if(max(signal) < maxSig):
         maxSig = max(signal)
+    print(",".join(map(str,(oldRate, logRange, linRange, meanSig, madSig, minSig, maxSig))))
     ## limit signal to within MAD range, scale to 0..100
     signal = map(lambda x: float(0) if (x < minSig) else
                  (float(99) if x > maxSig else
                   float(99) * (x - minSig) / (maxSig - minSig)), signal)
+    print(",".join(map(str,signal[0:20])))
     newFreqs = (map(
         lambda x: exp((log(x + 1) / log(100)) * logRange + log(minFreq)),
         signal)) if logScale else (
             map(lambda x: (x/100) * linRange + minFreq, signal))
+    print(",".join(map(str,newFreqs[0:20])))
     # number of sound samples per signal sample
     newPerOld  = (float(newRate) / (float(oldRate)))
     amp = [0] * int(len(signal) * newPerOld)
+    print(",".join(map(str,(newPerOld, len(amp)))))
     # start in first quadrant [0..pi/2)
     quadrant = 0
     oldPhase = 0
@@ -75,17 +81,17 @@ def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
 rate=int(sys.argv[2])
 
 if(".csv" in sys.argv[1]):
-    with open(sys.argv[1], newline='') as csvfile:
+    with open(sys.argv[1]) as csvfile:
         myreader = csv.reader(csvfile, delimiter=",", quotechar='"')
         data = array.array('f')
         for row in myreader:
-            data.append(row[1])
+            data.append(float(row[1]))
         outRate = 44100
         fmodOut = wave.open('out.wav', 'w')
         fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
-        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=rate/4,
+        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=1000,
              speed=1.0,
-             oldRate=rate, newRate=outRate, volume=0.03)
+             oldRate=rate, newRate=outRate, volume=0.1)
         fmodOut.close()
     pass
 else:
@@ -95,9 +101,9 @@ else:
         #print(",".join(map(str,newData[:50])))
         fmodOut = wave.open('out.wav', 'w')
         fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
-        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=rate/4,
+        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=1000,
              speed=1.0,
-             oldRate=rate, newRate=outRate, volume=0.03)
+             oldRate=rate, newRate=outRate, volume=0.1)
         fmodOut.close()
 
     #with open ("out.raw", "wb") as soundFile:
