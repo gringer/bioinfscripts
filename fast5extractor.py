@@ -109,16 +109,22 @@ def generate_fastq(fileName, callID="000"):
       channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
       eventBase = "/Analyses/EventDetection_%s/Reads/" % callID
+      if(not eventBase in h5File):
+          eventBase = "/Raw/Reads/"
       readNames = h5File[eventBase]
-      channel = -1
+      channel = channelMeta["channel_number"]
       mux = -1
       readNameStr = ""
       for readName in readNames:
         readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
         eventLocation = "/Analyses/EventDetection_000/Reads/%s/Events" % readName
-        outMeta = h5File[readMetaLocation].attrs
-        channel = str(channelMeta["channel_number"])
-        mux = str(outMeta["start_mux"])
+        if(readMetaLocation in h5File):
+            outMeta = h5File[readMetaLocation].attrs
+            mux = str(outMeta["start_mux"])
+        else:
+            readMetaLocation = "/Raw/Reads/%s" % readName
+            outMeta = h5File[readMetaLocation].attrs
+            mux = str(outMeta["start_mux"])
         readNameStr = str(readName)
       seqBase1D = "/Analyses/Basecall_1D_%s" % callID
       seqBase2D = "/Analyses/Basecall_2D_%s" % callID
@@ -150,6 +156,10 @@ def generate_fastq(fileName, callID="000"):
                   sys.stdout.write(str(h5File[baseTemp][()][1:]))
               else:
                   badEvt += 1
+          elif(baseTemp in h5File):
+              sys.stdout.write("@1Dtemp_"+
+                               "_".join((runID,channel,mux,readName)) + " ")
+              sys.stdout.write(str(h5File[baseTemp][()][1:]))
           if(eventComp in h5File):
               headers = h5File[eventComp].dtype
               moveLoc = -1
@@ -167,6 +177,10 @@ def generate_fastq(fileName, callID="000"):
                   sys.stdout.write(str(h5File[baseComp][()][1:]))
               else:
                   badEvt += 1
+          elif(baseComp in h5File):
+              sys.stdout.write("@1Dcomp_"+
+                               "_".join((runID,channel,mux,readName)) + " ")
+              sys.stdout.write(str(h5File[baseComp][()][1:]))
           if(badEvt == 2):
               sys.stderr.write(" [rejected: bad event data] ")
       else:
