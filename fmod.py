@@ -16,8 +16,6 @@ from math import sin, asin, pi, log, exp, sqrt
 
 def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
          speed=1.0, volume=0.8, logScale=True):
-    print(",".join(map(str,signal[0:20])))
-    print(",".join(map(str,(newRate, oldRate))))
     oldRate = oldRate * speed
     logRange = log(maxFreq) - log(minFreq)
     linRange = maxFreq - minFreq
@@ -29,21 +27,17 @@ def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
         minSig = min(signal)
     if(max(signal) < maxSig):
         maxSig = max(signal)
-    print(",".join(map(str,(oldRate, logRange, linRange, meanSig, madSig, minSig, maxSig))))
     ## limit signal to within MAD range, scale to 0..100
     signal = map(lambda x: float(0) if (x < minSig) else
                  (float(99) if x > maxSig else
                   float(99) * (x - minSig) / (maxSig - minSig)), signal)
-    print(",".join(map(str,signal[0:20])))
     newFreqs = (map(
         lambda x: exp((log(x + 1) / log(100)) * logRange + log(minFreq)),
         signal)) if logScale else (
             map(lambda x: (x/100) * linRange + minFreq, signal))
-    print(",".join(map(str,newFreqs[0:20])))
     # number of sound samples per signal sample
     newPerOld  = (float(newRate) / (float(oldRate)))
     amp = [0] * int(len(signal) * newPerOld)
-    print(",".join(map(str,(newPerOld, len(amp)))))
     # start in first quadrant [0..pi/2)
     quadrant = 0
     oldPhase = 0
