@@ -1,9 +1,9 @@
 #!/usr/bin/Rscript
 ## expects a file containing only raw signal data, as produced by
 ## fast5extractor.py
-myFileName <- "raw_60kb.bin";
-channel <- 1;
-read <- 1;
+myFileName <- "out.bin";
+channel <- 389;
+read <- 490;
 
 if(length(commandArgs(TRUE)) > 0){
     myFileName <- commandArgs(TRUE)[1];
@@ -21,16 +21,18 @@ if(length(data.sig) < 4000){
 
 dMed <- median(data.sig);
 dMad <- mad(data.sig);
-dMin <- max(min(data.sig),dMed-4*dMad);
-dMax <- min(max(data.sig),dMed+4*dMad);
+dMin <- max(min(data.sig),dMed-4*dMad,0);
+dMax <- min(max(data.sig),dMed+4*dMad,65535);
 rangeRLE <- rle((runmed(data.sig,11) > dMin) & (runmed(data.sig,11) < dMax));
 if(length(rangeRLE$lengths) > 1){
     startPoint <- head(tail(cumsum(rangeRLE$lengths),2),1) + 50;
     data.sig <- tail(data.sig, -startPoint);
-    dMed <- median(data.sig);
-    dMad <- mad(data.sig);
-    dMin <- max(min(data.sig),dMed-4*dMad);
-    dMax <- min(max(data.sig),dMed+4*dMad);
+    if(length(data.sig) > 1){
+        dMed <- median(data.sig);
+        dMad <- mad(data.sig);
+        dMin <- max(min(data.sig),dMed-4*dMad,0);
+        dMax <- min(max(data.sig),dMed+4*dMad,65535);
+    }
 }
 
 if(length(data.sig) < 8000){
@@ -39,7 +41,8 @@ if(length(data.sig) < 8000){
 
 sampleRate <- 4000;
 dRange <- dMax-dMin;
-X11(width=12, height=7);
+#X11(width=14.25, height=7.5);
+X11(width=7, height=5);
 
 par(mar=c(1,1,2,1));
 startPTM <- proc.time()["elapsed"];
