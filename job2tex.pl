@@ -24,6 +24,7 @@ sub usage {
   print("-month <number>   : Paid per month (assumes fixed)\n");
   print("-gstinc           : Total amount includes GST\n");
   print("-desc <string>    : Append <string> to job description\n");
+  print("-PO <string>      : Include purchase order ID\n");
   print("-date             : Show date on job summary details\n");
   print("-noupdate,-draft  : Don't update invoice number\n");
   print("-amend <n> <date> : Amend invoice #n, produced on date\n");
@@ -58,6 +59,7 @@ $templateFields{"unitRate"} = ""; # false
 $templateFields{"advanceText"} = "";
 $templateFields{"totalUnits"} = 0;
 $templateFields{"payType"} = "hour";
+$templateFields{"purchaseOrder"} = "";
 
 $templateFields{"jobDesc"} = "Bioinformatics Services";
 
@@ -93,6 +95,9 @@ while(@ARGV){
     }
     elsif($argument eq "-desc"){
       $templateFields{"jobDesc"} .= " [" . (shift @ARGV) ."]";
+    }
+    elsif($argument eq "-PO"){
+      $templateFields{"purchaseOrder"} = shift @ARGV;
     }
     elsif($argument eq "-gstinc"){
       $gstExclusive = 0; # false
@@ -151,6 +156,9 @@ if(!$outputBaseName){
   }
 }
 
+if(!$templateFields{"purchaseOrder"}){
+  $templateRemoveFlags{"PURCORDER"} = 1;
+}
 
 if($templateFields{"priorInvDate"}){
   $templateFields{"amendDate"} =
@@ -328,7 +336,7 @@ my %clientLookup = ();
       }
     } else {
       grep {s/\\n/\n/g} @{$row};
-      print(STDERR "Adding ".join(";",@{$row})."\n");
+      #print(STDERR "Adding ".join(";",@{$row})."\n");
       foreach my $field (keys(%fieldLookup)){
         my $data = $row->[$fieldLookup{$field}];
         $clientLookup{$row->[$fieldLookup{clientCode}]}{$field} =
