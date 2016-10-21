@@ -76,6 +76,7 @@ if($writeConsensus){
 my %deletions = ();
 my $oldRefName = "";
 my $lastBase = 0;
+my $seqChanged = 0;
 
 while(<>){
   chomp;
@@ -91,7 +92,10 @@ while(<>){
       } else {
         if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
           print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+        } elsif($oldRefName && $seqChanged){
+          print("\n");
         }
+        $seqChanged = 0;
       }
       print(">${refName}\n"); ## write new sequence header
     }
@@ -163,6 +167,7 @@ while(<>){
     my $consAllele = $refAllele;
     if(($total > $consThresholdCov) &&
        (($pr < 0.5) || ($pd > $deletionSens) || ($pi > 0.5))){
+      $seqChanged = 0;
       my %consCounts =
         (r => $rc,
          A => $ac,
@@ -205,7 +210,7 @@ while(<>){
         printf(",%s;%d", $maxInsertSeq, $maxInserts);
       }
     } else {
-      printf("%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+      printf("%0.2f,%0.2f,%0.4f,%0.4f,%0.4f,%0.4f,%0.2f,%0.2f",
                $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
       if($maxInsertSeq){
         printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
