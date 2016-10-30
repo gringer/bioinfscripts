@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
-use Data::Dumper::Simple;
 
 # mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
 #   output from 'samtools mpileup'
