@@ -1,0 +1,148 @@
+\documentclass[10pt,a4paper,twoside]{letter}
+\usepackage{graphicx}
+\usepackage{fp}
+\usepackage{charter}
+
+% length changes to get header in the right place
+\setlength{\voffset}{1.5cm}
+\setlength{\headheight}{2cm}
+\setlength{\headsep}{0pt}
+
+\usepackage[margin=1cm,bottom=3cm]{geometry}
+\usepackage{multirow}
+\usepackage{fancyhdr}
+\usepackage{lastpage} % provides the number of the last page
+\usepackage{framed}
+\usepackage{color}
+
+\pagestyle{fancy}
+
+\newcommand{\myHeader}{
+
+%% header section (including business logo, name, address)
+\begin{tabular}{llr}
+  \begin{minipage}[b]{0.4\textwidth}
+    \includegraphics[height=2cm]{@@@logoLocation@@@}
+  \end{minipage} &
+  \begin{minipage}[b]{0.55\textwidth}
+    \flushright%
+    {\Huge \textsc{gringene} Bioinformatics}\\
+    \vspace{6pt}%
+    {\Large bioinformatics@gringene.org}\\
+    \vspace{3pt}%
+    5 Debra Way, Karori, Wellington 6012\\
+    \vfill%
+  \end{minipage}%
+\end{tabular}
+
+\rule{\linewidth}{0.5mm}
+
+}
+
+\fancyhead{}
+\fancyhead[CO,CE]{\myHeader}
+\fancyfoot{}
+\fancyfoot[CO,CE]{Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\renewcommand*{\thefootnote}{\alph{footnote}}
+
+\definecolor{lightsalmon}{rgb}{1,0.63,0.48}
+
+
+\begin{document}
+
+%% Address section (client name / address, invoice type)
+
+\hspace{\fill}
+
+\begin{tabular}{lr}
+  \begin{minipage}[c]{0.55\textwidth}
+    @@@clientName@@@\\%%CLIENTNAME
+    @@@clientAddress@@@
+  \end{minipage} &
+  \begin{minipage}[c]{0.4\textwidth}
+    \begin{center}
+      \begin{framed}
+        \huge{\textbf{Expense Claim}}
+      \end{framed}
+    \end{center}
+  \end{minipage}%
+\end{tabular}
+
+\rule{\linewidth}{1pt}
+
+\leftskip=10pt
+
+Summary of expenses claimed by David Eccles for \emph{@@@clientBusinessName@@@}
+(see attached invoices for more details):
+
+\begin{flushleft}
+
+  \setlength{\tabcolsep}{1.5pt}
+  \hspace{30pt}
+  \begin{tabular}{lrl}
+    \textbf{Claim Date} & \multicolumn{2}{l}{@@@invDate@@@}\\
+    \textbf{Job ID} & \multicolumn{2}{l}{@@@jobID@@@}\\
+    \textbf{Job Description}\hspace{6pt}\vspace{\fill} &
+    \multicolumn{2}{p{10cm}}{\raggedright{@@@jobDesc@@@}}\\
+    \\
+    \begin{tabular}{llrl}
+      \textbf{Description} & \textbf{Category} & %%
+      \textbf{Date} & \textbf{Amount}\\
+      \hline\\
+      @@@expenseLines@@@\\
+      \hline\\
+      Total @@@payType@@@s & & @@@totalUnits@@@\\%%UNITLINE
+    \end{tabular}
+
+
+    \cline{1-2}\\
+    \textbf{Expense Total}  & \textbf{@@@tAmt@@@} & NZD\\
+    \cline{1-2}\\%%DUEAMOUNT
+    \textbf{Amount due} &  \textbf{@@@TAmt@@@} & NZD\\%%DUEAMOUNT
+    & & \begin{picture}(0,0)%%PAIDEXPENSES
+      \put(65,30){\rotatebox[origin=c]{45}{%%PAIDEXPENSES
+          \textcolor{lightsalmon}{\fbox{\Huge{PAID}}}}}%%PAIDEXPENSES
+    \end{picture}%%PAIDEXPENSES
+  \end{tabular}
+
+\end{flushleft}
+\leftskip=10pt
+
+\addvspace{\fill}
+\addvspace{6pt}
+
+Thank you for your business.
+
+\addvspace{12pt}
+
+David Eccles
+
+\addvspace{6pt}
+
+\addvspace{\fill}%%PAIDEXPENSES
+
+\filbreak%%DUEEXPENSES
+
+\leftskip=0pt
+
+\rule{\linewidth}{0.5mm}%%DUEEXPENSES
+
+\begin{center}%%DUEEXPENSES
+  \Large{\textbf{Payment Details}}\\ %%DUEEXPENSES
+\end{center}%%DUEEXPENSES
+
+\rule{\linewidth}{0.5mm}%%DUEEXPENSES
+
+\leftskip=10pt
+
+@@@bankMessage@@@%%DUEEXPENSES
+
+\hspace{30pt}%%DUEEXPENSES
+\begin{tabular}{ll}%%DUEEXPENSES
+  @@@accountDetails@@@%%DUEEXPENSES
+\end{tabular}%%DUEEXPENSES
+
+\end{document}
