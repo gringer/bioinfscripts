@@ -4,11 +4,18 @@
 myFileName <- "out.bin";
 channel <- 389;
 read <- 490;
+createImage <- FALSE;
+imageName <- "";
 
 if(length(commandArgs(TRUE)) > 0){
     myFileName <- commandArgs(TRUE)[1];
     channel <- as.numeric(commandArgs(TRUE)[2]);
     read <- as.numeric(commandArgs(TRUE)[3]);
+}
+
+if(length(commandArgs(TRUE)) > 3){
+    imageName <- commandArgs(TRUE)[4];
+    createImage <- TRUE;
 }
 
 fileLen <- file.size(myFileName);
@@ -42,8 +49,12 @@ if(length(data.sig) < 8000){
 sampleRate <- 4000;
 dRange <- dMax-dMin;
 #X11(width=14.25, height=7.5);
-X11(width=7, height=5);
 
+if(createImage){
+    png(imageName);
+} else {
+    X11(width=7, height=5);
+}
 par(mar=c(1,1,2,1));
 startPTM <- proc.time()["elapsed"];
 sp <- 0;
@@ -68,5 +79,6 @@ while(sp < (length(data.sig) - 8000)){
          col=rainbow(10, alpha=0.5)[(spTLabs - 1) %% 10 + 1], cex=2);
     Sys.sleep(1/10);
 }
-
 Sys.sleep(2);
+dummy <- dev.off();
+
