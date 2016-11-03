@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
-use Data::Dumper::Simple;
 
 # mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
 #   output from 'samtools mpileup'
@@ -49,6 +48,9 @@ if(!$writeConsensus){
          "Assembly", "Position", "Coverage", "ref", "cR",
          "pR,A,C,G,T,d,i,InsMode");
 } else {
+  if($sampleName){
+    printf(STDERR "%s,", "Sample");
+  }
   printf(STDERR "%s,%s,%s,%s,%s,%s\n",
          "Assembly", "Position", "Coverage", "ref", "cR",
          "pR,A,C,G,T,d,i,InsMode,Variant");
@@ -181,17 +183,22 @@ while(<>){
       } elsif($sortedAlleles[0] ne "r"){
         $consAllele = $sortedAlleles[0];
       }
-      printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-      printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
-             $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
-      if($maxInsertSeq){
-        printf(STDERR ",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
-        printf(STDERR ",[Insert %s]", $maxInsertSeq);
-      } else {
-        printf(STDERR ",");
-        printf(STDERR ",[%s -> %s]", $refAllele, $consAllele);
+      if($consAllele ne $refAllele){
+        if($sampleName){
+          printf(STDERR "%s,", $sampleName);
+        }
+        printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
+        printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+               $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+        if($maxInsertSeq){
+          printf(STDERR ",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+          printf(STDERR ",[Insert %s]", $maxInsertSeq);
+        } else {
+          printf(STDERR ",");
+          printf(STDERR ",[%s -> %s]", $refAllele, $consAllele);
+        }
+        print(STDERR "\n");
       }
-      print(STDERR "\n");
     }
     #print(",$consAllele");
     print($consAllele); ## print current reference allele
