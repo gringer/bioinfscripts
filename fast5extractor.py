@@ -436,6 +436,8 @@ if(os.path.isdir(fileArg)):
                 sys.stderr.write("  Processing file '%s'..." % fileName)
                 if(dataType == "event"):
                     generate_event_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
+                elif(dataType == "consensus"):
+                    generate_consensus_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
                 elif(dataType == "telemetry"):
                     generate_telemetry(os.path.join(dirPath, fileName), header=not seenHeader)
                 elif(dataType == "fastq"):
