@@ -23,6 +23,84 @@ from bisect import insort, bisect_left
 from struct import pack
 from array import array
 
+def generate_consensus_matrix(fileName, header=True):
+    '''write out 2D consensus matrix from fast5, return False if not present'''
+    try:
+        h5File = h5py.File(fileName, 'r')
+        h5File.close()
+    except:
+        return False
+    with h5py.File(fileName, 'r') as h5File:
+        runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+        channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+        runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
+        eventBaseTemp = "/Analyses/Basecall_1D_000/BaseCalled_template/Events/"
+        eventBaseComp = "/Analyses/Basecall_1D_000/BaseCalled_complement/Events/"
+        evtTemp = h5File[eventBaseTemp][()]
+        evtComp = h5File[eventBaseComp][()]
+        channelRate = channelMeta["sampling_rate"]
+        evtTempStart = map(int,evtTemp["start"] * channelRate)
+        evtTempLen = map(int,evtTemp["length"] * channelRate)
+        evtCompStart = map(int,evtComp["start"] * channelRate)
+        evtCompLen = map(int,evtComp["length"] * channelRate)
+        alignmentBase = "/Analyses/Basecall_2D_000/BaseCalled_2D/Alignment/"
+        if(not alignmentBase in h5File):
+            return False
+        readName = ""
+        mux = ""
+        rawReadBase = "/Raw/Reads/"
+        for tReadName in h5File[rawReadBase]:
+            readName = tReadName
+            readMeta = h5File['%s%s' % (rawReadBase, readName)].attrs
+            mux = str(readMeta["start_mux"])
+            channel = str(channelMeta["channel_number"])
+        alnHeaders = h5File[alignmentBase].dtype
+        outAlnData = h5File[alignmentBase][()] # load entire array into memory
+        if(header):
+            sys.stdout.write("runID,channel,mux,read,"+
+                             "tempStart,tempEnd,compStart,compEnd,bpPos," +
+                             ",".join(alnHeaders.names) + "\n")
+        lastkmer = ""
+        bpPos = -3
+        lastbpPos = 1
+        tempStart = -1
+        tempEnd = -1
+        compStart = -1
+        compEnd = -1
+        for line in outAlnData:
+            nextkmer = line["kmer"]
+            moved = False
+            if(lastkmer != nextkmer):
+                if(lastkmer[1:] == nextkmer[:-1]):
+                    bpPos += 1
+                elif(lastkmer[2:] == nextkmer[:-2]):
+                    bpPos += 2
+                elif(lastkmer[3:] == nextkmer[:-3]):
+                    bpPos += 3
+                elif(lastkmer[4:] == nextkmer[:-4]):
+                    bpPos += 4
+                else:
+                    bpPos += 5
+                moved = True
+                lastkmer = nextkmer
+            if(line["template"] != -1):
+                tempStart = (evtTempStart[line["template"]] if moved
+                             else tempStart)
+                tempEnd = (evtTempStart[line["template"]] +
+                           evtTempLen[line["template"]])
+            if(line["complement"] != -1):
+                compStart = evtCompStart[line["complement"]]
+                compEnd = ((evtCompStart[line["complement"]] +
+                            evtCompLen[line["complement"]]) if moved
+                           else compEnd)
+            res=map(str,line)
+            if(moved):
+                sys.stdout.write(",".join((runID,channel,mux,readName,
+                                           str(tempStart),str(tempEnd),
+                                           str(compStart),str(compEnd),
+                                           str(bpPos))) +
+                                 "," + ",".join(res) + "\n")
+
 def generate_eventdir_matrix(fileName, header=True, direction=None):
     '''write out event matrix from fast5, return False if not present'''
     try:
@@ -327,6 +405,7 @@ def usageQuit():
     sys.stderr.write(' where <dataType> is one of the following:\n')
     sys.stderr.write('  fastq     - extract base-called fastq data\n')
     sys.stderr.write('  event     - extract uncalled model event matrix\n')
+    sys.stderr.write('  consensus - extract consensus alignment matrix\n')
     sys.stderr.write('  eventfwd  - extract model event matrix (template)\n')
     sys.stderr.write('  eventrev  - extract model event matrix (complement)\n')
     sys.stderr.write('  telemetry - extract read statistics matrix\n')
@@ -340,7 +419,7 @@ if len(sys.argv) < 3:
     usageQuit()
 
 dataType = sys.argv[1]
-if(not dataType in ("fastq", "fasta", "event", "eventfwd",
+if(not dataType in ("fastq", "fasta", "event", "consensus", "eventfwd",
                     "eventrev", "telemetry", "raw", "rawfwd", "rawrev", "rawsmooth")):
     sys.stderr.write('Error: Incorrect dataType\n\n')
     usageQuit()
@@ -373,6 +452,8 @@ if(os.path.isdir(fileArg)):
 elif(os.path.isfile(fileArg)):
     if(dataType == "event"):
         generate_event_matrix(fileArg)
+    elif(dataType == "consensus"):
+        generate_consensus_matrix(fileArg)
     elif(dataType == "eventfwd"):
         generate_eventdir_matrix(fileArg, direction="f")
     elif(dataType == "eventrev"):
