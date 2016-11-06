@@ -43,6 +43,8 @@ def generate_consensus_matrix(fileName, header=True):
         evtTempLen = map(int,evtTemp["length"] * channelRate)
         evtCompStart = map(int,evtComp["start"] * channelRate)
         evtCompLen = map(int,evtComp["length"] * channelRate)
+        tempRawStart = evtTempStart[0]
+        compRawStart = evtCompStart[0]
         alignmentBase = "/Analyses/Basecall_2D_000/BaseCalled_2D/Alignment/"
         if(not alignmentBase in h5File):
             return False
@@ -96,8 +98,8 @@ def generate_consensus_matrix(fileName, header=True):
             res=map(str,line)
             if(moved):
                 sys.stdout.write(",".join((runID,channel,mux,readName,
-                                           str(tempStart),str(tempEnd),
-                                           str(compStart),str(compEnd),
+                                           str(tempStart-tempRawStart),str(tempEnd-tempRawStart),
+                                           str(compStart-compRawStart),str(compEnd-compRawStart),
                                            str(bpPos))) +
                                  "," + ",".join(res) + "\n")
 
