@@ -14,10 +14,10 @@ use SVG;
 use POSIX qw(fmod);
 
 ## more verbose traceback on errors
-use Carp 'verbose'; 
+use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "1.96";
+our $VERSION = "1.97";
 
 =head1 NAME
 
@@ -713,8 +713,6 @@ my $coastColour = ""; # coast along lake, rivers, sea coasts
 my $polBordColour = ""; # Other minor political borders
 my $intBordColour = ""; # border colour for areas of interest
 
-my $printLines = "";
-
 my $printKey = 1; # true
 
 my $latSep = 30; # separation (degrees) for lines of latitude
@@ -873,7 +871,6 @@ if ($mapType =~ /^(location|locator|area)/) {
     unless $projOpts->{"projection"};
   $projOpts->{"svgWidth"} = 1100 unless $projOpts->{"svgWidth"};
   $projOpts->{"svgHeight"} = 550 unless $projOpts->{"svgHeight"};
-  $printLines = 0 if ($printLines eq "");
 } elsif ($mapType =~ /^world/) {
   # Winkel Tripel projection for world maps
   $projOpts->{"projection"} = "wintri"
@@ -881,7 +878,6 @@ if ($mapType =~ /^(location|locator|area)/) {
   $projOpts->{"svgWidth"} =
     ((4 + 2 * pi) / (2 * pi) * 550) unless $projOpts->{"svgWidth"};
   $projOpts->{"svgHeight"} = 550 unless $projOpts->{"svgHeight"};
-  $printLines = 0 if ($printLines eq "");
 } elsif ($mapType =~ /^ortho(graphic)?/) {
   # Orthographic projection for locator maps
   $projOpts->{"projection"} = "orthographic"
@@ -890,7 +886,7 @@ if ($mapType =~ /^(location|locator|area)/) {
   $projOpts->{"yScale"} = 1 unless $projOpts->{"yScale"};
   $projOpts->{"svgWidth"} = 550 unless $projOpts->{"svgWidth"};
   $projOpts->{"svgHeight"} = 550 unless $projOpts->{"svgHeight"};
-  $printLines = 3 if ($printLines eq "");
+  $projOpts->{"lines"} = 3 if ($projOpts->{"lines"});
 }
 
 # specify width / height if not modified by type definitions
@@ -1124,7 +1120,6 @@ if (keys(%zoomNames)) {
 }
 
 $projOpts->{"pointSize"} = 1 unless $projOpts->{"pointSize"};
-$printLines = 0 if ($printLines eq "");
 
 # adjust SVG dimensions to fit in with zoom extents
 if ($projOpts->{"zoomed"}) {
@@ -1699,7 +1694,7 @@ foreach my $shpFileBase (@shpFileBases) {
 
 $latLimit = 80 unless $latLimit;
 
-if ($printLines && !$projOpts->{"zoomed"}) {
+if ($projOpts->{"lines"} && !$projOpts->{"zoomed"}) {
   print(STDERR "Printing lines of latitude and longitude...")
     if ($debugLevel> 0);
   # printLines is a bit-packed integer
@@ -1711,7 +1706,7 @@ if ($printLines && !$projOpts->{"zoomed"}) {
   # lines of latitude
   my $minLat = -$latLimit + (($latSep - (-$latLimit % $latSep)) % $latSep);
   my $maxLat = $latLimit - (($latLimit % $latSep) % $latSep);
-  if (($printLines & 1) != 0) {
+  if (($projOpts->{"lines"} & 1) != 0) {
     # % < 1 allows for non-integer separations, but makes sure always
     # on a degree line
     for my $latPoint (grep (($_ % $latSep) < 1, $minLat..$maxLat)) {
@@ -1730,7 +1725,7 @@ if ($printLines && !$projOpts->{"zoomed"}) {
       }
     }
   }
-  if (($printLines & 2) != 0) {
+  if (($projOpts->{"lines"} & 2) != 0) {
     for my $longPoint (grep (($_ % $longSep) < 1, -180..179)) {
       print(STDERR ".") if ($debugLevel> 0);
       my @linePoints = ();
