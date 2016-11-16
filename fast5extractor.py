@@ -328,7 +328,6 @@ def generate_telemetry(fileName, callID="000", header=True):
              ('complementCalledEvents',''),('complementCalledBases','')
             ])
         if(not eventBase in h5File):
-            sys.stderr.write(eventBase + "\n")
             useRaw = True
             eventBase = "/Raw/Reads"
         readNames = h5File[eventBase]
@@ -344,8 +343,6 @@ def generate_telemetry(fileName, callID="000", header=True):
             callBase = "/Analyses/Basecall_1D_%s" % (callID)
             metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir) if useRaw
                        else "%s/BaseCalled_%s/Events" % (callBase,dir))
-            sys.stderr.write(str(useRaw) + "\n")
-            sys.stderr.write(metaLoc + "\n")
             if(metaLoc in h5File):
                 dirMeta = h5File[metaLoc].attrs
                 rowData["%sRawStart" % dir] = int(dirMeta["start_time"] *
