@@ -17,7 +17,7 @@ import os
 import sys
 import h5py
 import numpy
-from collections import deque, Counter
+from collections import deque, Counter, OrderedDict
 from itertools import islice
 from bisect import insort, bisect_left
 from struct import pack
@@ -236,10 +236,14 @@ def generate_fastq(fileName, callID="000"):
                   sys.stdout.write(str(h5File[baseTemp][()][1:]))
               else:
                   badEvt += 1
+                  sys.stderr.write("[badevt]")
           elif(baseTemp in h5File):
+              sys.stderr.write("[tempNoEvt]")
               sys.stdout.write("@1Dtemp_"+
                                "_".join((runID,channel,mux,readName)) + " ")
               sys.stdout.write(str(h5File[baseTemp][()][1:]))
+          else:
+              sys.sterr.write("\nWarning: template call not found\n")
           if(eventComp in h5File):
               headers = h5File[eventComp].dtype
               moveLoc = -1
@@ -304,34 +308,61 @@ def generate_telemetry(fileName, callID="000", header=True):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
-      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
-      channel = str(channelMeta["channel_number"])
-      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
-      eventBase = "/Analyses/EventDetection_%s/Reads/" % (callID)
-      readNames = h5File[eventBase]
-      mux = ""
-      startTime = ""
-      duration = ""
-      lastReadName = ""
-      # get mux for the read
-      for readName in readNames:
-        readMetaLocation = "/Analyses/EventDetection_%s/Reads/%s" % (callID,readName)
-        outMeta = h5File[readMetaLocation].attrs
-        mux = str(outMeta["start_mux"])
-        startTime = str(outMeta["start_time"])
-        duration = str(outMeta["duration"])
-        lastReadName = readName
-      eventLocation = "/Analyses/Basecall_1D_%s/BaseCalled_%s/Events" % (callID,dir)
-      if(header):
-          sys.stdout.write("runID,channel,mux,read,start,length,offset,range,digitisation,sampleRate\n")
-      # here's the raw to pA formula for future reference: pA = (raw + offset)*range/digitisation
-      # (using channelMeta[("offset", "range", "digitisation")])
-      # - might also be useful to know start_time from outMeta["start_time"]
-      #   which should be subtracted from event/start
-      sys.stdout.write(",".join((runID, channel, mux, lastReadName, startTime, duration,
-                                 str(channelMeta["offset"]), str(channelMeta["range"]),
-                                 str(channelMeta["digitisation"]), str(channelMeta["sampling_rate"]))) + "\n")
+        runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+        channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+        eventBase = "/Analyses/EventDetection_%s/Reads" % (callID)
+        callBase = "/Analyses/Basecall_1D_%s/Summary" % (callID)
+        useRaw = False
+        rowData = OrderedDict(
+            [('runID','%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])),
+             ('channel',channelMeta["channel_number"]),
+             ('mux',''),('read',''),
+             ('offset',channelMeta["offset"]),
+             ('range',channelMeta["range"]),
+             ('digitisation',channelMeta["digitisation"]),
+             ('sampleRate',channelMeta["sampling_rate"]),
+             ('rawStart',''),('rawLength',''),
+             ('templateRawStart',''),('templateRawLength',''),
+             ('templateCalledEvents',''),('templateCalledBases',''),
+             ('complementRawStart',''),('complementRawLength',''),
+             ('complementCalledEvents',''),('complementCalledBases','')
+            ])
+        if(not eventBase in h5File):
+            sys.stderr.write(eventBase + "\n")
+            useRaw = True
+            eventBase = "/Raw/Reads"
+        readNames = h5File[eventBase]
+        # get mux for the read
+        for readName in readNames:
+            readMetaLocation = "%s/%s" % (eventBase,readName)
+            outMeta = h5File[readMetaLocation].attrs
+            rowData["mux"] = outMeta["start_mux"]
+            rowData["read"] = readName
+            rowData["rawStart"] = outMeta["start_time"]
+            rowData["rawLength"] = outMeta["duration"]
+        for dir in ('template','complement'):
+            callBase = "/Analyses/Basecall_1D_%s" % (callID)
+            metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir) if useRaw
+                       else "%s/BaseCalled_%s/Events" % (callBase,dir))
+            sys.stderr.write(str(useRaw) + "\n")
+            sys.stderr.write(metaLoc + "\n")
+            if(metaLoc in h5File):
+                dirMeta = h5File[metaLoc].attrs
+                rowData["%sRawStart" % dir] = int(dirMeta["start_time"] *
+                                                  rowData["sampleRate"])
+                rowData["%sRawLength" % dir] = int(dirMeta["duration"] *
+                                                   rowData["sampleRate"])
+            metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir))
+            if(metaLoc in h5File):
+                dirMeta = h5File[metaLoc].attrs
+                rowData["%sCalledEvents" % dir] = dirMeta["called_events"]
+                rowData["%sCalledBases" % dir] = dirMeta["sequence_length"]
+        if(header):
+            sys.stdout.write(",".join(rowData.keys()) + "\n")
+            # here's the raw to pA formula for future reference:
+            # pA = (raw + offset)*range/digitisation
+            # (using channelMeta[("offset", "range", "digitisation")])
+        sys.stdout.write(",".join(map(str,rowData.values())) + "\n")
 
 def generate_raw(fileName, callID="000", medianWindow=21):
     '''write out raw sequence from fast5, with optional running median
