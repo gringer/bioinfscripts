@@ -9,8 +9,11 @@ my $idFileName = "";
 my $quiet = 0;
 my $minLength = 0;
 my $maxLength = 10 ** 12; # 1 Tbp
+my $count = -1;
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet, "minLength=i" => \$minLength, "maxLength=i" => \$maxLength) or
+GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet,
+           "minLength=i" => \$minLength, "maxLength=i" => \$maxLength,
+           "count=i" => \$count, ) or
   die("Error in command line arguments");
 
 my %idsToGet = ();
@@ -65,6 +68,10 @@ while(<>){
         } else {
           printf(">%s\n%s\n", $seqID, $seq);
         }
+      }
+      if($count-- == 0){
+        $seqID = "";
+        last;
       }
       $seq = "";
       $qual = "";
