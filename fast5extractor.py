@@ -185,96 +185,37 @@ def generate_fastq(fileName, callID="000"):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
-      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
-      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
-      eventBase = "/Analyses/EventDetection_%s/Reads/" % callID
-      if(not eventBase in h5File):
-          eventBase = "/Raw/Reads/"
-      readNames = h5File[eventBase]
-      channel = channelMeta["channel_number"]
-      mux = -1
-      readNameStr = ""
-      for readName in readNames:
-        readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
-        eventLocation = "/Analyses/EventDetection_000/Reads/%s/Events" % readName
-        if(readMetaLocation in h5File):
-            outMeta = h5File[readMetaLocation].attrs
-            mux = str(outMeta["start_mux"])
-        else:
-            readMetaLocation = "/Raw/Reads/%s" % readName
-            outMeta = h5File[readMetaLocation].attrs
-            mux = str(outMeta["start_mux"])
-        readNameStr = str(readName)
-      seqBase1D = "/Analyses/Basecall_1D_%s" % callID
-      seqBase2D = "/Analyses/Basecall_2D_%s" % callID
-      v1_2File = False
-      if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
-          seqBase1D = seqBase2D
-          v1_2File = True
-      badEvt = 0
-      if(seqBase1D in h5File):
-          baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
-          baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
-          eventComp = "%s/BaseCalled_complement/Events" % seqBase1D
-          eventTemp = "%s/BaseCalled_template/Events" % seqBase1D
-          if(eventTemp in h5File):
-              headers = h5File[eventTemp].dtype
-              moveLoc = -1
-              for index, item in enumerate(headers.names):
-                  if(item == "move"):
-                      moveLoc = index
-              outEvt = h5File[eventTemp][:] # load events into memory
-              mCount = Counter(map(lambda x: x[moveLoc], outEvt))
-              badThresh = (sum(mCount.values()) * 0.1)
-              zeroThresh = (sum(mCount.values()) * 0.9)
-              # With R9, moves of 0 are more common, so ignore them unless it's *really* bad
-              if(((mCount[2]) < (badThresh*2)) and (mCount[0] < zeroThresh) and
-                 ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseTemp in h5File)):
-                  sys.stdout.write("@1Dtemp_"+
-                                   "_".join((runID,channel,mux,readName)) + " ")
-                  sys.stdout.write(str(h5File[baseTemp][()][1:]))
-              else:
-                  badEvt += 1
-                  sys.stderr.write("[badevt]")
-          elif(baseTemp in h5File):
-              sys.stderr.write("[tempNoEvt]")
-              sys.stdout.write("@1Dtemp_"+
-                               "_".join((runID,channel,mux,readName)) + " ")
-              sys.stdout.write(str(h5File[baseTemp][()][1:]))
-          else:
-              sys.stderr.write("\n[noTemplate]\n")
-          if(eventComp in h5File):
-              headers = h5File[eventComp].dtype
-              moveLoc = -1
-              for index, item in enumerate(headers.names):
-                  if(item == "move"):
-                      moveLoc = index
-              outEvt = h5File[eventComp][:] # load events into memory
-              mCount = Counter(map(lambda x: x[moveLoc], outEvt))
-              badThresh = (sum(mCount.values()) * 0.1)
-              # ignore 0 moves for R9 (unless they're *really* bad
-              if(((mCount[2]) < badThresh*2) and (mCount[0] < zeroThresh) and
-                 ((mCount[3] + mCount[4] + mCount[5] + mCount[6]) < badThresh) and (baseComp in h5File)):
-                  sys.stdout.write("@1Dcomp_"+
-                                   "_".join((runID,channel,mux,readName)) + " ")
-                  sys.stdout.write(str(h5File[baseComp][()][1:]))
-              else:
-                  badEvt += 1
-          elif(baseComp in h5File):
-              sys.stdout.write("@1Dcomp_"+
-                               "_".join((runID,channel,mux,readName)) + " ")
-              sys.stdout.write(str(h5File[baseComp][()][1:]))
-          if(badEvt == 2):
-              sys.stderr.write(" [rejected: bad event data] ")
-      else:
-          sys.stderr.write("seqBase1D [%s] not in file\n" % seqBase1D)
-      if((badEvt < 2) and seqBase2D in h5File):
-          base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
-          if((base2D in h5File)):
-              sys.stdout.write("@2Dcons_"+
-                           "_".join((runID,channel,mux,readName)) + " ")
-              sys.stdout.write(str(h5File[base2D][()][1:]))
+        rowData = get_telemetry(h5File, callID)
+        seqBase1D = "/Analyses/Basecall_1D_%s" % callID
+        seqBase2D = "/Analyses/Basecall_2D_%s" % callID
+        v1_2File = False
+        if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
+            seqBase1D = seqBase2D
+            v1_2File = True
+        if( (rowData["templateCalledBases"] > 0) and
+            (rowData["templateRawLength"] / rowData["templateCalledBases"] <= 25)):
+            baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
+            sys.stdout.write("@1Dtemp_" +
+                             "_".join(map(lambda x: str(rowData[x]),
+                                ("runID","channel","mux","read"))) +
+                                " ")
+            sys.stdout.write(str(h5File[baseTemp][()][1:]))
+        if( (rowData["complementCalledBases"] > 0) and
+            (rowData["complementRawLength"] / rowData["complementCalledBases"] <= 25)):
+            baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
+            sys.stdout.write("@1Dcomp_"+
+                             "_".join(map(lambda x: str(rowData[x]),
+                                ("runID","channel","mux","read"))) +
+                                " ")
+            sys.stdout.write(str(h5File[baseComp][()][1:]))
+        if(seqBase2D in h5File):
+            base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
+            if((base2D in h5File)):
+                sys.stdout.write("@2Dcons_"+
+                             "_".join(map(lambda x: str(rowData[x]),
+                                ("runID","channel","mux","read")))+
+                                " ")
+                sys.stdout.write(str(h5File[base2D][()][1:]))
 
 ## Running median
 ## See [http://code.activestate.com/recipes/578480-running-median-mean-and-mode/]
@@ -299,6 +240,55 @@ def runningMedian(seq, M):
     medians.extend([median()] * (m))
     return medians
 
+def get_telemetry(h5File, callID):
+    runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
+    channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
+    useRaw = False
+    rowData = OrderedDict(
+        [('runID','%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])),
+         ('channel',channelMeta["channel_number"]),
+         ('mux',''),('read',''),
+         ('offset',channelMeta["offset"]),
+         ('range',channelMeta["range"]),
+         ('digitisation',channelMeta["digitisation"]),
+         ('sampleRate',channelMeta["sampling_rate"]),
+         ('rawStart',''),('rawLength',-1),
+         ('templateRawStart',''),('templateRawLength',-1),
+         ('templateCalledEvents',''),('templateCalledBases',-1),
+         ('complementRawStart',''),('complementRawLength',-1),
+         ('complementCalledEvents',''),('complementCalledBases',-1)
+        ])
+    callBase = "/Analyses/Basecall_1D_%s/Summary" % (callID)
+    eventBase = "/Analyses/EventDetection_%s/Reads" % (callID)
+    if(not eventBase in h5File):
+        useRaw = True
+        eventBase = "/Raw/Reads"
+    readNames = h5File[eventBase]
+    # get mux for the read
+    for readName in readNames:
+        readMetaLocation = "%s/%s" % (eventBase,readName)
+        outMeta = h5File[readMetaLocation].attrs
+        rowData["mux"] = outMeta["start_mux"]
+        rowData["read"] = readName
+        rowData["rawStart"] = outMeta["start_time"]
+        rowData["rawLength"] = outMeta["duration"]
+    for dir in ('template','complement'):
+        callBase = "/Analyses/Basecall_1D_%s" % (callID)
+        metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir) if useRaw
+                   else "%s/BaseCalled_%s/Events" % (callBase,dir))
+        if(metaLoc in h5File):
+            dirMeta = h5File[metaLoc].attrs
+            rowData["%sRawStart" % dir] = int(dirMeta["start_time"] *
+                                              rowData["sampleRate"])
+            rowData["%sRawLength" % dir] = int(dirMeta["duration"] *
+                                               rowData["sampleRate"])
+        metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir))
+        if(metaLoc in h5File):
+            dirMeta = h5File[metaLoc].attrs
+            rowData["%sCalledEvents" % dir] = dirMeta["called_events"]
+            rowData["%sCalledBases" % dir] = dirMeta["sequence_length"]
+    return(rowData)
+
 def generate_telemetry(fileName, callID="000", header=True):
     '''Create telemetry matrix from read files; any per-read summary
        statistics that would be useful to know'''
@@ -308,52 +298,7 @@ def generate_telemetry(fileName, callID="000", header=True):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-        runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
-        channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
-        eventBase = "/Analyses/EventDetection_%s/Reads" % (callID)
-        callBase = "/Analyses/Basecall_1D_%s/Summary" % (callID)
-        useRaw = False
-        rowData = OrderedDict(
-            [('runID','%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])),
-             ('channel',channelMeta["channel_number"]),
-             ('mux',''),('read',''),
-             ('offset',channelMeta["offset"]),
-             ('range',channelMeta["range"]),
-             ('digitisation',channelMeta["digitisation"]),
-             ('sampleRate',channelMeta["sampling_rate"]),
-             ('rawStart',''),('rawLength',''),
-             ('templateRawStart',''),('templateRawLength',''),
-             ('templateCalledEvents',''),('templateCalledBases',''),
-             ('complementRawStart',''),('complementRawLength',''),
-             ('complementCalledEvents',''),('complementCalledBases','')
-            ])
-        if(not eventBase in h5File):
-            useRaw = True
-            eventBase = "/Raw/Reads"
-        readNames = h5File[eventBase]
-        # get mux for the read
-        for readName in readNames:
-            readMetaLocation = "%s/%s" % (eventBase,readName)
-            outMeta = h5File[readMetaLocation].attrs
-            rowData["mux"] = outMeta["start_mux"]
-            rowData["read"] = readName
-            rowData["rawStart"] = outMeta["start_time"]
-            rowData["rawLength"] = outMeta["duration"]
-        for dir in ('template','complement'):
-            callBase = "/Analyses/Basecall_1D_%s" % (callID)
-            metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir) if useRaw
-                       else "%s/BaseCalled_%s/Events" % (callBase,dir))
-            if(metaLoc in h5File):
-                dirMeta = h5File[metaLoc].attrs
-                rowData["%sRawStart" % dir] = int(dirMeta["start_time"] *
-                                                  rowData["sampleRate"])
-                rowData["%sRawLength" % dir] = int(dirMeta["duration"] *
-                                                   rowData["sampleRate"])
-            metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir))
-            if(metaLoc in h5File):
-                dirMeta = h5File[metaLoc].attrs
-                rowData["%sCalledEvents" % dir] = dirMeta["called_events"]
-                rowData["%sCalledBases" % dir] = dirMeta["sequence_length"]
+        rowData = get_telemetry(h5File, callID)
         if(header):
             sys.stdout.write(",".join(rowData.keys()) + "\n")
             # here's the raw to pA formula for future reference:
