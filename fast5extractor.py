@@ -243,7 +243,7 @@ def generate_fastq(fileName, callID="000"):
                                "_".join((runID,channel,mux,readName)) + " ")
               sys.stdout.write(str(h5File[baseTemp][()][1:]))
           else:
-              sys.sterr.write("\nWarning: template call not found\n")
+              sys.stderr.write("\n[noTemplate]\n")
           if(eventComp in h5File):
               headers = h5File[eventComp].dtype
               moveLoc = -1
