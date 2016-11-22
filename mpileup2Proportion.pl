@@ -94,11 +94,11 @@ while(<>){
       } else {
         if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
           print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
-        } elsif($oldRefName && $seqChanged){
+        } elsif($oldRefName){
           print("\n");
         }
-        $seqChanged = 0;
       }
+      $seqChanged = 0;
       print(">${refName}\n"); ## write new sequence header
     }
     $oldRefName = $refName;

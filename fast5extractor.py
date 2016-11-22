@@ -408,7 +408,8 @@ if(os.path.isdir(fileArg)):
         fc = len(fileNames)
         for fileName in fileNames:
             if(fileName.endswith(".fast5")): # only process fast5 files
-                sys.stderr.write("  Processing file '%s'..." % fileName)
+                if((fc == 2) or ((fc-1) % 100 == 0)):
+                    sys.stderr.write("  Processing file '%s'..." % fileName)
                 if(dataType == "event"):
                     generate_event_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
                 elif(dataType == "consensus"):
@@ -424,7 +425,7 @@ if(os.path.isdir(fileArg)):
                 seenHeader = True
                 if(fc == 1):
                     sys.stderr.write(" done (%d more file to process)\n" % fc)
-                else:
+                elif(fc % 100 == 0):
                     sys.stderr.write(" done (%d more files to process)\n" % fc)
 elif(os.path.isfile(fileArg)):
     if(dataType == "event"):
