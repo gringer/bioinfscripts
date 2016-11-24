@@ -22,12 +22,14 @@ use Getopt::Long qw(:config auto_help pass_through);
 
 my $sampleName = "";
 my $minCoverage = 0;
+my $maxCoverage = 10**9;
 my $writeCounts = 0;
 my $writeConsensus = 0;
 my $consThresholdCov = 5;
 my $deletionSens = 0.15;
 
 GetOptions("mincoverage=i" => \$minCoverage,
+           "transposoncoverage=i" => \$maxCoverage,
 	   "samplename=s" => \$sampleName,
            "deletionsensitivity=s" => \$deletionSens,
            "fasta=s" => \$writeConsensus,
@@ -79,6 +81,7 @@ my %deletions = ();
 my $oldRefName = "";
 my $lastBase = 0;
 my $seqChanged = 0;
+my $highCovStart = 0;
 
 while(<>){
   chomp;
@@ -105,10 +108,18 @@ while(<>){
     $lastBase = 0;
   }
   if($writeConsensus){
-    if(++$lastBase < $pos){  ## print sequence from the intervening gap
+    if((++$lastBase < $pos)  && ($cov < $maxCoverage)){
+      ## print sequence from the intervening gap
+      ## [but only if coverage doesn't suggest a transposon sequence]
       print(substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
     }
     $lastBase = $pos;
+  }
+  if($cov >= $maxCoverage){
+    $highCovStart = $pos unless ($highCovStart > 0);
+    next;
+  } elsif($highCovStart > 0) {
+    $highCovStart = 0;
   }
   $_ = uc($bases);
   ## process insertions
