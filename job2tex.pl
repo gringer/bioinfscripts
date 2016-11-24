@@ -302,7 +302,7 @@ EOT
 $templateFields{"GSTNumber"} = "73-199-131"; # GST registration number
 
 $templateFields{"currency"} = "NZD";
-my $country = "nz";
+$templateFields{"clientCountry"} = "nz";
 
 my $detailsHeader = "\\textbf{Sub-job Details} & \\textbf{Hours}\\\\";
 
@@ -377,7 +377,7 @@ if($outputBaseName =~
   if(defined($codeLookup{$clientCode}{$codeName})){
     $templateFields{clientName} = $codeLookup{$clientCode}{$codeName};
   }
-  if ($country eq "de") {
+  if ($templateFields{"clientCountry"} eq "de") {
     $templateFields{"currency"} = "EUR";
     $templateFields{"accountDetails"} = <<EOT;
 Name:         David Eccles \\& Jessica Eccles
@@ -388,7 +388,7 @@ Bankleitzahl: 400 501 50
 Kontonummer:  0135644714
 EOT
   }
-  if($country eq "nz"){
+  if($templateFields{"clientCountry"} eq "nz"){
     printf(STDERR "Country: New Zealand\n");
     $templateFields{"currency"} = "NZD";
     if(!$gstDefined){
@@ -396,7 +396,7 @@ EOT
       $gstDefined = 1;
     }
   }
-  if($country eq "us"){
+  if($templateFields{"clientCountry"} eq "us"){
     printf(STDERR "Country: United States\n");
     $templateFields{"currency"} = "USD";
     if(!$gstDefined){
@@ -404,7 +404,7 @@ EOT
       $gstDefined = 1;
     }
   }
-  if($country eq "au"){
+  if($templateFields{"clientCountry"} eq "au"){
     printf(STDERR "Country: Australia\n");
     if(!$gstDefined){
       $gstExclusive = 1; # true
