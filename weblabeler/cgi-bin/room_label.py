@@ -20,7 +20,7 @@ def printFile(fileName, parameters, printContent):
         # HTTP header
         print('Content-type: text/html\n')
     if(not(os.path.exists(fileName))):
-        print('File does not exist: %s' % fileName);
+        print('File does not exist: %s' % fileName)
         return
     readFile = open(fileName, 'r')
     for line in readFile:
@@ -79,14 +79,30 @@ def runGenerator(lastForm, parameters, docType):
     if(len(roomID) == 0):
         roomID = "X.XX"
     outputFileName = 'room_label/tmp/room_label_%s.pdf' % roomID
+    pc2FileName = '@@fail@@'
     svgFileName = 'room_label/tmp/room_label_%s.svg' % roomID
     resultSVG = open(svgFileName, mode='w+b')
-    inputFile = '../room_label/MIMR_Room_template.svg'
+    pc2SVG = None
+    inputFile = '@@fail@@'
     hbase = 'unece/'
+    doPC2 = False
     if('ANGELS' in parameters):
         parameters['ANGELS'] = parameters['ANGELS'].replace('\n','</flowPara><flowPara>')
-    if (('selectClass' in parameters) and (parameters['selectClass'] == 'lab')):
+    if (not ('type' in parameters)):
+        parameters['type'] = 'office'
+    # this file name should really be extracted from the HTML file
+    if (parameters['type'] == 'lab'):
         inputFile = '../room_label/MIMR_Lab_template.svg'
+        if(lastForm.getvalue('pc2cb') == "pc2cb"):
+            doPC2 = True
+    if (parameters['type'] == 'office'):
+        inputFile = '../room_label/MIMR_Room_template.svg'
+    if (parameters['type'] == 'office2'):
+        inputFile = '../room_label/MIMR_Office2_template.svg'
+    if (parameters['type'] == 'plain'):
+        inputFile = '../room_label/MIMR_Plain_template.svg'
+    if (parameters['type'] == 'BRU'):
+        inputFile = '../room_label/MIMR_BRU_template.svg'
     for line in open(inputFile, 'r'):
         if('bg_default.png' in line):
             if(('inputFile' in parameters) and
@@ -117,6 +133,8 @@ def runGenerator(lastForm, parameters, docType):
             paramMatches = re.findall("@(.*?)@", line)
             for param in paramMatches:
                 if(param in parameters):
+                    if((param == "ID") and (parameters[param] == "")):
+                        line = line.replace('Room ','')
                     line = line.replace('@' + param + '@', parameters[param])
                 else:
                     line = line.replace('@' + param + '@', '['+param+']')
@@ -153,12 +171,34 @@ def runGenerator(lastForm, parameters, docType):
         line = line.replace('&','&amp;')
         resultSVG.write(line)
     resultSVG.close()
+    if(doPC2):
+        pc2FileName = 'room_label/tmp/pc2_label_%s.svg' % roomID
+        pc2SVG = open(pc2FileName, mode='w+b')
+        for line in open('../room_label/PC2_instructions_template.svg', 'r'):
+            if('@' in line):
+                paramMatches = re.findall("@(.*?)@", line)
+                for param in paramMatches:
+                    if(param in parameters):
+                        line = line.replace('@' + param + '@',
+                                            parameters[param])
+                    else:
+                        line = line.replace('@' + param + '@',
+                                            '['+param+']')
+            line = line.replace('&','&amp;')
+            pc2SVG.write(line)
+        pc2SVG.close()
     if(docType == "pdf"):
         exportLine = '--export-pdf=%s' % outputFileName
         commandLine = list(('inkscape',
                             exportLine,
                             resultSVG.name))
         runProcess = subprocess.call(commandLine)
+        if(doPC2):
+            exportLine = '--export-pdf=%s' % pc2FileName
+            commandLine = list(('inkscape',
+                                exportLine,
+                                pc2SVG.name))
+            runProcess = subprocess.call(commandLine)
         jamFileName = outputFileName.replace(".pdf","-pdfjam.pdf")
         commandLine = list(('pdfjam','--landscape',
                             '--preamble',
@@ -166,12 +206,25 @@ def runGenerator(lastForm, parameters, docType):
                             '--papersize', '{15.8cm,21.03cm}',
                             '--outfile', jamFileName,
                             outputFileName))
-        sys.stderr.write("Running '%s'...\n" % (" ".join(commandLine)))
+        #sys.stderr.write("Running '%s'...\n" % (" ".join(commandLine)))
         runProcess = subprocess.call(commandLine)
-        print('Content-type: application/pdf')
-        print('Content-Disposition: attachment; ' +
-              'filename=room_label_%s.pdf\n' % roomID)
-        sys.stdout.write(open(jamFileName,'rb').read())
+        if(doPC2):
+            catFileName = jamFileName.replace("-pdfjam.pdf","-pdfjam-PC2.pdf")
+            commandLine = list(('pdftk','A=%s' % jamFileName,
+                                'B=%s' % pc2FileName, 'cat',
+                                'Awest','B',
+                                'output',
+                                catFileName))
+            runProcess = subprocess.call(commandLine)
+            print('Content-type: application/pdf')
+            print('Content-Disposition: attachment; ' +
+                  'filename=room_label_%s.pdf\n' % roomID)
+            sys.stdout.write(open(catFileName,'rb').read())
+        else:
+            print('Content-type: application/pdf')
+            print('Content-Disposition: attachment; ' +
+                  'filename=room_label_%s.pdf\n' % roomID)
+            sys.stdout.write(open(jamFileName,'rb').read())
     else:
         print('Content-type: image/svg+xml')
         print('Content-Disposition: attachment; ' +
@@ -192,19 +245,16 @@ myparams = {
 
 #blastn -db db/3alln_smed -query /tmp/tmpGFk3hs -outfmt 5 -task blastn -evalue 10 -max_target_seqs 100 -word_size 11
 
-currentType = form.getfirst("selectClass","office")
-currentTab = form.getfirst("selectTab","query")
-
 # overwrite default values with previous form values
 loadForm(form, myparams)
+
+currentType = form.getfirst("selectClass","office")
 
 # add sessionID if it doesn't already exist
 if(not('sessionID' in myparams)):
     myparams['sessionID'] = base64.b64encode(os.urandom(16))
 
 myparams['type'] = currentType
-# activate current tab
-myparams['class_' + currentTab] = "tabon"
 
 if('REQUEST_URI' in os.environ):
     myparams['request_uri'] = os.environ['REQUEST_URI'].split("?")[0]
