@@ -108,18 +108,15 @@ while(<>){
     $lastBase = 0;
   }
   if($writeConsensus){
-    if((++$lastBase < $pos)  && ($cov < $maxCoverage)){
+    if(++$lastBase < $pos){
       ## print sequence from the intervening gap
-      ## [but only if coverage doesn't suggest a transposon sequence]
       print(substr($refSeqs{$refName}, ($lastBase), ($pos - $lastBase)));
     }
     $lastBase = $pos;
-  }
-  if($cov >= $maxCoverage){
-    $highCovStart = $pos unless ($highCovStart > 0);
-    next;
-  } elsif($highCovStart > 0) {
-    $highCovStart = 0;
+    if($cov >= $maxCoverage){
+      print("N"); ## mask out likely transposon sequences
+      next;
+    }
   }
   $_ = uc($bases);
   ## process insertions
@@ -156,11 +153,11 @@ while(<>){
   my $cc = tr/cC//;
   my $gc = tr/gG//;
   my $tc = tr/tT//;
-  my ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = (0, 0, 0, 0, 0, 0, 0);
-  my ($p0, $p1, $p2, $p3) = (0, 0, 0, 0);
+  my $nc = tr/nN//;
+  my ($pr, $pi, $pd, $pa, $pc, $pg, $pt, $pn) = (0, 0, 0, 0, 0, 0, 0);
   # note: insertions don't count towards total coverage,
   #       they are additional features attached to a read base
-  my $total = $rc+$dc+$ac+$cc+$gc+$tc;
+  my $total = $rc+$dc+$ac+$cc+$gc+$tc+$nc;
   # if($refAllele eq "A"){
   #   $ac = $rc;
   # } elsif($refAllele eq "C"){
@@ -172,8 +169,8 @@ while(<>){
   # }
   # was previously $coverage, not $total
   if($total > 0){
-    ($pr, $pi, $pd, $pa, $pc, $pg, $pt) = map {$_ / $total}
-      ($rc, $ic, $dc, $ac, $cc, $gc, $tc);
+    ($pr, $pi, $pd, $pa, $pc, $pg, $pt, $pn) = map {$_ / $total}
+      ($rc, $ic, $dc, $ac, $cc, $gc, $tc, $nc);
   }
   if($writeConsensus){
     ## determine consensus allele
@@ -187,6 +184,7 @@ while(<>){
          C => $cc,
          G => $gc,
          T => $tc,
+         N => $nc,
          d => $dc);
       my @sortedAlleles = sort {$consCounts{$b} <=> $consCounts{$a}} keys(%consCounts);
       if(($sortedAlleles[0] eq "d") || ($pd > $deletionSens)){
