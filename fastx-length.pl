@@ -71,12 +71,12 @@ while($cumLengths[$L90LengthNum] < ($sum * 0.9)){
 }
 
 printf(STDERR "Total sequences: %d\n", scalar(@lengths));
-printf(STDERR "Total length: %snt\n", SIConvert($sum));
-printf(STDERR "Longest sequence: %snt\n", SIConvert($lengths[0]));
-printf(STDERR "Shortest sequence: %snt\n", SIConvert($lengths[$#lengths]));
-printf(STDERR "Mean Length: %snt\n", SIConvert(sprintf("%d", ($sum) / scalar(@lengths))));
-printf(STDERR "Median Length: %snt\n", SIConvert($lengths[$#lengths / 2]));
-printf(STDERR "N50: %d sequences; L50: %snt\n",
+printf(STDERR "Total length: %sb\n", SIConvert($sum));
+printf(STDERR "Longest sequence: %sb\n", SIConvert($lengths[0]));
+printf(STDERR "Shortest sequence: %sb\n", SIConvert($lengths[$#lengths]));
+printf(STDERR "Mean Length: %sb\n", SIConvert(sprintf("%d", ($sum) / scalar(@lengths))));
+printf(STDERR "Median Length: %sb\n", SIConvert($lengths[$#lengths / 2]));
+printf(STDERR "N50: %d sequences; L50: %sb\n",
      ($L50LengthNum+1), SIConvert($lengths[$L50LengthNum]));
-printf(STDERR "N90: %d sequences; L90: %snt\n",
+printf(STDERR "N90: %d sequences; L90: %sb\n",
      ($L90LengthNum+1), SIConvert($lengths[$L90LengthNum]));
