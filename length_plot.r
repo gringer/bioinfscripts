@@ -107,7 +107,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
                    sum(bpdens.mat[,col]), type="l",
                col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80), lwd=3);
     }
-    legend("topright", legend=colnames(bpdens.mat),
+    legend("bottomleft", cex=0.71,
+           legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
            fill=hcl(h=(1:ncol(bpdens.mat))/ncol(bpdens.mat)*360, l=70, c=80),
            inset=0.05);
     mtext("Cumulative Base Proportion",2,3);
@@ -129,7 +130,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
                    sum(dens.mat[,col]), type="l",
                col=hcl(h=col/ncol(dens.mat)*360, l=70, c=80), lwd=3);
     }
-    legend("topright", legend=colnames(dens.mat),
+    legend("bottomleft", cex=0.71,
+           legend=colnames(dens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
            fill=hcl(h=(1:ncol(dens.mat))/ncol(dens.mat)*360, l=70, c=80),
            inset=0.05);
     mtext("Cumulative Read Proportion",2,3);
@@ -174,10 +176,10 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
                    sum(bpdens.mat[,col]), type="l",
                col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80));
     }
-    legend("topright", legend=colnames(bpdens.mat),
+    legend("topleft", cex=0.71, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
            fill=hcl(h=(1:ncol(bpdens.mat))/ncol(bpdens.mat)*360, l=70, c=80),
            inset=0.05);
-    mtext("Base Density",2,3);
+    mtext("Base Density (arbitrary scale)",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
          labels=paste0(c(1,2,5),
              rep(substring("00000",first=0,last=0:5),each=3)));
