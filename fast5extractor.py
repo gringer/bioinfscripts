@@ -276,7 +276,7 @@ def get_telemetry(h5File, callID):
         callBase = "/Analyses/Basecall_1D_%s" % (callID)
         metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir) if useRaw
                    else "%s/BaseCalled_%s/Events" % (callBase,dir))
-        if(metaLoc in h5File):
+        if((not useRaw) and (metaLoc in h5File)):
             dirMeta = h5File[metaLoc].attrs
             rowData["%sRawStart" % dir] = int(dirMeta["start_time"] *
                                               rowData["sampleRate"])
