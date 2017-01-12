@@ -443,7 +443,7 @@ elif(os.path.isfile(fileArg)):
     elif(dataType == "rawsmooth"):
         generate_raw(fileArg, medianWindow=21)
     elif(dataType == "raw"):
-        generate_raw(fileArg)
+        generate_raw(fileArg, medianWindow=1)
     elif(dataType == "rawfwd"):
         generate_dir_raw(fileArg, direction="f")
     elif(dataType == "rawrev"):
