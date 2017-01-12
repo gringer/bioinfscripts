@@ -27,13 +27,15 @@ my $writeCounts = 0;
 my $writeConsensus = 0;
 my $consThresholdCov = 5;
 my $deletionSens = 0.15;
+my $edit = 1;
 
 GetOptions("mincoverage=i" => \$minCoverage,
            "transposoncoverage=i" => \$maxCoverage,
 	   "samplename=s" => \$sampleName,
            "deletionsensitivity=s" => \$deletionSens,
            "fasta=s" => \$writeConsensus,
-           "counts!" => \$writeCounts) or
+           "counts!" => \$writeCounts,
+           "edit!" => \$edit ) or
   die("Error in command line arguments");
 
 my $assembly = "";
@@ -175,7 +177,7 @@ while(<>){
   if($writeConsensus){
     ## determine consensus allele
     my $consAllele = $refAllele;
-    if(($total > $consThresholdCov) &&
+    if($edit && ($total > $consThresholdCov) &&
        (($pr < 0.5) || ($pd > $deletionSens) || ($pi > 0.5))){
       $seqChanged = 0;
       my %consCounts =
