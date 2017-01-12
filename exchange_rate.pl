@@ -61,7 +61,7 @@ if($todayDate){
     new_from_url('http://www.xe.com/currencyconverter/convert/?Amount=1&From=NZD&To='.$currency)
     or die("Cannot load URL");
   for my $elt ($tree->findnodes('//span[@class="uccResultUnit"]')){
-    printf("xe.com,%0.4f\n", $elt->attr("data-amount"));
+    printf("xe.com;%0.4f\n", $elt->attr("data-amount"));
   }
 } else {
   my $date = $options{"date"};
