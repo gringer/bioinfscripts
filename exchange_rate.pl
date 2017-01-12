@@ -48,33 +48,20 @@ $options{"date"} =~ s/(20..-)(\d{2})(-\d{2})/$1.$numMonths[$2-1].$3/e;
 
 my $todayDate = $options{"date"} eq $todayStr;
 
+##printf("TSB Bank NZ;%s\n","0.9629");
+##exit(0);
+
 printf(STDERR "Getting exchange rate information for %s%s\n", $options{"date"},
        ( $todayDate ? " [today]" : ""));
 
 if($todayDate){
-  printf(STDERR "[Fetching NZD/%s rate for %s from TSB Bank]\n",
+  printf(STDERR "[Fetching NZD/%s rate for %s from xe.com]\n",
          $currency, $options{"date"});
   my $tree = HTML::TreeBuilder->
-    new_from_url('http://www.tsbbank.co.nz/Services/Foreign-Rates.aspx');
-  my @rows = $tree->findnodes('//table[@class="ExchangeRates"]/tr');
-  my %headers = ();
-  foreach my $row (@rows){
-    if(@_ = $row->findvalues('.//th')){
-      my $colNum = 0;
-      foreach (@_){
-        $headers{$_} = $colNum++;
-      }
-    } else {
-      my @values = $row->findvalues('.//td');
-      if(@values[$headers{"Currency"}] eq $currency){
-        printf(STDERR "%s [%s]: %s\n",
-               @values[$headers{"Country"},
-                       $headers{"Currency"},
-                       $headers{"TSB Bank buys tele transfer"}]);
-        printf("TSB Bank NZ;%s\n",
-               @values[$headers{"TSB Bank buys tele transfer"}]);
-      }
-    }
+    new_from_url('http://www.xe.com/currencyconverter/convert/?Amount=1&From=NZD&To='.$currency)
+    or die("Cannot load URL");
+  for my $elt ($tree->findnodes('//span[@class="uccResultUnit"]')){
+    printf("xe.com,%0.4f\n", $elt->attr("data-amount"));
   }
 } else {
   my $date = $options{"date"};
