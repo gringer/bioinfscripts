@@ -62,7 +62,7 @@ while(sp < (length(data.sig) - 8000)){
     sp <- (proc.time()["elapsed"] - startPTM) * sampleRate;
     plot(NA, ylim=c(0,(dRange)*3), xlim=c(0,4000),
          ann=FALSE, axes=FALSE);
-    mtext(sprintf("Raw Signal from Channel %d, Read %d", channel, read),
+    mtext(sprintf("Raw Signal from Channel %g, Read %g", channel, read),
           side=3, cex=2);
     points(data.sig[(sp+00001):(sp+04000)]-dMin+dRange*2, type="l");
     points(data.sig[(sp+04001):(sp+08000)]-dMin+dRange*1, type="l");
