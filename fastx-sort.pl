@@ -6,8 +6,10 @@ use Getopt::Long qw(:config auto_help pass_through);
 
 my $quiet = 0;
 my $searchPattern = "(^.*\$)";
+my $numeric = 0;
 
-GetOptions("pattern=s" => \$searchPattern, "quiet!" => \$quiet) or
+GetOptions("pattern=s" => \$searchPattern, "quiet!" => \$quiet,
+           "numeric!" => \$numeric) or
   die("Error in command line arguments");
 
 # Complain about non-file command line argument
@@ -71,6 +73,12 @@ if($seqID){
   }
 }
 
-foreach my $pat (sort(keys(%fastXStrs))){
-  print($fastXStrs{$pat});
+if($numeric){
+  foreach my $pat (sort {$a <=> $b} (keys(%fastXStrs))){
+    print($fastXStrs{$pat});
+  }
+} else {
+  foreach my $pat (sort(keys(%fastXStrs))){
+    print($fastXStrs{$pat});
+  }
 }
