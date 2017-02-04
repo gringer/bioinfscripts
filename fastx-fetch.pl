@@ -10,8 +10,10 @@ my $quiet = 0;
 my $minLength = 0;
 my $maxLength = 10 ** 12; # 1 Tbp
 my $count = -1;
+my $invert = 0; # invert logic
 
 GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet,
+           "reverse|v!" => \$invert,
            "minLength=i" => \$minLength, "maxLength=i" => \$maxLength,
            "count=i" => \$count, ) or
   die("Error in command line arguments");
@@ -49,6 +51,10 @@ if(!$quiet){
   printf(STDERR "Read %d identifiers\n", scalar(keys(%idsToGet)));
 }
 
+if(!$quiet && $invert){
+  printf(STDERR "Excluding IDs, rather than selecting\n");
+}
+
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -75,7 +81,7 @@ while(<>){
       }
       $seq = "";
       $qual = "";
-      if(!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})){
+      if((!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})) xor $invert){
         $seqID = $newSeqID;
       } else {
         $seqID = "";
