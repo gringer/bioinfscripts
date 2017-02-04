@@ -51,7 +51,7 @@ dRange <- dMax-dMin;
 #X11(width=14.25, height=7.5);
 
 if(createImage){
-    png(imageName);
+    png(imageName, width=1440, height=480);
 } else {
     X11(width=7, height=5);
 }
