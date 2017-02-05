@@ -11,14 +11,19 @@ my $minLength = 0;
 my $maxLength = 10 ** 12; # 1 Tbp
 my $count = -1;
 my $invert = 0; # invert logic
+my $trim = 0;
 
 GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet,
-           "reverse|v!" => \$invert,
+           "reverse|v!" => \$invert, "trim=i" => \$trim,
            "minLength=i" => \$minLength, "maxLength=i" => \$maxLength,
            "count=i" => \$count, ) or
   die("Error in command line arguments");
 
 my %idsToGet = ();
+if($trim){
+  $minLength = $minLength + $trim * 2;
+  $maxLength = $maxLength + $trim * 2;
+}
 
 # unknown commands are treated as identifiers
 my @files = ();
@@ -69,6 +74,12 @@ while(<>){
       my $newSeqID = $2;
       my $newShortID = $3;
       if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
+        if($trim > 0){
+          $seq = substr($seq, $trim, length($seq)-($trim * 2));
+          if($qual){
+            $qual = substr($qual, $trim, length($seq)-($trim * 2));
+          }
+        }
         if($qual){
           printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
         } else {
