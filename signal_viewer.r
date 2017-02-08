@@ -56,10 +56,15 @@ if(createImage){
     X11(width=7, height=5);
 }
 par(mar=c(1,1,2,1));
-startPTM <- proc.time()["elapsed"];
+startPTM <- if(!createImage){
+  proc.time()["elapsed"];
+} else 0;
 sp <- 0;
+timeSlice <- 1/10;
 while(sp < (length(data.sig) - 8000)){
-    sp <- (proc.time()["elapsed"] - startPTM) * sampleRate;
+    sp <- if(!createImage){
+      (proc.time()["elapsed"] - startPTM) * sampleRate;
+    } else { sp + timeSlice * sampleRate}
     plot(NA, ylim=c(0,(dRange)*3), xlim=c(0,4000),
          ann=FALSE, axes=FALSE);
     mtext(sprintf("Raw Signal from Channel %g, Read %g", channel, read),
@@ -77,8 +82,8 @@ while(sp < (length(data.sig) - 8000)){
     spTLposY <- (2-floor((spTLabs*4000 - sp) / 4000)) * dRange;
     text(x=spTLposX, y=spTLposY, labels=spTLabs,
          col=rainbow(10, alpha=0.5)[(spTLabs - 1) %% 10 + 1], cex=2);
-    Sys.sleep(1/10);
+    if(!createImage){Sys.sleep(timeSlice)};
 }
-Sys.sleep(2);
+if(!createImage){sys.sleep(2)}
 dummy <- dev.off();
 

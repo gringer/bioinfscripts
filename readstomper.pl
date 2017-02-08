@@ -2,21 +2,24 @@
 use warnings;
 use strict;
 
-# mpileup2Proportion.pl -- generate base/INDEL proportion statistics for
+# readstomper.pl -- generate base-packed proportion statistics for
 #   output from 'samtools mpileup'
 #
 # example use:
-# samtools mpileup -C50 -Q0 -e 20 -o 40 -f ref.fasta input.bam |
-#   mpileup2Proportion.pl > output.prop.csv
+# samtools mpileup -B -Q 0 -f circ-Nb-ec3-mtDNA.fasta LAST_OL_132394_vs_mtDNA.bam | \
+#   /bioinf/scripts/readstomper.pl > LAST_OLmpileupProp_132394_vs_mtDNA.txt.gz
 #
 # example output:
-# Assembly,Position,Ref,Coverage,cR,pR,A,C,G,T,d,i
-# mmusMT_PCR1,15564,G,89,85,95.5,0.0,2.2,95.5,1.1,1.1,2.2
-# mmusMT_PCR1,15565,A,89,85,95.5,95.5,1.1,3.4,0.0,0.0,7.9
-# mmusMT_PCR1,15566,A,89,83,93.3,93.3,0.0,2.2,1.1,0.0,0.0
-# mmusMT_PCR1,15567,T,89,73,82.0,4.5,0.0,5.6,82.0,7.9,1.1
-# mmusMT_PCR1,15568,A,89,71,79.8,79.8,3.4,2.2,1.1,13.5,2.2
-
+# Assembly,Position,Coverage,ref,cR,pR,A,C,G,T,d,i,InsMode
+# Nb_mtDNA,11456,86,T,79.00,0.92,0.0000,0.0465,0.0000,0.0000,0.03,0.01,A;1.00
+# Nb_mtDNA,11457,86,A,81.00,0.94,0.0000,0.0000,0.0233,0.0000,0.03,0.02,TA;0.50
+# Nb_mtDNA,11458,86,G,79.00,0.92,0.0349,0.0233,0.0000,0.0116,0.01,0.00
+# Nb_mtDNA,11459,86,A,78.00,0.92,0.0000,0.0000,0.0235,0.0471,0.01,0.00
+# Nb_mtDNA,11460,86,T,5.00,0.06,0.0233,0.8140,0.0233,0.0000,0.08,0.00
+# Nb_mtDNA,11461,86,G,57.00,0.66,0.1512,0.1163,0.0000,0.0465,0.02,0.01,AATAACAACACGTAACCGA;1.00
+# Nb_mtDNA,11462,86,G,78.00,0.91,0.0349,0.0349,0.0000,0.0116,0.01,0.00
+# Nb_mtDNA,11463,86,G,66.00,0.77,0.0465,0.0698,0.0000,0.0116,0.10,0.01,GCAATA;1.00
+# Nb_mtDNA,11464,86,T,74.00,0.86,0.0000,0.0814,0.0233,0.0000,0.03,0.00
 
 use Getopt::Long qw(:config auto_help pass_through);
 
@@ -148,7 +151,6 @@ while(<>){
   ## remove stray insertions and deletions (which shouldn't exist...)
   s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
   my $rc = tr/,.//;
-  #my $dc = tr/*//;
   my $dc = $deletions{$pos}?$deletions{$pos}:0;
   delete($deletions{$pos});
   my $ac = tr/aA//;
@@ -160,16 +162,6 @@ while(<>){
   # note: insertions don't count towards total coverage,
   #       they are additional features attached to a read base
   my $total = $rc+$dc+$ac+$cc+$gc+$tc+$nc;
-  # if($refAllele eq "A"){
-  #   $ac = $rc;
-  # } elsif($refAllele eq "C"){
-  #   $cc = $rc;
-  # } elsif($refAllele eq "G"){
-  #   $gc = $rc;
-  # } elsif($refAllele eq "T"){
-  #   $tc = $rc;
-  # }
-  # was previously $coverage, not $total
   if($total > 0){
     ($pr, $pi, $pd, $pa, $pc, $pg, $pt, $pn) = map {$_ / $total}
       ($rc, $ic, $dc, $ac, $cc, $gc, $tc, $nc);
