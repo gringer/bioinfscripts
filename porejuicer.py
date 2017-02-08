@@ -179,6 +179,7 @@ def generate_event_matrix(fileName, header=True):
 
 def generate_fastq(fileName, callID="000"):
     '''write out fastq sequence(s) from fast5, return False if not present'''
+    callStr = ""
     try:
         h5File = h5py.File(fileName, 'r')
         h5File.close()
@@ -188,34 +189,40 @@ def generate_fastq(fileName, callID="000"):
         rowData = get_telemetry(h5File, callID)
         seqBase1D = "/Analyses/Basecall_1D_%s" % callID
         seqBase2D = "/Analyses/Basecall_2D_%s" % callID
-        v1_2File = False
-        if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
-            seqBase1D = seqBase2D
-            v1_2File = True
-        if( (rowData["templateCalledBases"] > 0) and
-            (rowData["templateRawLength"] / rowData["templateCalledBases"] <= 25)):
-            baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
-            sys.stdout.write("@1Dtemp_" +
-                             "_".join(map(lambda x: str(rowData[x]),
-                                ("runID","channel","mux","read"))) +
-                                " ")
-            sys.stdout.write(str(h5File[baseTemp][()][1:]))
-        if( (rowData["complementCalledBases"] > 0) and
-            (rowData["complementRawLength"] / rowData["complementCalledBases"] <= 25)):
-            baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
-            sys.stdout.write("@1Dcomp_"+
-                             "_".join(map(lambda x: str(rowData[x]),
-                                ("runID","channel","mux","read"))) +
-                                " ")
-            sys.stdout.write(str(h5File[baseComp][()][1:]))
-        if(seqBase2D in h5File):
-            base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
-            if((base2D in h5File)):
-                sys.stdout.write("@2Dcons_"+
-                             "_".join(map(lambda x: str(rowData[x]),
-                                ("runID","channel","mux","read")))+
-                                " ")
+        while((seqBase1D in h5File) or (seqBase2D in h5File)):
+            v1_2File = False
+            if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
+                seqBase1D = seqBase2D
+                v1_2File = True
+            if( (rowData["templateCalledBases"] > 0) and
+                (rowData["templateRawLength"] / rowData["templateCalledBases"] <= 25)):
+                baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
+                sys.stdout.write("@1Dtemp_" + callStr +
+                                 "_".join(map(lambda x: str(rowData[x]),
+                                              ("runID","channel","mux","read"))) +
+                                 " ")
+                sys.stdout.write(str(h5File[baseTemp][()][1:]))
+            if( (rowData["complementCalledBases"] > 0) and
+                (rowData["complementRawLength"] / rowData["complementCalledBases"] <= 25)):
+                baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
+                sys.stdout.write("@1Dcomp_" + callStr +
+                                 "_".join(map(lambda x: str(rowData[x]),
+                                              ("runID","channel","mux","read"))) +
+                                 " ")
+                sys.stdout.write(str(h5File[baseComp][()][1:]))
+            if(seqBase2D in h5File):
+                base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
+                if((base2D in h5File)):
+                    sys.stdout.write("@2Dcons_" + callStr +
+                                     "_".join(map(lambda x: str(rowData[x]),
+                                                  ("runID","channel","mux","read")))+
+                                     " ")
                 sys.stdout.write(str(h5File[base2D][()][1:]))
+            callID = "%03d" % (int(callID)+1)
+            callStr = callID + "_"
+            rowData = get_telemetry(h5File, callID)
+            seqBase1D = "/Analyses/Basecall_1D_%s" % callID
+            seqBase2D = "/Analyses/Basecall_2D_%s" % callID
 
 ## Running median
 ## See [http://code.activestate.com/recipes/578480-running-median-mean-and-mode/]
