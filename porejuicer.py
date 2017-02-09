@@ -381,8 +381,18 @@ def generate_dir_raw(fileName, callID="000", medianWindow=1, direction=None):
         signal = rangeFilt(signal)
         sys.stdout.write(signal) # write to file
 
-def usageQuit():
-    sys.stderr.write('Error: No file or directory provided in arguments\n\n')
+def strip_analyses(fileName):
+    try:
+        h5File = h5py.File(fileName, 'r')
+        h5File.close()
+    except:
+        return False
+    with h5py.File(fileName, 'r+') as h5File:
+        if('Analyses' in h5File):
+            del h5File['Analyses']
+
+def usageQuit(message):
+    sys.stderr.write(message + "\n\n")
     sys.stderr.write('Usage: %s <dataType> <fast5 file name>\n' % sys.argv[0])
     sys.stderr.write(' where <dataType> is one of the following:\n')
     sys.stderr.write('  fastq     - extract base-called fastq data\n')
@@ -395,16 +405,17 @@ def usageQuit():
     sys.stderr.write('  rawfwd    - extract raw data from template\n')
     sys.stderr.write('  rawrev    - extract raw data from complement\n')
     sys.stderr.write('  rawsmooth - raw data, running-median smoothing\n')
+    sys.stderr.write('  strip     - in-place remove of analyses from fast5\n')
     sys.exit(1)
 
 if len(sys.argv) < 3:
-    usageQuit()
+    usageQuit('Error: No file or directory provided in arguments')
 
 dataType = sys.argv[1]
 if(not dataType in ("fastq", "fasta", "event", "consensus", "eventfwd",
-                    "eventrev", "telemetry", "raw", "rawfwd", "rawrev", "rawsmooth")):
-    sys.stderr.write('Error: Incorrect dataType\n\n')
-    usageQuit()
+                    "eventrev", "telemetry", "raw", "rawfwd", "rawrev",
+                    "rawsmooth", "strip")):
+    usageQuit('Error: Incorrect dataType')
 
 fileArg = sys.argv[2]
 seenHeader = False
@@ -425,9 +436,10 @@ if(os.path.isdir(fileArg)):
                     generate_telemetry(os.path.join(dirPath, fileName), header=not seenHeader)
                 elif(dataType == "fastq"):
                     generate_fastq(os.path.join(dirPath, fileName))
+                elif(dataType == "strip"):
+                    strip_analyses(os.path.join(dirPath, fileName))
                 elif(dataType == "raw"):
-                    sys.stderr.write(" Error: raw output only works for single files!\n")
-                    usageQuit()
+                    usageQuit('Error: raw output only works for single files!')
                 fc -= 1
                 seenHeader = True
                 if(fc == 1):
@@ -455,5 +467,7 @@ elif(os.path.isfile(fileArg)):
         generate_dir_raw(fileArg, direction="f")
     elif(dataType == "rawrev"):
         generate_dir_raw(fileArg, direction="r")
+    elif(dataType == "strip"):
+        strip_analyses(fileArg)
 else:
     usageQuit()
