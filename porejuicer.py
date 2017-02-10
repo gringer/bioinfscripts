@@ -387,9 +387,16 @@ def strip_analyses(fileName):
         h5File.close()
     except:
         return False
-    with h5py.File(fileName, 'r+') as h5File:
+    newName = fileName + '.stripped.fast5'
+    with h5py.File(fileName, 'r+', driver='core') as h5File:
         if('Analyses' in h5File):
             del h5File['Analyses']
+        with h5py.File(newName, "w") as newH5:
+            for id in h5File:
+                newH5.create_group(id)
+                h5File.copy(h5File[id],newH5[id])
+    os.unlink(fileName)
+    os.rename(newName, fileName)
 
 def usageQuit(message):
     sys.stderr.write(message + "\n\n")
