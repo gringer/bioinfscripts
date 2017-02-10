@@ -393,8 +393,7 @@ def strip_analyses(fileName):
             del h5File['Analyses']
         with h5py.File(newName, "w") as newH5:
             for id in h5File:
-                newH5.create_group(id)
-                h5File.copy(h5File[id],newH5[id])
+                h5File.copy(h5File[id],newH5)
     os.unlink(fileName)
     os.rename(newName, fileName)
 
