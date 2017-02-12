@@ -1,6 +1,6 @@
 #!/usr/bin/Rscript
 ## expects a file containing only raw signal data, as produced by
-## fast5extractor.py
+## 'porejuicer.py raw <file.fast5>'
 
 ## Default parameters
 sigFileName <- "signal.bin";
