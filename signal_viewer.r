@@ -49,6 +49,11 @@ fileLen <- file.size(sigFileName);
 data.sig <- readBin(sigFileName, what=integer(), size=2, signed=FALSE,
                     n=fileLen/2);
 
+png("untrimmed.png", width=1280, height=720, pointsize=16);
+plot(data.sig, type="l", main="Untrimmed raw signal", xlab="Samples",
+     ylab="Unadjusted raw signal");
+dummy <- dev.off();
+
 dMed <- median(data.sig);
 dMad <- mad(data.sig);
 dMin <- max(min(data.sig),dMed-4*dMad,0);
@@ -73,6 +78,8 @@ if(length(data.sig) == 0){
     cat("Warning: no signal data found after noise trimming\n");
     quit(save="no", status=1);
 }
+
+
 
 png("drift.png", width=1280, height=720, pointsize=24);
 par(mar=c(4,4,0.5,0.5));
@@ -104,17 +111,17 @@ data.sig <- data.sig - dMin;
 
 sigAspect <- dRange / length(data.sig);
 
-sw <- 11; ## signal plot width
-sh <- 8; ## signal plot height
-
-sigLines <- min(20,round(sh / (sigAspect * sw * 2)));
+sw <- 8; ## signal plot width
+sh <- 11; ## signal plot height
 
 if(grepl("\\.pdf$", imageName)){
-    pdf(imageName, paper="a4r", width=sw, height=sh);
+    sigLines <- min(20,round(sh / (sigAspect * sw * 2)));
+    pdf(imageName, paper="a4", width=sw, height=sh);
 } else if (grepl("\\.png$", imageName)){
-    sw <- 1920; ## signal plot width
-    sh <- 720; ## signal plot height
-    png(imageName, width=sw, height=sh);
+    sw <- 1600; ## signal plot width
+    sh <- 1600; ## signal plot height
+    sigLines <- min(20,round(sh / (sigAspect * sw * 2)));
+    png(imageName, width=sw, height=sh, pointsize=24);
 }
 par(mar=c(0.5,0.5,0.5,0.5));
 width <- ceiling(length(data.sig) / sigLines);
