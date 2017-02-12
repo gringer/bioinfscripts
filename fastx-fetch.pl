@@ -77,7 +77,7 @@ while(<>){
         if($trim > 0){
           $seq = substr($seq, $trim, length($seq)-($trim * 2));
           if($qual){
-            $qual = substr($qual, $trim, length($seq)-($trim * 2));
+            $qual = substr($qual, $trim, length($qual)-($trim * 2));
           }
         }
         if($qual){
@@ -112,6 +112,12 @@ while(<>){
 }
 
 if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
+  if($trim > 0){
+    $seq = substr($seq, $trim, length($seq)-($trim * 2));
+    if($qual){
+      $qual = substr($qual, $trim, length($qual)-($trim * 2));
+    }
+  }
   if($qual){
     printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
   } else {
