@@ -107,7 +107,7 @@ sigAspect <- dRange / length(data.sig);
 sw <- 11; ## signal plot width
 sh <- 8; ## signal plot height
 
-sigLines <- min(20,round(sh / (sigAspect * sw)));
+sigLines <- min(20,round(sh / (sigAspect * sw * 2)));
 
 if(grepl("\\.pdf$", imageName)){
     pdf(imageName, paper="a4r", width=sw, height=sh);
