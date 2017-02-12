@@ -476,4 +476,4 @@ elif(os.path.isfile(fileArg)):
     elif(dataType == "strip"):
         strip_analyses(fileArg)
 else:
-    usageQuit()
+    usageQuit('Unknown argument "%s"' % fileArg)
