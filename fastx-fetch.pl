@@ -7,7 +7,7 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $idFileName = "";
 my $quiet = 0;
-my $minLength = 0;
+my $minLength = 1;
 my $maxLength = 10 ** 12; # 1 Tbp
 my $count = -1;
 my $invert = 0; # invert logic
