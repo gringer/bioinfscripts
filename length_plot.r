@@ -166,7 +166,7 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
 {
     png("MinION_Bases_Density.png", pointsize=24,
         width=1600, height=960);
-    ymax <- max(bpdens.mat / colSums(bpdens.mat));
+    ymax <- max(t(bpdens.mat) / colSums(bpdens.mat));
     par(mgp=c(4,1,0));
     plot(NA, xlim=range(as.numeric(rownames(bpdens.mat))), ylim=c(0,ymax),
          type="l", xaxt="n", xlab = "Read Length",
