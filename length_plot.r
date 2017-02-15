@@ -10,7 +10,7 @@ dens.mat <- sapply(fileNames, function(x){
     cat(x,"...");
     data <- scan(x, comment.char=" ", quiet=TRUE);
     cat(" done\n");
-    res <- density(log10(data), from=2, to=6);
+    res <- density(log10(data), from=2, to=6, bw=0.1);
     res.out <- res$y;
     names(res.out) <- round(res$x,3);
     res.out;
@@ -151,7 +151,7 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
          ylab = "");
     for(col in seq_len(ncol(dens.mat))){
         points(as.numeric(rownames(dens.mat)),dens.mat[,col], type="l",
-               col=hcl(h=col/ncol(dens.mat)*360, l=70, c=80));
+               col=hcl(h=col/ncol(dens.mat)*360, l=70, c=80), lwd=3);
     }
     legend("topright", legend=colnames(dens.mat),
            fill=hcl(h=(1:ncol(dens.mat))/ncol(dens.mat)*360, l=70, c=80),
@@ -166,14 +166,14 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
 {
     png("MinION_Bases_Density.png", pointsize=24,
         width=1600, height=960);
-    ymax <- max(bpdens.mat / colSums(bpdens.mat));
+    ymax <- max(t(bpdens.mat) / colSums(bpdens.mat));
     par(mgp=c(4,1,0));
     plot(NA, xlim=range(as.numeric(rownames(bpdens.mat))), ylim=c(0,ymax),
          type="l", xaxt="n", xlab = "Read Length",
          ylab = "");
     for(col in seq_len(ncol(bpdens.mat))){
         points(as.numeric(rownames(bpdens.mat)),bpdens.mat[,col] /
-                   sum(bpdens.mat[,col]), type="l",
+                   sum(bpdens.mat[,col]), type="l", lwd=3,
                col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80));
     }
     legend("topleft", cex=0.71, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
@@ -214,13 +214,14 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
          labels=paste0(c(1,2,5),
                        rep(substring("00000",first=0,last=0:5),each=3)));
+    ## Cumulative Reads
     par(mar=c(5.5,5,0.5,0.5), mgp=c(4,1,0));
     plot(NA, xlim=range(as.numeric(rownames(dens.mat))), ylim=c(0,1),
          type="l", xaxt="n", xlab = "Read Length",
          ylab = "");
     for(col in seq_len(ncol(dens.mat))){
         points(as.numeric(rownames(dens.mat)),1-cumsum(dens.mat[,col]) /
-                   sum(dens.mat[,col]), type="l",
+                   sum(dens.mat[,col]), type="l", lwd=3,
                col=hcl(h=col/ncol(dens.mat)*360, l=70, c=80));
     }
     legend("topright", legend=colnames(dens.mat),
@@ -230,18 +231,37 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
          labels=paste0(c(1,2,5),
              rep(substring("00000",first=0,last=0:5),each=3)));
+    ## Cumulative Bases
     plot(NA, xlim=range(as.numeric(rownames(bpdens.mat))), ylim=c(0,1),
          type="l", xaxt="n", xlab = "Read Length",
          ylab = "");
     for(col in seq_len(ncol(bpdens.mat))){
         points(as.numeric(rownames(bpdens.mat)),1-cumsum(bpdens.mat[,col]) /
-                   sum(bpdens.mat[,col]), type="l",
+                   sum(bpdens.mat[,col]), type="l", lwd=3,
                col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80));
     }
     legend("topright", legend=colnames(bpdens.mat),
            fill=hcl(h=(1:ncol(bpdens.mat))/ncol(bpdens.mat)*360, l=70, c=80),
            inset=0.05);
     mtext("Cumulative Base Proportion",2,3);
+    axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)));
+    ## Base call density plot
+    ymax <- max(t(bpdens.mat) / colSums(bpdens.mat));
+    par(mgp=c(4,1,0), mar=c(5.5,5,1,1));
+    plot(NA, xlim=range(as.numeric(rownames(bpdens.mat))), ylim=c(0,ymax),
+         type="l", xaxt="n", xlab = "Read Length",
+         ylab = "");
+    for(col in seq_len(ncol(bpdens.mat))){
+        points(as.numeric(rownames(bpdens.mat)),bpdens.mat[,col] /
+                   sum(bpdens.mat[,col]), type="l", lwd=3,
+               col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80));
+    }
+    legend("topleft", cex=0.71, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
+           fill=hcl(h=(1:ncol(bpdens.mat))/ncol(bpdens.mat)*360, l=70, c=80),
+           inset=0.05);
+    mtext("Base Density (arbitrary scale)",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
          labels=paste0(c(1,2,5),
              rep(substring("00000",first=0,last=0:5),each=3)));
