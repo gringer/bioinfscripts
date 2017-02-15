@@ -1,4 +1,5 @@
 #!/usr/bin/Rscript
+## Signal viewer for nanopore sensor traces
 ## expects a file containing only raw signal data, as produced by
 ## 'porejuicer.py raw <file.fast5>'
 
@@ -54,28 +55,40 @@ fileLen <- file.size(sigFileName);
 data.sig <- readBin(sigFileName, what=integer(), size=2, signed=FALSE,
                     n=fileLen/2);
 
-if(doPlot){
-    png("untrimmed.png", width=1280, height=720, pointsize=16);
-    plot(data.sig, type="l", main="Untrimmed raw signal", xlab="Samples",
-         ylab="Unadjusted raw signal");
-    dummy <- dev.off();
-}
+orig.sig.len <- length(data.sig);
 
 dMed <- median(data.sig);
 dMad <- mad(data.sig);
 dMin <- max(min(data.sig),dMed-4*dMad,0);
 dMax <- min(max(data.sig),dMed+4*dMad,65535);
 
+if(doPlot){
+    png("untrimmed.png", width=1280, height=720, pointsize=16);
+    if(orig.sig.len > 100000){
+        #smoothScatter(1:length(data.sig), data.sig, main="Untrimmed raw signal (smoothed scatter plot)", xlab="Samples",
+        #              ylab="Unadjusted raw signal", nbin=c(512,256), nrpoints=1000, bandwidth = c(orig.sig.len/512,20));
+        plot(1:length(data.sig), data.sig, pch=".", main="Untrimmed raw signal", xlab="Samples",
+                      ylab="Unadjusted raw signal");
+    } else {
+        plot(1:length(data.sig), data.sig, type="l", main="Untrimmed raw signal", xlab="Samples",
+                      ylab="Unadjusted raw signal");
+    }
+}
+
+
+
 rangeRLE <- rle((runmed(data.sig,11) > dMin) & (runmed(data.sig,11) < dMax));
-print(rangeRLE);
 if(length(rangeRLE$lengths) > 1){
-    ## subset on longest TRUE region
+    ## subset on longest region that fits the expected range
     indexRLE <- order(-rangeRLE$values, -rangeRLE$lengths)[1];
-    print(indexRLE);
     startPoint <- ifelse(indexRLE == 1, 1,
-                         cumsum(rangeRLE$lengths)[startPoint-1] + 50);
-    data.sig <- tail(data.sig, -startPoint);
-    data.sig <- head(data.sig, rangeRLE$lengths[indexRLE]);
+                         cumsum(rangeRLE$lengths)[indexRLE-1] + 50);
+    dataLen <- rangeRLE$lengths[indexRLE];
+    if(doPlot){
+        abline(v=c(0,dataLen)+startPoint, col="red", lwd=2);
+    }
+    data.sig <- head(tail(data.sig, -startPoint), dataLen);
+    ## re-adjust statistics
     if(length(data.sig) > 1){
         dMed <- median(data.sig);
         dMad <- mad(data.sig);
@@ -86,24 +99,40 @@ if(length(rangeRLE$lengths) > 1){
     data.sig <- tail(data.sig, -5);
 }
 
+if(doPlot){
+    dummy <- dev.off();
+}
+
+if(length(data.sig) / orig.sig.len < 0.25){
+    cat("Error: signal data reduced to less than 25% of original size after noise/plateau trimming\n");
+    cat(sprintf("[Remaining proportion: %0.2f%%]\n", 100 * length(data.sig) / orig.sig.len));
+    quit(save="no", status=1);
+}
+
 ## filter out huge signal spikes
 data.sig[data.sig > dMax] <- dMax;
 
 ## data.sig <- (data.sig + 3) * (1479.8 / 8192);
 
-if(length(data.sig) == 0){
-    cat("Warning: no signal data found after noise trimming\n");
-    quit(save="no", status=1);
-}
-
 rml <- round(length(data.sig)/50) * 2 + 1; ## running median length
 if(doPlot){
     png("drift.png", width=1280, height=720, pointsize=24);
     par(mar=c(4,4,0.5,0.5));
-    plot((1:length(data.sig))/4000, data.sig, type="l",
-         xlab="time (s)", ylab="Unadjusted raw signal", col="grey");
-    points((1:length(data.sig))/4000, runmed(data.sig, rml, endrule="constant"),
-           type="l", lwd=3, col="black");
+    if(orig.sig.len > 100000){
+        plot((1:length(data.sig))/4000, data.sig, pch=".",
+             xlab="time (s)", ylab="Unadjusted raw signal", col="grey");
+    } else {
+        plot((1:length(data.sig))/4000, data.sig, type="l",
+             xlab="time (s)", ylab="Unadjusted raw signal", col="grey");
+    }
+    if(orig.sig.len > 100000){
+        psamp <- seq(1,length(data.sig), length.out=10000);
+        points((1:length(data.sig))[psamp]/4000, runmed(data.sig, rml, endrule="constant")[psamp],
+               type="l", lwd=3, col="black");
+    } else {
+        points((1:length(data.sig))/4000, runmed(data.sig, rml, endrule="constant"),
+               type="l", lwd=3, col="black");
+    }
 }
 glm.res <- glm(y ~ x,
                data=data.frame(x=(1:length(data.sig))/4000,
@@ -117,18 +146,15 @@ if(doPlot){
     cat(sprintf("Running median drift (k=%d): %0.1f units per second\n",
                 rml, glm.res$coefficients[2]));
 }
-glm2.res <- glm(y ~ x,
-    data=data.frame(x=(1:length(data.sig))/4000,
-                    y=data.sig));
 if(doPlot){
+    glm2.res <- glm(y ~ x,
+                    data=data.frame(x=(1:length(data.sig))/4000,
+                                    y=data.sig));
     abline(glm2.res, col="#0000FF40", lty="dashed", lwd=3);
-    text(length(data.sig)/8000, min(data.sig)+dMad/2, pos=3,
+    text(length(data.sig)/8000, min(data.sig)+dMad, pos=3,
          sprintf("Unadjusted drift: %0.1f units per second",
                  glm2.res$coefficients[2]), col="darkblue");
     dummy <- dev.off();
-} else {
-    cat(sprintf("Unadjusted drift: %0.1f units per second\n",
-                glm2.res$coefficients[2]));
 }
 
 
@@ -140,6 +166,11 @@ sigAspect <- dRange / length(data.sig);
 
 sw <- 8; ## signal plot width
 sh <- 11; ## signal plot height
+
+if(doPlot && (length(data.sig) > 100000) && grepl("PDF$", imageName, ignore.case=TRUE)){
+    cat("Data length too long for PDF plot, changing to PNG\n");
+    imageName <- sub(".pdf$", ".png", imageName, ignore.case=TRUE);
+}
 
 if(doPlot){
     if(grepl("\\.pdf$", imageName)){
@@ -162,8 +193,17 @@ if(doPlot){
                    } else {
                        head(tail(data.sig,-startPoint),width);
                    }
-        points(x=1:length(yPoints),
-               y=yPoints + (sigLines - x) * dRange, type="l");
+        if(length(yPoints) > 20000){
+            points(x=1:length(yPoints),
+                   y=yPoints + (sigLines - x) * dRange, pch=".");
+        } else {
+            points(x=1:length(yPoints),
+                   y=yPoints + (sigLines - x) * dRange, type="l");
+        }
+        segments(x0=1, x1=length(yPoints), y0=(sigLines - x + 0.5) * dRange,
+                 col="#6495EDA0", lwd=3);
+        segments(x0=1, x1=length(yPoints), y0=(sigLines - x + 0.5) * dRange,
+                 col="#FFF8DCA0", lwd=1);
         for(t in seq(1,width,length.out=5)){
             tVal=round((startPoint+t-1) / 4000,2);
             cVal=floor((tVal*10) %% 10);
