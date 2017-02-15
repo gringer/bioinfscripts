@@ -58,6 +58,7 @@ dMed <- median(data.sig);
 dMad <- mad(data.sig);
 dMin <- max(min(data.sig),dMed-4*dMad,0);
 dMax <- min(max(data.sig),dMed+4*dMad,65535);
+
 rangeRLE <- rle((runmed(data.sig,11) > dMin) & (runmed(data.sig,11) < dMax));
 if(length(rangeRLE$lengths) > 1){
     startPoint <- head(tail(cumsum(rangeRLE$lengths),2),1) + 50;
@@ -72,14 +73,15 @@ if(length(rangeRLE$lengths) > 1){
     data.sig <- tail(data.sig, -5);
 }
 
+## filter out huge signal spikes
+data.sig[data.sig > dMax] <- dMax;
+
 ## data.sig <- (data.sig + 3) * (1479.8 / 8192);
 
 if(length(data.sig) == 0){
     cat("Warning: no signal data found after noise trimming\n");
     quit(save="no", status=1);
 }
-
-
 
 png("drift.png", width=1280, height=720, pointsize=24);
 par(mar=c(4,4,0.5,0.5));
