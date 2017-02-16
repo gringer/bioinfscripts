@@ -9,41 +9,42 @@
       previewDocument = previewObj.getSVGDocument();
       // set up variables
       previewFields["ID"] = previewDocument.getElementById("tID");
-      previewFields["RNAME"] = previewDocument.getElementById("tRNAME");
-      previewFields["PNAME"] = previewDocument.getElementById("tPNAME");
-      previewFields["DESC1"] = previewDocument.getElementById("tDESC1");
-      previewFields["DESC2"] = previewDocument.getElementById("tDESC2");
-      previewFields["DESC3"] = previewDocument.getElementById("tDESC3");
-      previewFields["DESC4"] = previewDocument.getElementById("tDESC4");
-      previewFields["DESC5"] = previewDocument.getElementById("tDESC5");
+      previewFields["DESIG"] = previewDocument.getElementById("tDESIG");
+      previewFields["CDAY"] = previewDocument.getElementById("tCDAY");
+      previewFields["CDAY2"] = previewDocument.getElementById("tCDAY2");
+      previewFields["CNAME"] = previewDocument.getElementById("tCNAME");
+      previewFields["CNAME2"] = previewDocument.getElementById("tCNAME2");
+      previewFields["CEMAIL"] = previewDocument.getElementById("tCEMAIL");
+      previewFields["CEMAIL2"] = previewDocument.getElementById("tCEMAIL2");
       // initialise to non-scary values
       setValue("ID","X.XX");
-      setValue("PNAME","Dr. A Researcher");
-      setValue("RNAME","");
-      setValue("DESC1","");
-      setValue("DESC2","");
-      setValue("DESC3","");
-      setValue("DESC4","");
-      setValue("DESC5","");
+      setValue("DESIG","Activity Room");
+      setValue("CDAY","Today");
+      setValue("CDAY2","");
+      setValue("CNAME","Anna Researcher");
+      setValue("CEMAIL","example@malaghan.org.nz");
+      setValue("CNAME2","");
+      setValue("CEMAIL2","");
       // set up change listeners
       document.getElementById("iID").onkeyup = function(){setValue("ID",this.value)};
-      document.getElementById("iRNAME").onkeyup = function(){this.value=this.value.toUpperCase();setValue("RNAME",this.value)};
-      document.getElementById("iPNAME").onkeyup = function(){setValue("PNAME",this.value)};
-      document.getElementById("iDESC1").onkeyup = function(){setValue("DESC1",this.value)};
-      document.getElementById("iDESC2").onkeyup = function(){setValue("DESC2",this.value)};
-      document.getElementById("iDESC3").onkeyup = function(){setValue("DESC3",this.value)};
-      document.getElementById("iDESC4").onkeyup = function(){setValue("DESC4",this.value)};
-      document.getElementById("iDESC5").onkeyup = function(){setValue("DESC5",this.value)};
+      document.getElementById("iDESIG").onkeyup = function(){setValue("DESIG",this.value)};
+      document.getElementById("iCDAY").onkeyup = function(){setValue("CDAY",this.value)};
+      document.getElementById("iCDAY2").onkeyup = function(){setValue("CDAY2",this.value)};
+      document.getElementById("iCNAME").onkeyup = function(){setValue("CNAME",this.value)};
+      document.getElementById("iCEMAIL").onkeyup = function(){setValue("CEMAIL",this.value)};
+      document.getElementById("iCNAME2").onkeyup = function(){setValue("CNAME2",this.value)};
+      document.getElementById("iCEMAIL2").onkeyup = function(){setValue("CEMAIL2",this.value)};
       document.getElementById("iID").onchange = function(){setValue("ID",this.value)};
-      document.getElementById("iRNAME").onchange = function(){this.value=this.value.toUpperCase();setValue("RNAME",this.value)};
-      document.getElementById("iPNAME").onchange = function(){setValue("PNAME",this.value)};
-      document.getElementById("iDESC1").onchange = function(){setValue("DESC1",this.value)};
-      document.getElementById("iDESC2").onchange = function(){setValue("DESC2",this.value)};
-      document.getElementById("iDESC3").onchange = function(){setValue("DESC3",this.value)};
-      document.getElementById("iDESC4").onchange = function(){setValue("DESC4",this.value)};
-      document.getElementById("iDESC5").onchange = function(){setValue("DESC5",this.value)};
+      document.getElementById("iDESIG").onchange = function(){setValue("DESIG",this.value)};
+      document.getElementById("iCDAY").onchange = function(){setValue("CDAY",this.value)};
+      document.getElementById("iCDAY2").onchange = function(){setValue("CDAY2",this.value)};
+      document.getElementById("iCNAME").onchange = function(){setValue("CNAME",this.value)};
+      document.getElementById("iCEMAIL").onchange = function(){setValue("CEMAIL",this.value)};
+      document.getElementById("iCNAME2").onchange = function(){setValue("CNAME2",this.value)};
+      document.getElementById("iCEMAIL2").onchange = function(){setValue("CEMAIL2",this.value)};
       }
       function setValue(objTag, value){
+      //console.log("Setting value " + objTag + " to '" + value + "'");
       previewFields[objTag].firstChild.nodeValue = value;
       }
     </script>
@@ -208,16 +209,16 @@ a:hover {
            src="../room_label/Malaghan_logo_vertical_RGB.svg"
            width="130" height="130" />
     </a>
-    <h1><center>Office Labeler</center></h1>
+    <h1><center>BRU Labeller</center></h1>
+    <center><p>
+        <a href="%(request_uri)?selectClass=office">&gt; Office Labeller</a>
+    </p></center>
+    <center><p>
+        <a href="%(request_uri)?selectClass=office2">&gt; Multi-office Labeller</a>
+    </p></center>
     <p><center>
         <a href="%(request_uri)?selectClass=lab">&gt;  Lab Labeler</a>
     </center></p>
-    <p><center>
-        <a href="%(request_uri)?selectClass=office2">&gt; Multi-office Labeller</a>
-    </center></p>
-    <center><p>
-        <a href="%(request_uri)?selectClass=BRU">&gt; BRU Labeller</a>
-    </p></center>
     <p><center>
         <a href="%(request_uri)?selectClass=plain">&gt; Plain Labeller</a>
     </center></p>
@@ -233,29 +234,49 @@ a:hover {
 <div><label for="iID">Room Number</label>
 <input id="iID" type="text" name="ID" placeholder="X.XX" size="4"></div>
 
-<div><label for="iPNAME">Occupant</label>
-<input id="iPNAME" type="text" name="PNAME"
-       placeholder="Dr. A Researcher" size="20"></div>
+<div><label for="iDESIG">Designation</label>
+<input id="iDESIG" type="text" name="DESIG"
+       placeholder="Activity Room" size="20"></div>
+
+<div><label for="iCDAY">Change Day</label>
+<select id="iCDAY" type="text" name="CDAY"
+       placeholder="Today">
+  <option>Monday</option>
+  <option>Tuesday</option>
+  <option>Wednesday</option>
+  <option>Thursday</option>
+  <option>Friday</option>
+  <option>Saturday</option>
+  <option>Sunday</option>
+</select></div>
+
+<div><label for="iCNAME">Contact Name</label>
+<input id="iCNAME" type="text" name="CNAME"
+       placeholder="Anna Researcher" size="20"></div>
+
+<div><label for="iCEMAIL">Contact Email</label>
+<input id="iCEMAIL" type="text" name="CEMAIL"
+       placeholder="example@malaghan.org.nz" size="20"></div>
 
 <h2>Optional Fields</h2>
 
-<div><label for="iDESC3">Job Title</label>
-<input id="iDESC3" type="text" name="DESC3" size="20"></div>
+<div><label for="iCDAY2">Second Change Day</label>
+<select id="iCDAY2" type="text" name="CDAY2">
+  <option></option>
+  <option>Monday</option>
+  <option>Tuesday</option>
+  <option>Wednesday</option>
+  <option>Thursday</option>
+  <option>Friday</option>
+  <option>Saturday</option>
+  <option>Sunday</option>
+</select></div>
 
-<div><label for="iRNAME">Room Name</label>
-<input id="iRNAME" type="text" name="RNAME" size="10"></div>
+<div><label for="iCNAME2">Alternate Contact</label>
+<input id="iCNAME2" type="text" name="CNAME2"></div>
 
-<div><label for="iDESC1">Line 1</label>
-<input id="iDESC1" type="text" name="DESC1" size="20"></div>
-
-<div><label for="iDESC2">Line 2</label>
-<input id="iDESC2" type="text" name="DESC2" size="20"></div>
-
-<div><label for="iDESC4">Line 3</label>
-<input id="iDESC4" type="text" name="DESC4" size="20"></div>
-
-<div><label for="iDESC5">Line 4</label>
-<input id="iDESC5" type="text" name="DESC5" size="20"></div>
+<div><label for="iCEMAIL2">Alternate Email</label>
+<input id="iCEMAIL2" type="text" name="CEMAIL2"></div>
 
 <h2>Background (optional)</h2>
 
@@ -282,7 +303,7 @@ a:hover {
 <h2>Preview</h2>
 
 <object id="imgPreview" width="100%" onload="startup()"
-        data="../room_label/MIMR_Room_template.svg" type="image/svg+xml" />
+        data="../room_label/MIMR_BRU_template.svg" type="image/svg+xml" />
 
 <!-- <img id="imgPreview" width="100%" onload="startup(evt)" -->
 <!--         src="../room_label/MIMR_Room_template.svg" /> -->

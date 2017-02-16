@@ -171,8 +171,17 @@ a:hover {
     </a>
     <h1><center>Lab Labeler</center></h1>
     <center><p>
-        <a href="%(request_uri)?selectClass=office">&gt; Office Labeler</a>
+        <a href="%(request_uri)?selectClass=office">&gt; Office Labeller</a>
     </p></center>
+    <center><p>
+        <a href="%(request_uri)?selectClass=office2">&gt; Multi-office Labeller</a>
+    </p></center>
+    <center><p>
+        <a href="%(request_uri)?selectClass=BRU">&gt; BRU Labeller</a>
+    </p></center>
+    <p><center>
+        <a href="%(request_uri)?selectClass=plain">&gt; Plain Labeller</a>
+    </center></p>
   </div>
 </div>
 <form method="post" action="%(request_uri)" enctype="multipart/form-data">
@@ -185,16 +194,15 @@ a:hover {
 <div><label for="iID">Room Number</label>
   <input id="iID" type="text" name="ID" placeholder="X.XX" size="4"></div>
 
-<div><label for="iRNAME1">Room Name (line 1)</label>
-  <input id="iRNAME1" type="text" name="RNAME1" size="20"
-         onchange = "this.value=this.value.toUpperCase()"></div>
-<div><label for="iRNAME2">Room Name (line 2)</label>
-  <input id="iRNAME2" type="text" name="RNAME2" size="20"
-       onchange = "this.value=this.value.toUpperCase()"></div>
+<div><label for="iRNAME">Room Name</label>
+  <input id="iRNAME" type="text" name="RNAME" placeholder="[optional]" size="20"></div>
 
-<div><label  style="vertical-align: top" for="iANGELS">Lab Angels</label>
+<div><label  style="vertical-align: top" for="iANGELS">Lab Contacts</label>
   <textarea id="iANGELS" name="ANGELS" rows="5" cols="40" wrap="soft">%(inputText)</textarea>
 </div>
+
+<div><label for="cbPC2">PC2 Label</label>
+  <input type="checkbox" id="cbPC2" name="pc2cb" value="pc2cb"/></div>
 
 <hr />
 
@@ -215,6 +223,35 @@ a:hover {
 <h2>Hazard Labels</h2>
 
 <div id="hazardLabels">
+  <span><img src="../room_label/unece/corrosive8.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkcorrosive8" name="warnBoxes" value="corrosive8" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/cryogenic.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkcryogenic" name="warnBoxes" value="cryogenic" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/ecotoxic.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkecotoxic" name="warnBoxes" value="ecotoxic" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/explosive-1.3J.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkexplosive-1.3J" name="warnBoxes" value="explosive-1.3J" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/fg2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkfg2" name="warnBoxes" value="fg2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/flammable-liquid3.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkflammable-liquid3" name="warnBoxes" value="flammable-liquid3" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/trip-hazard.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkflammable-liquid3" name="warnBoxes" value="trip-hazard" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/laser-symbol-text.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkflammable-liquid3" name="warnBoxes" value="laser-symbol-text" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/flammable-solid4.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkflammable-solid4" name="warnBoxes" value="flammable-solid4" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/harmful1.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkharmful1" name="warnBoxes" value="harmful1" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/inhalationhazard2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkinhalationhazard2" name="warnBoxes" value="inhalationhazard2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/inhalationhazard6.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkinhalationhazard6" name="warnBoxes" value="inhalationhazard6" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/ISub.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkISub" name="warnBoxes" value="ISub" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/nfg2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chknfg2" name="warnBoxes" value="nfg2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/dinosaur.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkdinosaur" name="warnBoxes" value="dinosaur" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/op5.2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkop5.2" name="warnBoxes" value="op5.2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/organicperoxide.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkorganicperoxide" name="warnBoxes" value="organicperoxide" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/oxidiser5.1.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkoxidiser5.1" name="warnBoxes" value="oxidiser5.1" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/oxygen2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkoxygen2" name="warnBoxes" value="oxygen2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/pg1116.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkpg1116" name="warnBoxes" value="pg1116" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/poison6.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkpoison6" name="warnBoxes" value="poison6" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/rad1.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkrad1" name="warnBoxes" value="rad1" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/rad2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkrad2" name="warnBoxes" value="rad2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/rad3.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkrad3" name="warnBoxes" value="rad3" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/radblank.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkradblank" name="warnBoxes" value="radblank" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/spontaneously-combustible-solid.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkspontaneously-combustible-solid" name="warnBoxes" value="spontaneously-combustible-solid" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/toxic6.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chktoxic6" name="warnBoxes" value="toxic6" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/toxicgas2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chktoxicgas2" name="warnBoxes" value="toxicgas2" class="button-settings"/></center></span>
+  <span><img src="../room_label/unece/uv_hazard.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chkuv_hazard" name="warnBoxes" value="uv_hazard" class="button-settings"/></center></span>
   <span><img src="../room_label/unece/1-1.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chk1-1" name="warnBoxes" value="1-1" class="button-settings"/></center></span>
   <span><img src="../room_label/unece/1-2.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chk1-2" name="warnBoxes" value="1-2" class="button-settings"/></center></span>
   <span><img src="../room_label/unece/1-3.svg" width="100px" height="100px"><br /><center><input type="checkbox" id="chk1-3" name="warnBoxes" value="1-3" class="button-settings"/></center></span>

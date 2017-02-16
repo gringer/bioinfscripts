@@ -151,12 +151,14 @@ def runGenerator(lastForm, parameters, docType):
                     hazardItems = list([formHazards])
                 numHazards = len(hazardItems)
                 hLines = 2 if (numHazards > 3) else 1
-                hWidth = boxWidth / (int(math.ceil(numHazards / hLines)))
+                hWidth = boxWidth / (int(math.ceil((numHazards+hLines-1) / hLines)))
                 if(hWidth > (boxHeight/hLines)):
                     hWidth = (boxHeight/hLines)
                 hHeight = hWidth
                 nextHazard = 0
                 lPos = boxCX - (hWidth * numHazards) / (2 * hLines)
+                if((numHazards % 2 == 1) and (hLines > 1)):
+                    lPos = lPos - hWidth / 4
                 tPos = boxCY - (hHeight * hLines / 2)
                 for item in hazardItems:
                     xPos = (int(nextHazard / hLines) * hWidth +
