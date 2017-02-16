@@ -217,7 +217,7 @@ def generate_fastq(fileName, callID="000"):
                                      "_".join(map(lambda x: str(rowData[x]),
                                                   ("runID","channel","mux","read")))+
                                      " ")
-                sys.stdout.write(str(h5File[base2D][()][1:]))
+                    sys.stdout.write(str(h5File[base2D][()][1:]))
             callID = "%03d" % (int(callID)+1)
             callStr = callID + "_"
             rowData = get_telemetry(h5File, callID)
@@ -266,7 +266,7 @@ def get_telemetry(h5File, callID):
          ('complementCalledEvents',''),('complementCalledBases',-1)
         ])
     callBase = "/Analyses/Basecall_1D_%s/Summary" % (callID)
-    eventBase = "/Analyses/EventDetection_%s/Reads" % (callID)
+    eventBase = "/Analyses/EventDetection_000/Reads"
     if(not eventBase in h5File):
         useRaw = True
         eventBase = "/Raw/Reads"
@@ -277,18 +277,20 @@ def get_telemetry(h5File, callID):
         outMeta = h5File[readMetaLocation].attrs
         rowData["mux"] = outMeta["start_mux"]
         rowData["read"] = readName
-        rowData["rawStart"] = outMeta["start_time"]
-        rowData["rawLength"] = outMeta["duration"]
+        rowData["rawStart"] = (outMeta["start_time"] if "start_time" in outMeta else -1)
+        rowData["rawLength"] = (outMeta["duration"] if "duration" in outMeta else -1)
     for dir in ('template','complement'):
         callBase = "/Analyses/Basecall_1D_%s" % (callID)
         metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir) if useRaw
                    else "%s/BaseCalled_%s/Events" % (callBase,dir))
         if((not useRaw) and (metaLoc in h5File)):
             dirMeta = h5File[metaLoc].attrs
-            rowData["%sRawStart" % dir] = int(dirMeta["start_time"] *
-                                              rowData["sampleRate"])
-            rowData["%sRawLength" % dir] = int(dirMeta["duration"] *
-                                               rowData["sampleRate"])
+            rowData["%sRawStart" % dir] = (
+                int(dirMeta["start_time"] * rowData["sampleRate"])
+                if "start_time" in dirMeta else -1)
+            rowData["%sRawLength" % dir] = (
+                int(dirMeta["duration"] * rowData["sampleRate"])
+                if "duration" in dirMeta else -1)
         metaLoc = ("%s/Summary/basecall_1d_%s" % (callBase,dir))
         if(metaLoc in h5File):
             dirMeta = h5File[metaLoc].attrs
