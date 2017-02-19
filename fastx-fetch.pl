@@ -47,6 +47,7 @@ if($idFileName){
   while(<$idFile>){
     chomp;
     s/^[>@]//;
+    s/\s.*$//;
     $idsToGet{$_} = 1;
   }
   close($idFile);
