@@ -75,9 +75,11 @@ if(doPlot){
     }
 }
 
+library(caTools); ## for runmean
 
-
-rangeRLE <- rle((runmed(data.sig,11) > dMin) & (runmed(data.sig,11) < dMax));
+##rangeRLE <- rle((runmed(data.sig,11) > dMin) & (runmed(data.sig,11) < dMax));
+rangeRLE <- rle(runmean(abs(runmed(data.sig,31)-runmed(data.sig,101)),1001) > 10);
+startPoint <- 1;
 if(length(rangeRLE$lengths) > 1){
     ## subset on longest region that fits the expected range
     indexRLE <- order(-rangeRLE$values, -rangeRLE$lengths)[1];
@@ -99,18 +101,37 @@ if(length(rangeRLE$lengths) > 1){
     data.sig <- tail(data.sig, -5);
 }
 
-if(doPlot){
-    dummy <- dev.off();
-}
-
 if(length(data.sig) / orig.sig.len < 0.25){
     cat("Error: signal data reduced to less than 25% of original size after noise/plateau trimming\n");
     cat(sprintf("[Remaining proportion: %0.2f%%]\n", 100 * length(data.sig) / orig.sig.len));
     quit(save="no", status=1);
+    if(doPlot){
+        dummy <- dev.off();
+    }
 }
 
 ## filter out huge signal spikes
 data.sig[data.sig > dMax] <- dMax;
+
+hpFlats <- rle(data.sig > (dMed + 1*dMad)); ## find marginal crossover points
+hpFlats$values[hpFlats$lengths < 64] <- FALSE; ## exclude small gaps
+hpFlats <- rle(inverse.rle(hpFlats)); ## regenerate RLE-encoding
+lowPoints <- which(!hpFlats$values);
+lowPoints <- lowPoints[(lowPoints > 1) & (lowPoints < length(hpFlats$values))];
+hpflat.searchTable <- rbind(cumsum(hpFlats$lengths)[lowPoints-1], hpFlats$lengths[lowPoints-1],
+                            hpFlats$lengths[lowPoints], hpFlats$lengths[lowPoints+1], cumsum(hpFlats$lengths)[lowPoints]);
+## hairpin "low bit" length should be similar to adjacent bits
+hp.ratio <- hpflat.searchTable[3,] / colSums(hpflat.searchTable[c(2,4),]);
+hp.likely <- which((hp.ratio < 3) & (hp.ratio > 1/3));
+hp.breakPoints <- NULL;
+if(length(hp.likely) > 0){
+    hp.breakPoints <- round((hpflat.searchTable[1,hp.likely] + hpflat.searchTable[5,hp.likely])/2);
+}
+
+if(doPlot){
+    abline(v=startPoint + hp.breakPoints, col="#00FF0080", lwd = 3);
+    dummy <- dev.off();
+}
 
 ## data.sig <- (data.sig + 3) * (1479.8 / 8192);
 
@@ -119,18 +140,20 @@ if(doPlot){
     png("drift.png", width=1280, height=720, pointsize=24);
     par(mar=c(4,4,0.5,0.5));
     if(orig.sig.len > 100000){
-        plot((1:length(data.sig))/4000, data.sig, pch=".",
-             xlab="time (s)", ylab="Unadjusted raw signal", col="grey");
+        plot((1:length(data.sig))/4000, data.sig, pch=19, cex=0.25,
+             xlab="time (s)", ylab="Unadjusted raw signal", col="#80808020");
     } else {
         plot((1:length(data.sig))/4000, data.sig, type="l",
              xlab="time (s)", ylab="Unadjusted raw signal", col="grey");
     }
     if(orig.sig.len > 100000){
-        psamp <- seq(1,length(data.sig), length.out=10000);
-        points((1:length(data.sig))[psamp]/4000, runmed(data.sig, rml, endrule="constant")[psamp],
+        psamp <- seq(1,length(data.sig), length.out=20000);
+        points((1:length(data.sig))[psamp]/4000,
+               runmed(data.sig, rml, endrule="constant")[psamp],
                type="l", lwd=3, col="black");
     } else {
-        points((1:length(data.sig))/4000, runmed(data.sig, rml, endrule="constant"),
+        points((1:length(data.sig))/4000,
+               runmed(data.sig, rml, endrule="constant"),
                type="l", lwd=3, col="black");
     }
 }
@@ -160,21 +183,20 @@ if(doPlot){
 
 sampleRate <- 4000;
 dRange <- dMax-dMin;
-data.sig <- data.sig - dMin;
-
-sigAspect <- dRange / length(data.sig);
-
-sw <- 8; ## signal plot width
-sh <- 11; ## signal plot height
 
 if(doPlot && (length(data.sig) > 100000) && grepl("PDF$", imageName, ignore.case=TRUE)){
     cat("Data length too long for PDF plot, changing to PNG\n");
-    imageName <- sub(".pdf$", ".png", imageName, ignore.case=TRUE);
+    imageName <- sub(".pdf$", "_%02d.png", imageName, ignore.case=TRUE);
 }
 
+hp.breakPoints <- c(1, hp.breakPoints, length(data.sig));
+
 if(doPlot){
+    sigAspect <- (dRange / (length(hp.breakPoints) - 1)) / length(data.sig);
+    sw <- 8; ## signal plot width
+    sh <- 11; ## signal plot height
     if(grepl("\\.pdf$", imageName)){
-        sigLines <- min(20,round(sh / (sigAspect * sw * 2)));
+        sigLines <- min(15,round(sh / (sigAspect * sw * 2)));
         pdf(imageName, paper="a4", width=sw, height=sh);
     } else if (grepl("\\.png$", imageName)){
         sw <- 1600; ## signal plot width
@@ -182,36 +204,48 @@ if(doPlot){
         sigLines <- min(20,round(sh / (sigAspect * sw * 2)));
         png(imageName, width=sw, height=sh, pointsize=24);
     }
-    par(mar=c(0.5,0.5,0.5,0.5));
-    width <- ceiling(length(data.sig) / sigLines);
-    plot(NA, xlim=c(0,width), ylim=c(0,dRange*sigLines),
-         axes=FALSE, ann=FALSE);
-    for(x in 1:sigLines){
-        startPoint <- (x-1) * width;
-        yPoints <- if(startPoint == 0){
-                       head(data.sig, width);
-                   } else {
-                       head(tail(data.sig,-startPoint),width);
-                   }
-        if(length(yPoints) > 20000){
-            points(x=1:length(yPoints),
-                   y=yPoints + (sigLines - x) * dRange, pch=".");
-        } else {
-            points(x=1:length(yPoints),
-                   y=yPoints + (sigLines - x) * dRange, type="l");
-        }
-        segments(x0=1, x1=length(yPoints), y0=(sigLines - x + 0.5) * dRange,
-                 col="#6495EDA0", lwd=3);
-        segments(x0=1, x1=length(yPoints), y0=(sigLines - x + 0.5) * dRange,
-                 col="#FFF8DCA0", lwd=1);
-        for(t in seq(1,width,length.out=5)){
-            tVal=round((startPoint+t-1) / 4000,2);
-            cVal=floor((tVal*10) %% 10);
-            text(t,(sigLines - x) * dRange, tVal, col=rainbow(10)[cVal+1],
-                 adj=ifelse(t==1,0,ifelse(t==width,1,0.5)), cex=0.71);
+    for(sigStart in 2:length(hp.breakPoints)-1){
+        ## subselect raw sequence between breakpoints (including hairpin)
+        sub.data.sig <- data.sig[hp.breakPoints[sigStart]:hp.breakPoints[sigStart+1]];
+        ## recalculate parameters for current segment
+        dMed <- median(sub.data.sig);
+        dMad <- mad(sub.data.sig);
+        dMin <- max(min(sub.data.sig),dMed-4*dMad,0);
+        dMax <- min(max(sub.data.sig),dMed+4*dMad,65535);
+        dRange <- max(dMed-dMin,dMax-dMed)*2;
+        sub.data.sig <- sub.data.sig - dMed + dRange/2;
+        sigAspect <- dRange / length(sub.data.sig);
+        sigLines <- min(15,round(sh / (sigAspect * sw * 2)));
+        par(mar=c(0.5,0.5,0.5,0.5));
+        width <- ceiling(length(sub.data.sig) / sigLines);
+        plot(NA, xlim=c(0,width), ylim=c(0,dRange*sigLines),
+             axes=FALSE, ann=FALSE);
+        for(x in 1:sigLines){
+            startPoint <- (x-1) * width;
+            yPoints <- if(startPoint == 0){
+                           head(sub.data.sig, width);
+                       } else {
+                           head(tail(sub.data.sig,-startPoint),width);
+                       }
+            if(length(yPoints) > 20000){
+                points(x=1:length(yPoints),
+                       y=yPoints + (sigLines - x) * dRange, pch=".");
+            } else {
+                points(x=1:length(yPoints),
+                       y=yPoints + (sigLines - x) * dRange, type="l");
+            }
+            segments(x0=1, x1=length(yPoints), y0=(sigLines - x + 0.5) * dRange,
+                     col="#6495EDA0", lwd=3);
+            segments(x0=1, x1=length(yPoints), y0=(sigLines - x + 0.5) * dRange,
+                     col="#FFF8DCA0", lwd=1);
+            for(t in seq(1,width,length.out=5)){
+                tVal=round((startPoint+hp.breakPoints[sigStart]+t-2) / 4000,2);
+                cVal=floor((tVal*100) %% 100);
+                text(t,(sigLines - x) * dRange, tVal, col=rainbow(100)[cVal+1],
+                     adj=ifelse(t==1,0,ifelse(t==width,1,0.5)), cex=0.71);
+            }
         }
     }
     dummy <- dev.off();
     cat(sprintf("Done... written to '%s'\n", imageName));
 }
-
