@@ -150,6 +150,28 @@ def runBlast(programName, lastForm, parameters):
     os.unlink(inputFile.name)
     parameters['resultsExist'] = 'True'
 
+def getSequences(parameters, searchDict):
+    lookups = list(searchDict.keys())
+    searchFileName = ""
+    with tempfile.NamedTemporaryFile(delete=False) as searchFile:
+        searchFileName = searchFile.name
+        for searchCode in lookups:
+            searchFile.write('%s\n' % searchCode)
+    commandLine = list(('blastdbcmd',
+                        '-db', parameters['queryDB'],
+                        '-entry_batch', searchFileName,
+                        '-outfmt', '%s'))
+    seqs = list()
+    with tempfile.TemporaryFile() as outFile:
+        runProcess = subprocess.Popen(commandLine, stdout = outFile)
+        runProcess.wait()
+        outFile.seek(0)
+        for line in outFile:
+           seqs.append(line.rstrip())
+    for pos in xrange(len(seqs)):
+        searchDict[lookups[pos]] = seqs[pos]
+    os.unlink(searchFileName)
+
 def cleanUpResultsFiles(parameters):
     # NOTE: this method deletes files. While attempts are made to make
     # sure only appropriate files are deleted, it is not advisable to
@@ -265,12 +287,17 @@ def getResults(parameters):
         numAlignments = 0
         queries = set()
         summaryTable = list()
+        origSeq = dict()
+        translatedQuery = (parameters['program'] == 'blastx')
+        translatedSub = ((parameters['program'] == 'tblastn') or (parameters['program'] == 'tblastx'))
         for blast_record in blast_records:
             for alignment in blast_record.alignments:
                 for hsp in alignment.hsps:
                     resultsFound = True
                     query = blast_record.query
                     subject = alignment.hit_def
+                    if('hit_id' in vars(alignment) and not ('BL_ORD_ID' in alignment.hit_id)):
+                        subject = alignment.hit_id
                     if(" " in query):
                         query = query[0:query.find(" ")];
                     if(" " in subject):
@@ -293,7 +320,6 @@ def getResults(parameters):
                     alignmentText = '<a name="%d" href="#summary">**** Alignment %d ****</a>\n' % (
                         numAlignments, numAlignments)
                     alignmentText += 'query: %s\n' % query
-#                    alignmentText += str(blast_record.__dict__)
                     alignmentText += 'query length: %s\n' % blast_record.query_length
                     alignmentText += 'subject: %s\n' % subject
                     alignmentText += 'subject length: %s\n' % alignment.length
@@ -304,6 +330,7 @@ def getResults(parameters):
                     alignmentText += 'query coverage: %0.2f%%\n' % coverage
                     alignmentText += 'subject coverage: %0.2f%%\n' % subjCoverage
                     alignmentText += 'e value: %g\n' % hsp.expect
+                    #alignmentText += '\n%s\n\n' % vars(hsp)
                     querySpos = oldQPos = queryPos = hsp.query_start
                     sbjctSpos = oldSPos = sbjctPos = hsp.sbjct_start
                     alignSpos = alignPos = 0
@@ -311,6 +338,9 @@ def getResults(parameters):
                     sbjctDir = 1 if (hsp.sbjct_start < hsp.sbjct_end) else -1
                     incQuery = False
                     incSbjct = False
+                    incStepSbjct = 1
+                    if(translatedSub):
+                        incStepSbjct = 3
                     for hsp.char in hsp.match:
                         if(hsp.query[alignPos] != '-'):
                             oldQPos = queryPos
@@ -326,25 +356,54 @@ def getResults(parameters):
                             sbjctPos += sbjctDir
                         alignPos += 1
                         if((alignPos % 100 == 0) or (alignPos >= len(hsp.match))):
+                            if('frame' in vars(hsp) and (hsp.frame[1] < 0)):
+                                adjSSPos = hsp.sbjct_end - (sbjctSpos - hsp.sbjct_start) * incStepSbjct
+                                adjSEPos = hsp.sbjct_end - (oldSPos - hsp.sbjct_start) * incStepSbjct + (incStepSbjct-1)
+                            else:
+                                adjSSPos = hsp.sbjct_start + (sbjctSpos - hsp.sbjct_start) * incStepSbjct
+                                adjSEPos = hsp.sbjct_start + (oldSPos - hsp.sbjct_start) * incStepSbjct + (incStepSbjct-1)
                             alignmentText += '\n'
-#                           alignmentText += '      %8s %s\n' % ('', ''.join('         *' * 10))
-                            alignmentText += 'Query %8d %s %-8d\n' % (
+                            alignmentText += 'Query %9d %s %-9d\n' % (
                                 querySpos, hsp.query[alignSpos:alignPos], oldQPos)
-                            alignmentText += '      %8s %s\n' % ('', hsp.match[alignSpos:alignPos])
-                            alignmentText += 'Sbjct %8s %s %-8d\n' % (
-                                sbjctSpos, hsp.sbjct[alignSpos:alignPos], oldSPos)
+                            alignmentText += '      %9s %s\n' % ('', hsp.match[alignSpos:alignPos])
+                            alignmentText += 'Sbjct %9s %s %-9d\n' % (
+                                adjSSPos, hsp.sbjct[alignSpos:alignPos], adjSEPos)
                             incQuery = False
                             incSbjct = False
                             alignSpos = alignPos
-                    # alignmentText += '\n'
-                    # alignmentText += 'Query %8d %s %-8d\n' % (hsp.query_start, hsp.query, hsp.query_end)
-                    # alignmentText += '      %8s %s\n' % ('', hsp.match)
-                    # alignmentText += 'Sbjct %8s %s %-8d\n' % (hsp.sbjct_start, hsp.sbjct, hsp.sbjct_end)
                     formattedFullResult += alignmentText + '\n'
+                    gaplessQuery = hsp.query.replace("-","")
+                    gaplessSbjct = hsp.sbjct.replace("-","")
+                    formattedFullResult += '** Gapless Query Match Subsequence **\n'
+                    formattedFullResult += '>%s [%d..%d]\n' % (query, hsp.query_start, hsp.query_end)
+                    for spos in xrange(0,len(gaplessQuery),70):
+                        formattedFullResult += gaplessQuery[spos:spos+70] + '\n'
+                    formattedFullResult += '\n** Gapless Subject Match Subsequence %s**\n' % (' (translated)' if translatedSub else '')
+                    formattedFullResult += '>%s [%d..%d%s%s]\n' % (subject, hsp.sbjct_start, hsp.sbjct_end,
+                                                                   ',translated' if translatedSub else '',
+                                                                   ',RC' if ('frame' in vars(hsp) and (hsp.frame[1] < 0)) else '')
+                    for spos in xrange(0,len(gaplessSbjct),70):
+                        formattedFullResult += gaplessSbjct[spos:spos+70] + '\n'
+                    if(translatedSub and ('hit_id' in vars(alignment))):
+                        matchCode = '%s %d-%d' % (alignment.hit_id, hsp.sbjct_start, hsp.sbjct_end)
+                        formattedFullResult += '\n** Gapless Subject Match Subsequence **\n'
+                        formattedFullResult += '%%SEQ(%s)\n' % matchCode
+                        origSeq[matchCode] = ""
+                    formattedFullResult += '\n'
                     queries.add(blast_record.query)
                     summaryTable.append((query, subject, hsp.score,
                         coverage, identity, hsp.expect))
                     numAlignments += 1
+        if(translatedSub):
+            getSequences(parameters, origSeq)
+            for (key, value) in origSeq.items():
+                #formattedFullResult += '%%SEQ(%s)\n' % (key)
+                keyAnnot = '%s]' % key.replace("-","..").replace(" "," [")
+                seqStr = ''
+                for spos in xrange(0,len(value),70):
+                    seqStr += value[spos:spos+70] + '\n'
+                formattedFullResult = formattedFullResult.replace('%%SEQ(%s)' % key,'>%s\n%s' % (keyAnnot, seqStr))
+                #formattedFullResult += '%s;%s\n' % (key, value)
         formattedFullResult += '</pre>\n'
         formattedPreResult += ('<p>Number of alignments: %d</p>\n'
                                % numAlignments)
@@ -382,7 +441,7 @@ def getResults(parameters):
 
 ### Begin Actual Program ###
 
-cgitb.enable() # make errors visible on web pages
+#cgitb.enable() # make errors visible on web pages
 
 form = cgi.FieldStorage()   # FieldStorage object to
                             # hold the form data
@@ -393,6 +452,8 @@ myparams = {
     "seenFields"   : list(),
     "addFields"    : ('resultsExist','sessionID','blastCommand'),
     }
+
+#blastn -db db/3alln_smed -query /tmp/tmpGFk3hs -outfmt 5 -task blastn -evalue 10 -max_target_seqs 100 -word_size 11
 
 currentProgram = form.getfirst("selectProgram","blastn")
 currentTab = form.getfirst("selectTab","query")
@@ -418,8 +479,7 @@ if(myparams['program'] in ('blastp', 'tblastn')):
     myparams['inputType'] = 'protein';
 
 myparams['databases'] = getBlastDBs(myparams)
-if('REQUEST_URI' in os.environ):
-    myparams['request_uri'] = os.environ['REQUEST_URI']
+myparams['request_uri'] = os.environ['REQUEST_URI']
 
 # remove stale results files
 cleanUpResultsFiles(myparams)
