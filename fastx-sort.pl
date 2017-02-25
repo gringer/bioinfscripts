@@ -7,9 +7,10 @@ use Getopt::Long qw(:config auto_help pass_through);
 my $quiet = 0;
 my $searchPattern = "(^.*\$)";
 my $numeric = 0;
+my $length = 0;
 
 GetOptions("pattern=s" => \$searchPattern, "quiet!" => \$quiet,
-           "numeric!" => \$numeric) or
+           "numeric!" => \$numeric, "length!" => \$length) or
   die("Error in command line arguments");
 
 # Complain about non-file command line argument
@@ -25,6 +26,7 @@ while(@ARGV){
 @ARGV = @files;
 
 my %fastXStrs = ();
+my %fastXLengths = ();
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -42,6 +44,7 @@ while(<>){
           $fastXStrs{$seqID} = ($qual) ?
             sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
             sprintf(">%s\n%s\n", $seqID, $seq);
+          $fastXLengths{$seqID} = length($seq);
         } else {
           printf(STDERR "Warning: No match for pattern '$searchPattern' for sequence '$seqID'\n");
         }
@@ -73,7 +76,11 @@ if($seqID){
   }
 }
 
-if($numeric){
+if($length){
+  foreach my $pat (sort {$fastXLengths{$b} <=> $fastXLengths{$a}} (keys(%fastXStrs))){
+    print($fastXStrs{$pat});
+  }
+} elsif($numeric){
   foreach my $pat (sort {$a <=> $b} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }

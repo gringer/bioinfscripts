@@ -17,52 +17,52 @@ GetOptions("seqfile=s" => \$seqFileName) or
 my %seqs = ();
 my %quals = ();
 
-if(!$seqFileName){
-  die("Error: read sequence file must be specified, '-seqfile <file.fa>'");
-}
+# if(!$seqFileName){
+#   die("Error: read sequence file must be specified, '-seqfile <file.fa>'");
+# }
 
-## read in sequences
-my $inQual = 0; # false
-my $seqID = "";
-my $qualID = "";
+# ## read in sequences
+# my $inQual = 0; # false
+# my $seqID = "";
+# my $qualID = "";
 
-my $seqFile = new IO::Uncompress::Gunzip "$seqFileName" or
-  die "Unable to open $seqFileName\n";
-while(<$seqFile>){
-  chomp;
-  chomp;
-  if(!$inQual){
-    if(/^(>|@)((.+?)( .*?\s*)?)$/){
-      my $newSeqID = $2;
-      my $newShortID = $3;
-      $seqID = $newShortID;
-      if($seqID){
-        $seqs{$seqID} = "";
-        $quals{$seqID} = "";
-      }
-    } elsif(/^\+(.*)$/) {
-      $inQual = 1; # true
-      $qualID = $1;
-      if(($qualID ne "") && ($qualID ne $seqID)){
-        warn("Sequence ID and Qual ID do not match: $seqID; $qualID");
-      }
-    } else {
-      $seqs{$seqID} .= $_;
-    }
-  } else {
-    $quals{$seqID} .= $_;
-    my $lq = length($quals{$seqID});
-    my $ls = length($seqs{$seqID});
-    if($lq >= $ls){
-      $inQual = 0; # false
-      if($lq != $ls){
-        warn(sprintf("Sequence and Qual length do not match: $seqID (%d; %d)",
-                    $ls, $lq));
-      }
-    }
-  }
-}
-close($seqFile);
+# my $seqFile = new IO::Uncompress::Gunzip "$seqFileName" or
+#   die "Unable to open $seqFileName\n";
+# while(<$seqFile>){
+#   chomp;
+#   chomp;
+#   if(!$inQual){
+#     if(/^(>|@)((.+?)( .*?\s*)?)$/){
+#       my $newSeqID = $2;
+#       my $newShortID = $3;
+#       $seqID = $newShortID;
+#       if($seqID){
+#         $seqs{$seqID} = "";
+#         $quals{$seqID} = "";
+#       }
+#     } elsif(/^\+(.*)$/) {
+#       $inQual = 1; # true
+#       $qualID = $1;
+#       if(($qualID ne "") && ($qualID ne $seqID)){
+#         warn("Sequence ID and Qual ID do not match: $seqID; $qualID");
+#       }
+#     } else {
+#       $seqs{$seqID} .= $_;
+#     }
+#   } else {
+#     $quals{$seqID} .= $_;
+#     my $lq = length($quals{$seqID});
+#     my $ls = length($seqs{$seqID});
+#     if($lq >= $ls){
+#       $inQual = 0; # false
+#       if($lq != $ls){
+#         warn(sprintf("Sequence and Qual length do not match: $seqID (%d; %d)",
+#                     $ls, $lq));
+#       }
+#     }
+#   }
+# }
+# close($seqFile);
 
 printf(STDERR "Read in %d sequences\n", scalar(keys(%seqs)));
 
@@ -82,7 +82,7 @@ my $tName = "";
 
 my %matches = ();
 
-printf("%-75s %-15s %-3s %-4s %-4s %-4s %-4s %-4s %-4s %-4s\n",
+printf("%-15s %-15s %-3s %-5s %-5s %-5s %-5s %-5s %-5s %-5s\n",
        "query", "target", "dir", "qS", "qE", "qML", "qL",
        "tS", "tML", "tL");
 while(<>){
@@ -109,7 +109,7 @@ while(<>){
         $tStart = $tEnd - $tMatchLen;
       }
       my $matchLine =
-        sprintf("%-75s %-15s %-3s %-4d %-4d %-4d %-4d %-4d %-4d %-4d",
+        sprintf("%-15s %-15s %-3s %-5d %-5d %-5d %-5d %-5d %-5d %-5d",
                 $qName, $tName, $qStrand, $qStart, $qEnd, $qMatchLen, $qLen,
                 $tStart, $tMatchLen, $tLen);
       print("$matchLine\n");
