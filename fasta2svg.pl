@@ -40,8 +40,10 @@ use List::Util qw(min);
 
 my $hpLength = 1;
 my $saturate = 0;
+my $width = -1;
 
-GetOptions('hplength=i' => \$hpLength, 'saturate!' => \$saturate) or
+GetOptions('hplength=i' => \$hpLength, 'saturate!' => \$saturate,
+    'width=i' => \$width) or
   die("Error in command line arguments");
 
 my $seq = "";
@@ -58,7 +60,7 @@ while(<>){
   if(/^>(.+)$/){
     my $newID = $1;
     if($seq){
-      drawSeq($seq, $seqID, $seqCount, $hpLength, $saturate);
+      drawSeq($seq, $seqID, $seqCount, $hpLength, $saturate, $width);
       $seqCount++;
     }
     $seq = "";
@@ -69,7 +71,7 @@ while(<>){
 }
 
 if($seq){
-  drawSeq($seq, $seqID, $seqCount, $hpLength, $saturate);
+  drawSeq($seq, $seqID, $seqCount, $hpLength, $saturate, $width);
 }
 
 print("</svg>\n");
@@ -111,19 +113,20 @@ sub contentColour{
 }
 
 sub drawSeq{
-  my ($tSeq, $tSeqID, $tSeqCount, $hl, $doSat) = @_;
+  my ($tSeq, $tSeqID, $tSeqCount, $hl, $doSat, $imgWidth) = @_;
   my %hpCols = ( A => "#00FF00", C => "#0000FF", G=> "#FFFF00", T=> "#FF0000");
   #$tSeq = substr($tSeq,0,200); # only show first 100 bases for testing purposes
   my $tSeqC = comp($tSeq);
   printf(" <g id=\"%s\" stroke-width=\"%s\">\n", $tSeqID, $hl*2);
   my $sf = $hl*4+2.5; ## size adjustment factor
+  my $scale = ($imgWidth == -1) ? 1 : ($imgWidth / length($tSeq));
   my $ofy = $hl+0.25; ## y offset for fwd/comp sequence
   my $xp = $sf;
   printf("  <g id=\"%s_FWD\">\n", $tSeqID);
   ## surrounding black rectangle so that white areas don't look odd
   printf("   <rect fill=\"black\" x=\"%s\" y=\"%s\" ".
          "width=\"%s\" height=\"%s\" />\n",
-         $xp - 0.5, $tSeqCount*$sf-(($sf-1)/2), length($tSeq)+1, $sf-1);
+         $xp - 0.5, $tSeqCount*$sf-(($sf-1)/2), length($tSeq)*$scale+1, $sf-1);
   while($tSeq =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
     my $preSeq = $1;
     my $hpSeq = $2;
@@ -132,19 +135,20 @@ sub drawSeq{
       ## display sequence prior to homopolymer
       my $col = contentColour($preSeq, $doSat);
       printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-             $col, $xp, $tSeqCount*$sf-$ofy, length($preSeq));
+             $col, $xp*$scale, $tSeqCount*$sf-$ofy, length($preSeq)*$scale);
     }
     $xp += length($preSeq);
     ## display homopolymer sequence
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $hpCols{$hpBase}, $xp, $tSeqCount*$sf-$ofy, length($hpSeq));
+           $hpCols{$hpBase}, $xp*$scale, $tSeqCount*$sf-$ofy, 
+	   length($hpSeq)*$scale);
     $xp += length($hpSeq);
   }
   if($tSeq){
     my $col = contentColour($tSeq, $doSat);
     ## display sequence after last homopolymer
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $col, $xp, $tSeqCount*$sf-$ofy, length($tSeq));
+           $col, $xp*$scale, $tSeqCount*$sf-$ofy, length($tSeq)*$scale);
   }
   printf("  </g>\n");
   $xp = $sf;
@@ -158,19 +162,20 @@ sub drawSeq{
       ## display sequence prior to homopolymer
       my $col = contentColour($preSeq, $doSat);
       printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-             $col, $xp, $tSeqCount*$sf+$ofy, length($preSeq));
+             $col, $xp*$scale, $tSeqCount*$sf+$ofy, length($preSeq)*$scale);
     }
     $xp += length($preSeq);
     ## display homopolymer sequence
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $hpCols{$hpBase}, $xp, $tSeqCount*$sf+$ofy, length($hpSeq));
+           $hpCols{$hpBase}, $xp*$scale, $tSeqCount*$sf+$ofy, 
+	   length($hpSeq)*$scale);
     $xp += length($hpSeq);
   }
   if($tSeqC){
     my $col = contentColour($tSeqC, $doSat);
     ## display sequence after last homopolymer
     printf("   <path stroke=\"%s\" d=\"M%s,%s l%s,0\" />\n",
-           $col, $xp, $tSeqCount*$sf+$ofy, length($tSeqC));
+           $col, $xp*$scale, $tSeqCount*$sf+$ofy, length($tSeqC)*$scale);
   }
   printf("  </g>\n");
   printf(" </g>\n");
