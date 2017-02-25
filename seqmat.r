@@ -3,11 +3,21 @@
 rptSize <- as.numeric(commandArgs(TRUE)[1]);
 
 inLines <- readLines("stdin");
+inLines[2] <- paste(inLines[-1],collapse="");
+
 inName <- substring(inLines[1],2);
 inSeq <- c(A=1, C=2, G=3, T=4)[unlist(strsplit(inLines[2],""))];
 
-png("sequence_matrix.png", width=1280, height=1280,
-    pointsize=24);
+type <- "png";
+if(any(commandArgs(TRUE) == "pdf")){
+    type <- "pdf";
+}
+
+if(type == "png"){
+    png("sequence_matrix.png", width=1200, height=1200, pointsize=24);
+} else if(type == "pdf"){
+    pdf("sequence_matrix.pdf", width=12, height=12, pointsize=16);
+}
 subSeq <- inSeq[1:(floor(length(inSeq)/rptSize)*rptSize)];
 par(mar=c(0.5,0.5,1,0.5));
 image(matrix(subSeq,nrow=rptSize),
