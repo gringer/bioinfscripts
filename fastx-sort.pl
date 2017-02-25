@@ -71,6 +71,7 @@ if($seqID){
     $fastXStrs{$seqID} = ($qual) ?
       sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
       sprintf(">%s\n%s\n", $seqID, $seq);
+    $fastXLengths{$seqID} = length($seq);
   } else {
     printf(STDERR "Warning: No match for pattern '$searchPattern' for sequence '$seqID'\n");
   }
