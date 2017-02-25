@@ -84,7 +84,7 @@ my %matches = ();
 
 printf("%-15s %-15s %-3s %-5s %-5s %-5s %-5s %-5s %-5s %-5s\n",
        "query", "target", "dir", "qS", "qE", "qML", "qL",
-       "tS", "tML", "tL");
+       "tS", "tE", "tML", "tL");
 while(<>){
   if(!/^[as]/){
     next;
@@ -109,9 +109,9 @@ while(<>){
         $tStart = $tEnd - $tMatchLen;
       }
       my $matchLine =
-        sprintf("%-15s %-15s %-3s %-5d %-5d %-5d %-5d %-5d %-5d %-5d",
+        sprintf("%-15s %-15s %-3s %-5d %-5d %-5d %-5d %-5d %-5d %-5d %-5d",
                 $qName, $tName, $qStrand, $qStart, $qEnd, $qMatchLen, $qLen,
-                $tStart, $tMatchLen, $tLen);
+                $tStart, $tEnd, $tMatchLen, $tLen);
       print("$matchLine\n");
       $matches{$qName}{$qStart} .= ":matchLine";
    } else {
