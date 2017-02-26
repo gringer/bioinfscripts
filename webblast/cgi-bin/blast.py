@@ -244,6 +244,7 @@ def getResults(parameters):
     formattedPreResult = ''
     formattedSummaryResult = ''
     formattedFullResult = ''
+    context = 0
     # sort out GBrowse pattern replacements
     gbrowsePatterns = dict()
     if('gbrowse_patterns' in parameters):
@@ -251,6 +252,10 @@ def getResults(parameters):
         for pattern in patternList:
             components = pattern.split(':',1)
             gbrowsePatterns[components[0]] = components[1]
+    # set up additional context
+    if(('CONTEXT' in parameters) and
+       (parameters['CONTEXT'] != '')):
+        context = int(parameters['CONTEXT'])
     # find location of results files and error output
     reader = csv.reader(open(resultStorageName))
     for row in reader:
@@ -378,19 +383,27 @@ def getResults(parameters):
                     formattedFullResult += '>%s [%d..%d]\n' % (query, hsp.query_start, hsp.query_end)
                     for spos in xrange(0,len(gaplessQuery),70):
                         formattedFullResult += gaplessQuery[spos:spos+70] + '\n'
-                    formattedFullResult += '\n** Gapless Subject Match Subsequence %s**\n' % ('(translated)' if translatedSub else '')
-                    formattedFullResult += '>%s [%d..%d%s%s]\n' % (subject, hsp.sbjct_start, hsp.sbjct_end,
-                                                                   ',translated' if translatedSub else '',
-                                                                   ',RC' if ('frame' in vars(hsp) and (hsp.frame[1] < 0)) else '')
-                    for spos in xrange(0,len(gaplessSbjct),70):
-                        formattedFullResult += gaplessSbjct[spos:spos+70] + '\n'
+                    appendString = (' (translated)' if translatedSub else '')
+                    if((context > 0) and not translatedSub):
+                        appendString += ' (%d context)' % context
+                    formattedFullResult += '\n** Gapless Subject Match Subsequence%s **\n' % appendString
+                    if((context > 0) and not translatedSub):
+                        matchCode = '%s %d-%d' % (
+                            alignment.hit_id, max(1,hsp.sbjct_start-context), (hsp.sbjct_end + context))
+                        formattedFullResult += '%%SEQ(%s)\n' % matchCode
+                        origSeq[matchCode] = ""
+                    else:
+                        formattedFullResult += '>%s [%d..%d%s%s]\n' % (
+                            subject, hsp.sbjct_start, hsp.sbjct_end,
+                            ',translated' if translatedSub else '',
+                            ',RC' if ('frame' in vars(hsp) and (hsp.frame[1] < 0)) else '')
+                        for spos in xrange(0,len(gaplessSbjct),70):
+                            formattedFullResult += gaplessSbjct[spos:spos+70] + '\n'
                     if(translatedSub and ('hit_id' in vars(alignment))):
-                        context = 0
-                        if(('CONTEXT' in parameters) and
-                           (parameters['CONTEXT'] != '')):
-                            context = int(parameters['CONTEXT'])
-                        matchCode = '%s %d-%d' % (alignment.hit_id, max(1,hsp.sbjct_start-context), (hsp.sbjct_end + context))
-                        formattedFullResult += '\n** Gapless Subject Match Subsequence %s**\n' % (('(%d bp context)' % context) if (context > 0) else '')
+                        matchCode = '%s %d-%d' % (
+                            alignment.hit_id, max(1,hsp.sbjct_start-context), (hsp.sbjct_end + context))
+                        formattedFullResult += '\n** Gapless Subject Match Subsequence%s **\n' % (
+                            (' (%d context)' % context) if (context > 0) else '')
                         formattedFullResult += '%%SEQ(%s)\n' % matchCode
                         origSeq[matchCode] = ""
                     formattedFullResult += '\n'
@@ -398,7 +411,7 @@ def getResults(parameters):
                     summaryTable.append((query, subject, hsp.score,
                         coverage, identity, hsp.expect))
                     numAlignments += 1
-        if(translatedSub):
+        if(translatedSub or (context > 0)):
             getSequences(parameters, origSeq)
             for (key, value) in origSeq.items():
                 keyAnnot = '%s]' % key.replace("-","..").replace(" "," [")
