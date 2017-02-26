@@ -378,15 +378,19 @@ def getResults(parameters):
                     formattedFullResult += '>%s [%d..%d]\n' % (query, hsp.query_start, hsp.query_end)
                     for spos in xrange(0,len(gaplessQuery),70):
                         formattedFullResult += gaplessQuery[spos:spos+70] + '\n'
-                    formattedFullResult += '\n** Gapless Subject Match Subsequence %s**\n' % (' (translated)' if translatedSub else '')
+                    formattedFullResult += '\n** Gapless Subject Match Subsequence %s**\n' % ('(translated)' if translatedSub else '')
                     formattedFullResult += '>%s [%d..%d%s%s]\n' % (subject, hsp.sbjct_start, hsp.sbjct_end,
                                                                    ',translated' if translatedSub else '',
                                                                    ',RC' if ('frame' in vars(hsp) and (hsp.frame[1] < 0)) else '')
                     for spos in xrange(0,len(gaplessSbjct),70):
                         formattedFullResult += gaplessSbjct[spos:spos+70] + '\n'
                     if(translatedSub and ('hit_id' in vars(alignment))):
-                        matchCode = '%s %d-%d' % (alignment.hit_id, hsp.sbjct_start, hsp.sbjct_end)
-                        formattedFullResult += '\n** Gapless Subject Match Subsequence **\n'
+                        context = 0
+                        if(('CONTEXT' in parameters) and
+                           (parameters['CONTEXT'] != '')):
+                            context = int(parameters['CONTEXT'])
+                        matchCode = '%s %d-%d' % (alignment.hit_id, max(1,hsp.sbjct_start-context), (hsp.sbjct_end + context))
+                        formattedFullResult += '\n** Gapless Subject Match Subsequence %s**\n' % (('(%d bp context)' % context) if (context > 0) else '')
                         formattedFullResult += '%%SEQ(%s)\n' % matchCode
                         origSeq[matchCode] = ""
                     formattedFullResult += '\n'
@@ -397,13 +401,11 @@ def getResults(parameters):
         if(translatedSub):
             getSequences(parameters, origSeq)
             for (key, value) in origSeq.items():
-                #formattedFullResult += '%%SEQ(%s)\n' % (key)
                 keyAnnot = '%s]' % key.replace("-","..").replace(" "," [")
                 seqStr = ''
                 for spos in xrange(0,len(value),70):
                     seqStr += value[spos:spos+70] + '\n'
                 formattedFullResult = formattedFullResult.replace('%%SEQ(%s)' % key,'>%s\n%s' % (keyAnnot, seqStr))
-                #formattedFullResult += '%s;%s\n' % (key, value)
         formattedFullResult += '</pre>\n'
         formattedPreResult += ('<p>Number of alignments: %d</p>\n'
                                % numAlignments)
