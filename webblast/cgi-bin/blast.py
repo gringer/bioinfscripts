@@ -388,8 +388,13 @@ def getResults(parameters):
                         appendString += ' (%d context)' % context
                     formattedFullResult += '\n** Gapless Subject Match Subsequence%s **\n' % appendString
                     if((context > 0) and not translatedSub):
+                        matchStart = max(1,hsp.sbjct_start-context)
+                        matchEnd = hsp.sbjct_end+context
+                        if(matchEnd < matchStart):
+                            matchStart = max(1,hsp.sbjct_end-context)
+                            matchEnd = hsp.sbjct_start+context
                         matchCode = '%s %d-%d' % (
-                            alignment.hit_id, max(1,hsp.sbjct_start-context), (hsp.sbjct_end + context))
+                            alignment.hit_id, matchStart, matchEnd)
                         formattedFullResult += '%%SEQ(%s)\n' % matchCode
                         origSeq[matchCode] = ""
                     else:
@@ -400,8 +405,13 @@ def getResults(parameters):
                         for spos in xrange(0,len(gaplessSbjct),70):
                             formattedFullResult += gaplessSbjct[spos:spos+70] + '\n'
                     if(translatedSub and ('hit_id' in vars(alignment))):
+                        matchStart = max(1,hsp.sbjct_start-context)
+                        matchEnd = hsp.sbjct_end+context
+                        if(matchEnd < matchStart):
+                            matchStart = max(1,hsp.sbjct_end-context)
+                            matchEnd = hsp.sbjct_start+context
                         matchCode = '%s %d-%d' % (
-                            alignment.hit_id, max(1,hsp.sbjct_start-context), (hsp.sbjct_end + context))
+                            alignment.hit_id, matchStart, matchEnd)
                         formattedFullResult += '\n** Gapless Subject Match Subsequence%s **\n' % (
                             (' (%d context)' % context) if (context > 0) else '')
                         formattedFullResult += '%%SEQ(%s)\n' % matchCode
