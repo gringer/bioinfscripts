@@ -82,7 +82,7 @@ my $tName = "";
 
 my %matches = ();
 
-printf("%-15s %-15s %-3s %-6s %-6s %-5s %-6s %-6s %-6s %-5s %-6s\n",
+printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
        "query", "target", "dir", "qS", "qE", "qML", "qL",
        "tS", "tE", "tML", "tL");
 while(<>){
@@ -109,7 +109,7 @@ while(<>){
         $tStart = $tEnd - $tMatchLen;
       }
       my $matchLine =
-        sprintf("%-15s %-15s %-3s %-6d %-6d %-5d %-6d %-6d %-6d %-5d %-6d",
+        sprintf("%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d",
                 $qName, $tName, $qStrand, $qStart, $qEnd, $qMatchLen, $qLen,
                 $tStart, $tEnd, $tMatchLen, $tLen);
       print("$matchLine\n");
