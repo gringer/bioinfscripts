@@ -26,9 +26,17 @@ fastx-repeatFilter.pl -- Repeat Match Algorithm for Long-read Evaluation
 
 Only display this help message
 
+=item B<-lmin>
+
+Minimum repeat length
+
+=item B<-lmax>
+
+Maximum repeat length
+
 =item B<-length>
 
-Target repeat length
+Repeat length; sets I<lmin> and I<lmax> to the same value
 
 =item B<-skew>
 
@@ -58,26 +66,55 @@ something
 
 =cut
 
-=head2 processSeq(id, seq, qual, len, skew, threshold, fraction, reverse)
+=head2 processSeq(id, seq, qual, lmin, lmax, skew, threshold, fraction, reverse)
 
 Analyses the sequence I<seq> to work out if it is likely to contain a
-substantial proportion of repeats of length I<len>. Depending on the
-value of I<reverse> and whether a repeat read was detected, either
-return an empty string or the sequence.
+substantial proportion of repeats of length in the range I<lmin> to
+I<lmax>. Depending on the value of I<reverse> and whether a repeat
+read was detected, either return an empty string or the sequence.
 
 =cut
 
 sub processSeq{
-  my ($id, $seq, $qual, $len, $skew, $threshold, $fraction, $reverse) = @_;
-  if(!$id || (length($seq) < $len)){
+  my ($id, $seq, $qual, $lmin, $lmax, $skew,
+      $threshold, $fraction, $reverse) = @_;
+  if(!$id || (length($seq) < $lmin)){
     if($reverse){
       if($qual){
         print("@${id}\n${seq}\n+\n${qual}\n");
       } else {
         print(">${id}\n${seq}\n");
       }
+      return;
     }
   }
+  foreach my $len ($lmin..$lmax){
+    my @scores = ();
+    for(my $spos = $skew; ($spos+2*$len+$skew+1) < length($seq); $spos += $len){
+      my $maxScore = 0;
+      foreach my $ofs (-$skew..$skew){
+        my $score=0;
+        foreach my $c (0..($len-1)){
+          if(substr($seq,$c+$spos,1) eq substr($seq,$spos+$c+$len+$ofs,1)){
+            $score++;
+          }
+        }
+        if($score > $maxScore){
+          $maxScore = $score;
+        }
+        # printf("---\n%s\n%s\n--- [%d+%d, %0.2f]\n",
+        #        substr($seq,$spos,$len),
+        #        substr($seq,$spos+$len+$ofs,$len),
+        #        $spos, $ofs, $score);
+      }
+      push(@scores, $maxScore);
+      #    printf("%3d %0.2f\n", $spos, $maxScore / $len);
+    }
+    @scores = (sort {$b <=> $a} (@scores))[0..($#scores * $fraction)];
+    print("${len},$scores[0],$scores[$#scores]\n");
+  }
+  #printf("Length %d, min score with fraction %0.2f: %0.2f\n",
+  #      $len, $fraction, $scores[$#scores]/$len);
 }
 
 
@@ -90,6 +127,8 @@ my $argLine = join(" ",@ARGV);
 my $options =
   {
    "length" => 100,
+   "lmin" => -1,
+   "lmax" => -1,
    "skew" => 3,
    "threshold" => 0.8,
    "fraction" => 0.5,
@@ -98,12 +137,23 @@ my $options =
 
 GetOptions($options,
            'length|l=i',
+           'lmin=i',
+           'lmax=i',
            'skew=i',
            'threshold=f',
            'fraction=i',
            'reverse|v!',
            'debug!' => \$DEBUG,
 ) or pod2usage(1);
+
+if($options->{"skew"} >= $options->{"length"}){
+  die("Skew must be less than repeat length");
+}
+
+if(($options->{lmin} == -1) || ($options->{lmax} == -1)){
+  $options->{lmin} = $options->{length};
+  $options->{lmax} = $options->{length};
+}
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -119,7 +169,8 @@ while(<>){
       my $newShortID = $3;
       if($seqID){
         processSeq($seqID, $seq, $qual,
-                   $options->{"length"}, $options->{"skew"},
+                   $options->{"lmin"}, $options->{"lmax"},
+                   $options->{"skew"},
                    $options->{"threshold"}, $options->{"fraction"},
                    $options->{"reverse"});
       }
@@ -142,7 +193,7 @@ while(<>){
 
 if($seqID){
   processSeq($seqID, $seq, $qual,
-             $options->{"length"}, $options->{"skew"},
+             $options->{"lmin"}, $options->{"lmax"}, $options->{"skew"},
              $options->{"threshold"}, $options->{"fraction"},
              $options->{"reverse"});
 }
