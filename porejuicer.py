@@ -111,29 +111,22 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-      runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
-      channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
-      channel = str(channelMeta["channel_number"])
-      runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
+      rowData = get_telemetry(h5File, "000")
+      channel = str(rowData['channel'])
+      mux = str(rowData['mux'])
+      runID = rowData['runID']
       dir = "complement" if (direction=="r") else "template"
-      eventBase = "/Analyses/EventDetection_000/Reads/"
-      readNames = h5File[eventBase]
-      mux = 0
-      # get mux for the read
-      for readName in readNames:
-        readMetaLocation = "/Analyses/EventDetection_000/Reads/%s" % readName
-        outMeta = h5File[readMetaLocation].attrs
-        mux = str(outMeta["start_mux"])
-      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events" % (dir)
+      eventLocation = "/Analyses/Basecall_1D_000/BaseCalled_%s/Events/" % (dir)
       if(not eventLocation in h5File):
           return False
-      readNames = h5File[eventLocation]
+      readName = rowData['read']
       headers = h5File[eventLocation].dtype
       outData = h5File[eventLocation][()] # load entire array into memory
       if(header):
           sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
       # There *has* to be an easier way to do this while preserving
       # precision. Reading element by element seems very inefficient
+      print(outData[0]['move'])
       for line in outData:
         res=map(str,line)
         # data seems to be normalised, but just in case it isn't, here's the formula for
@@ -151,6 +144,7 @@ def generate_event_matrix(fileName, header=True):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
+      rowData = get_telemetry(h5File, "000")
       runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
       channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
