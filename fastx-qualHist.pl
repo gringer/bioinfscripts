@@ -7,8 +7,10 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $idFileName = "";
 my $quiet = 0;
+my $base = 33;
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet ) or
+GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet,
+           "base" => \$base ) or
   die("Error in command line arguments");
 
 # unknown commands are treated as identifiers
@@ -20,10 +22,6 @@ while(@ARGV){
   }
 }
 @ARGV = @files;
-
-if(!$quiet){
-  printf(STDERR "Read %d identifiers\n", scalar(keys(%idsToGet)));
-}
 
 my %qualCounts = ();
 
@@ -58,5 +56,6 @@ while(<>){
 }
 
 foreach my $qualChar (sort(keys(%qualCounts))){
-  printf("%s: %d\n", $qualChar, $qualCounts{$qualChar});
+  printf("%s [%2d]: %d\n", $qualChar, ord($qualChar) - $base,
+         $qualCounts{$qualChar});
 }
