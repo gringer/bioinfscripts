@@ -75,6 +75,7 @@ if(doPlot){
     }
 }
 
+
 library(caTools); ## for runmean
 
 ##rangeRLE <- rle((runmed(data.sig,11) > dMin) & (runmed(data.sig,11) < dMax));
@@ -178,6 +179,23 @@ if(doPlot){
          sprintf("Unadjusted drift: %0.1f units per second",
                  glm2.res$coefficients[2]), col="darkblue");
     dummy <- dev.off();
+    if(length(data.sig) < 100000){
+        pdf("trimmed.pdf", width=12, height=8, pointsize=16);
+        par(mar=c(4.5,6,1,1), mfrow=c(3,1));
+        xsplit <- length(data.sig)/(3*4000);
+        for(start in 0:2){
+            plot((1:length(data.sig)+startPoint)/4000, data.sig, pch=19, type="l",
+                 xlim=c(xsplit*start,xsplit*(start+1)) + startPoint/4000,
+                 cex=0.25, xlab="", las=1, ylab="");
+            if(start == 1){
+                mtext("Unadjusted Raw Signal", side=2, line=4, xpd=NA);
+            }
+            if(start == 2){
+                mtext("Time (s)", side=1, line=3, xpd=NA);
+            }
+        }
+        dummy <- dev.off();
+    }
 }
 
 
