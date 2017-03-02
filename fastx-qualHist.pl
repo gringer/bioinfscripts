@@ -25,6 +25,8 @@ while(@ARGV){
 
 my %qualCounts = ();
 
+my $baseCount = 0;
+
 my $inQual = 0; # false
 my $seqID = "";
 my $qualID = "";
@@ -48,6 +50,7 @@ while(<>){
     }
   } else {
     grep {$qualCounts{$_}++} split(//,$_);
+    $baseCount += length($_);
     $qual .= $_;
     if(length($qual) >= length($seq)){
       $inQual = 0; # false
@@ -55,7 +58,13 @@ while(<>){
   }
 }
 
+my $cumCount = 0;
 foreach my $qualChar (sort(keys(%qualCounts))){
-  printf("%s [%2d]: %d\n", $qualChar, ord($qualChar) - $base,
-         $qualCounts{$qualChar});
+  $cumCount += $qualCounts{$qualChar};
+  printf("%s [%2d]: %6d (%6.2f%% / %6.2f%% )\n",
+         $qualChar, ord($qualChar) - $base,
+         $qualCounts{$qualChar}, $qualCounts{$qualChar} * 100 / $baseCount,
+        $cumCount * 100 / $baseCount);
 }
+
+printf("Total sequence length: %d\n", $baseCount);
