@@ -120,17 +120,16 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
       if(not eventLocation in h5File):
           return False
       readName = rowData['read']
+      outData = h5File[eventLocation]
+      dummy = h5File[eventLocation]['move'][0] ## hack to get order correct
       headers = h5File[eventLocation].dtype
-      outData = h5File[eventLocation][()] # load entire array into memory
       if(header):
           sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
-      # There *has* to be an easier way to do this while preserving
-      # precision. Reading element by element seems very inefficient
-      print(outData[0]['move'])
       for line in outData:
-        res=map(str,line)
-        # data seems to be normalised, but just in case it isn't, here's the formula for
-        # future reference: pA = (raw + offset)*range/digitisation
+        res=[repr(x) for x in line]
+        # data seems to be normalised, but just in case it isn't in the future,
+        # here's the formula for calculation:
+        # pA = (raw + offset)*range/digitisation
         # (using channelMeta[("offset", "range", "digitisation")])
         # - might also be useful to know start_time from outMeta["start_time"]
         #   which should be subtracted from event/start
