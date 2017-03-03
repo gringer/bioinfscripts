@@ -8,6 +8,7 @@ sigFileName <- "signal.bin";
 channel <- -1;
 read <- -1;
 imageName <- "signal_out.pdf";
+title <- "";
 doPlot <- TRUE;
 
 usage <- function(){
@@ -16,6 +17,7 @@ usage <- function(){
   cat("\nOther Options:\n");
   cat("-out <file> : Write image to <file> [default: signal_out.pdf]\n");
   cat("-noplot     : Don't plot any data (just carry out calculations)\n");
+  cat("-title      : Title for additional annotations\n");
   cat("-help       : Only display this help message\n");
   cat("\n");
 }
@@ -39,6 +41,10 @@ while(!is.na(commandArgs()[argLoc])){
     }
     else if(commandArgs()[argLoc] == "-out"){
       imageName <- commandArgs()[argLoc+1];
+      argLoc <- argLoc + 1;
+    }
+    else if(commandArgs()[argLoc] == "-title"){
+      title <- commandArgs()[argLoc+1];
       argLoc <- argLoc + 1;
     }
     else {
@@ -67,11 +73,12 @@ if(doPlot){
     if(orig.sig.len > 100000){
         #smoothScatter(1:length(data.sig), data.sig, main="Untrimmed raw signal (smoothed scatter plot)", xlab="Samples",
         #              ylab="Unadjusted raw signal", nbin=c(512,256), nrpoints=1000, bandwidth = c(orig.sig.len/512,20));
-        plot(1:length(data.sig), data.sig, pch=".", main="Untrimmed raw signal", xlab="Samples",
-                      ylab="Unadjusted raw signal");
+        plot(1:length(data.sig), data.sig, pch=".", main="Untrimmed raw signal", xlab="Samples", ylab="Unadjusted raw signal");
     } else {
-        plot(1:length(data.sig), data.sig, type="l", main="Untrimmed raw signal", xlab="Samples",
-                      ylab="Unadjusted raw signal");
+        plot(1:length(data.sig), data.sig, type="l", main="Untrimmed raw signal", xlab="Samples", ylab="Unadjusted raw signal");
+    }
+    if(title != ""){
+        mtext(title, line=0.5);
     }
 }
 
@@ -115,7 +122,6 @@ if(doPlot){
     text(x=startPoint + length(data.sig), y=dMax, pos=2, labels=startPoint + length(data.sig));
 }
 
-
 if(length(data.sig) / orig.sig.len < 0.25){
     cat("Error: signal data reduced to less than 25% of original size after noise/plateau trimming\n");
     cat(sprintf("[Remaining proportion: %0.2f%%]\n", 100 * length(data.sig) / orig.sig.len));
@@ -136,7 +142,7 @@ lowPoints <- lowPoints[(lowPoints > 1) & (lowPoints < length(hpFlats$values))];
 hpflat.searchTable <- rbind(cumsum(hpFlats$lengths)[lowPoints-1], hpFlats$lengths[lowPoints-1],
                             hpFlats$lengths[lowPoints], hpFlats$lengths[lowPoints+1], cumsum(hpFlats$lengths)[lowPoints]);
 ## hairpin "low bit" length should be similar to adjacent bits
-hp.ratio <- hpflat.searchTable[3,] / colSums(hpflat.searchTable[c(2,4),]);
+hp.ratio <- hpflat.searchTable[3,,drop=FALSE] / colSums(hpflat.searchTable[c(2,4),,drop=FALSE]);
 hp.likely <- which((hp.ratio < 3) & (hp.ratio > 1/3));
 hp.breakPoints <- NULL;
 if(length(hp.likely) > 0){
@@ -145,6 +151,7 @@ if(length(hp.likely) > 0){
 
 if(doPlot){
     abline(v=startPoint + hp.breakPoints, col="#00FF0080", lwd = 3);
+    text(x=startPoint + hp.breakPoints, y=dMax, pos=3, labels=startPoint + hp.breakPoints);
     dummy <- dev.off();
 }
 
