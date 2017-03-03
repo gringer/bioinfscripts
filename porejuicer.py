@@ -104,8 +104,8 @@ def generate_consensus_matrix(fileName, header=True):
                                  "," + ",".join(res) + "\n")
 
 def generate_eventdir_matrix(fileName, header=True, direction=None):
-    '''write out event matrix from fast5, return False if not present'''
-    try:
+    '''write out directed event matrix from fast5, False if not present'''
+    try: # check to make sure the file actually exists
         h5File = h5py.File(fileName, 'r')
         h5File.close()
     except:
@@ -120,11 +120,14 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
       if(not eventLocation in h5File):
           return False
       readName = rowData['read']
+      sampleRate = str(int(rowData['sampleRate']))
+      rawStart = str(rowData['rawStart'])
       outData = h5File[eventLocation]
       dummy = h5File[eventLocation]['move'][0] ## hack to get order correct
+      numpy.set_printoptions(precision=15)
       headers = h5File[eventLocation].dtype
       if(header):
-          sys.stdout.write("runID,channel,mux,read,"+",".join(headers.names)+"\n")
+          sys.stdout.write("runID,channel,mux,read,sampleRate,rawStart,"+",".join(headers.names)+"\n")
       for line in outData:
         res=[repr(x) for x in line]
         # data seems to be normalised, but just in case it isn't in the future,
@@ -133,7 +136,7 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
         # (using channelMeta[("offset", "range", "digitisation")])
         # - might also be useful to know start_time from outMeta["start_time"]
         #   which should be subtracted from event/start
-        sys.stdout.write(",".join((runID,channel,mux,readName)) + "," + ",".join(res) + "\n")
+        sys.stdout.write(",".join((runID,channel,mux,readName,sampleRate,rawStart)) + "," + ",".join(res) + "\n")
 
 def generate_event_matrix(fileName, header=True):
     '''write out event matrix from fast5, return False if not present'''
