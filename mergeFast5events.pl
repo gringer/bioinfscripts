@@ -31,11 +31,12 @@ while(<>){
                       $model,$lastMove,$bpPos,sprintf('%0.2f',$meanSig),
                       sprintf('%.0f', $lastStart),
                       sprintf('%0.4f', $lastStart/$F[$colnums{sampleRate}]),
-                      sprintf('%.0f',$cumLength))),"\n");
+                      sprintf('%.0f',$cumLength)
+                     )),"\n");
     }
     $model = $F[$colnums{model_state}];
     $lastMove = $F[$colnums{move}];
-    $lastStart = $F[$colnums{start}] - $F[$colnums{rawStart}];
+    $lastStart = $F[$colnums{start}];
     $bpPos += $F[$colnums{move}];
     $cumLength = 0;
     $meanSig = 0;
