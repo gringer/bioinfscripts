@@ -87,9 +87,7 @@ if(length(rangeRLE$lengths) > 1){
     startPoint <- ifelse(indexRLE == 1, 1,
                          cumsum(rangeRLE$lengths)[indexRLE-1] + 50);
     dataLen <- rangeRLE$lengths[indexRLE];
-    if(doPlot){
-        abline(v=c(0,dataLen)+startPoint, col="red", lwd=2);
-    }
+    ## adjust start point to be the first point that dips below the median value
     data.sig <- head(tail(data.sig, -startPoint), dataLen);
     ## re-adjust statistics
     if(length(data.sig) > 1){
@@ -98,9 +96,25 @@ if(length(rangeRLE$lengths) > 1){
         dMin <- max(min(data.sig),dMed-4*dMad,0);
         dMax <- min(max(data.sig),dMed+4*dMad,65535);
     }
-} else { ## trim off 5 samples to deal with short-length initial peaks
-    data.sig <- tail(data.sig, -5);
 }
+
+## adjust start point to be the first point that dips below the median value
+startPoint <- startPoint + which.min(data.sig > dMed);
+data.sig <- tail(data.sig, -which.min(data.sig > dMed));
+## re-adjust statistics
+if(length(data.sig) > 1){
+    dMed <- median(data.sig);
+    dMad <- mad(data.sig);
+    dMin <- max(min(data.sig),dMed-4*dMad,0);
+    dMax <- min(max(data.sig),dMed+4*dMad,65535);
+}
+if(doPlot){
+    abline(v=c(0,length(data.sig))+startPoint, col="red", lwd=2);
+    abline(h=dMed, col="red", lwd=2);
+    text(x=startPoint, y=dMax, pos=4, labels=startPoint);
+    text(x=startPoint + length(data.sig), y=dMax, pos=2, labels=startPoint + length(data.sig));
+}
+
 
 if(length(data.sig) / orig.sig.len < 0.25){
     cat("Error: signal data reduced to less than 25% of original size after noise/plateau trimming\n");
