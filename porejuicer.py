@@ -392,6 +392,9 @@ def strip_analyses(fileName):
         with h5py.File(newName, "w") as newH5:
             for id in h5File:
                 h5File.copy(h5File[id],newH5)
+            oldAttrs = h5File.attrs
+            for attrName in oldAttrs:
+                newH5.attrs.create(attrName,oldAttrs[attrName])
     os.unlink(fileName)
     os.rename(newName, fileName)
 
