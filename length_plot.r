@@ -34,13 +34,7 @@ sequence.hist <- function(lengths, invert = TRUE, ...){
     xBreaksMajor <- xBreaks[log10(xBreaks) - floor(log10(xBreaks)) < 0.001];
     xBreaksMinor <- rep(xBreaksMajor,each=9) * 1:9;
     xBreaksMinor <- xBreaksMinor[(which.min(xBreaksMinor < axRange[1])):
-                       (which.max(xBreaksMinor > axRange[2])-1)];
-    ## barPos <- barplot(if(invert){rev(seqd.bases)} else {seqd.bases},
-    ##                   log = "x", las = 1, axes = FALSE, ylab = "",
-    ##                   xlab = "", col=NA, border="NA", horiz=TRUE,
-    ##                   names.arg = "",
-    ##                   ...);
-    ## abline(v=xBreaksMajor, col="#00000040");
+                                 (which.max(xBreaksMinor > axRange[2])-1)];
     barPos <- barplot(if(invert){rev(seqd.bases)} else {seqd.bases},
                       log = "x", las = 1, axes = FALSE, col = "steelblue",
                       horiz = TRUE, names.arg = rep("",length(seqd.bases)),
@@ -66,6 +60,50 @@ sequence.hist <- function(lengths, invert = TRUE, ...){
          pos=text.poss, col=text.col, cex = 0.65);
 }
 
+plain.hist <- function(lengths, invert = TRUE, ...){
+    fib.divs <- round(10^((0:4)/5) * 2) * 0.5; ## splits log decades into 5
+    histBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
+    lengthRange <- range(lengths);
+    ## filter on actual data range
+    histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
+                             which.max(histBreaks > lengthRange[2])];
+    seqd.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
+    seqd.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    xBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
+    axRange <- range(seqd.counts);
+    xBreaks <- xBreaks[(which.min(xBreaks < axRange[1])):
+                       (which.max(xBreaks > axRange[2])-1)];
+    xBreaksMajor <- xBreaks[log10(xBreaks) - floor(log10(xBreaks)) < 0.001];
+    xBreaksMinor <- rep(xBreaksMajor,each=9) * 1:9;
+    xBreaksMinor <- xBreaksMinor[(which.min(xBreaksMinor < min(xBreaksMajor))):
+                                 (which.max(xBreaksMinor > max(xBreaksMajor))-1)];
+    barPos <- barplot(log10(if(invert){rev(seqd.counts)} else {seqd.counts})+0.025,
+                      las = 1, axes = FALSE, col = "steelblue",
+                      horiz = TRUE, names.arg = rep("",length(seqd.counts)),
+                      ylab = "", xlim=c(log10(max(seqd.counts, na.rm=TRUE))+0.025,
+                                        log10(min(seqd.counts, na.rm=TRUE))-0.025),
+                      xlab = "Number of sequences (Aggregate length)",
+                      ...);
+    barGap <- diff(barPos)[1];
+    barOffset <- barPos[1] - barGap/2;
+    axis(4, at = if(invert){rev(seq(barOffset,by=barGap,
+                                    length.out = length(histBreaks)))}
+         else {seq(barOffset,by=barGap,length.out = length(histBreaks))},
+         labels = valToSci(histBreaks,"b"), las = 2, pos=0);
+    mtext("Fragment size", side=4, line=5);
+    axis(1, at = log10(xBreaksMajor)+0.025, labels = valToSci(xBreaksMajor), lwd=3);
+    axis(1, at = log10(xBreaksMinor)+0.025, labels = FALSE);
+    text.poss <- ((log10(seqd.counts) > mean(par("usr")[1:2]))+1)*2;
+    text.poss[is.na(text.poss)] <- 2;
+    text.col <- c("white","black")[((log10(seqd.counts) <
+                                     mean(par("usr")[1:2]))+1)];
+    text(log10(seqd.counts)+0.025,if(invert){rev(barPos)} else {barPos},
+         paste(seqd.counts,
+               " (", valToSci(signif(seqd.bases,4),"b"), ")", sep = ""),
+         pos=text.poss, col=text.col, cex = 0.65);
+}
+
+
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
     width=11, height=8);
 par(mar=c(5.5,6.5,2.5,1.5));
@@ -84,8 +122,17 @@ dens.mat <- sapply(fileNames, function(x){
     sequence.hist(data,
                   main=sprintf("Read Length Distribution Plot (%s)",subName));
     dummy <- dev.off();
+    png(sprintf("MinION_Reads_PlainHist_%s.png",
+                subName), pointsize=24,
+        width=1280, height=960);
+    par(mar=c(5.5,1.5,2.5,6.5));
+    plain.hist(data,
+               main=sprintf("Read Count Distribution Plot (%s)",subName));
+    dummy <- dev.off();
     sequence.hist(data,
                   main=sprintf("Read Length Distribution Plot (%s)",subName));
+    plain.hist(data,
+               main=sprintf("Read Count Distribution Plot (%s)",subName));
     res.out;
 });
 dummy <- dev.off();
