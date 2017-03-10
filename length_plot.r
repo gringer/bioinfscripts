@@ -6,6 +6,54 @@ if(length(fileNames) == 0){
     fileNames <- list.files(pattern="lengths_.*\\.txt(\\.gz)?");
 }
 
+valToSci <- function(val, unit = ""){
+    sci.prefixes <- c("", "k", "M", "G", "T", "P", "E", "Z", "Y");
+    units <- rep(paste(sci.prefixes,unit,sep=""), each=3);
+    logRegion <- floor(log10(val))+1;
+    conv.units <- units[logRegion];
+    conv.div <- 10^rep(0:(length(sci.prefixes)-1) * 3, each = 3)[logRegion];
+    conv.val <- val / conv.div;
+    conv.val[val == 0] <- 0;
+    conv.units[val == 0] <- unit;
+    return(sprintf("%s %s",conv.val,conv.units));
+}
+
+sequence.hist <- function(lengths, invert = TRUE, ...){
+    fib.divs <- round(10^((0:4)/5) * 2) * 0.5; ## splits log decades into 5
+    histBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
+    lengthRange <- range(lengths);
+    ## filter on actual data range
+    histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
+                             which.max(histBreaks > lengthRange[2])];
+    seqd.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
+    seqd.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    barPos <- barplot(if(invert){rev(seqd.bases)} else {seqd.bases},
+                      log = "x", las = 1, axes = FALSE, col = "steelblue",
+                      horiz = TRUE, names.arg = rep("",length(seqd.bases)),
+                      ylab = "",
+                      xlab = "Aggregate sequence length (number of sequences)",
+                      ...);
+    barGap <- diff(barPos)[1];
+    barOffset <- barPos[1] - barGap/2;
+    axis(2, at = if(invert){rev(seq(barOffset,by=barGap,
+                                    length.out = length(histBreaks)))}
+         else {seq(barOffset,by=barGap,length.out = length(histBreaks))},
+         labels = valToSci(histBreaks,"b"), las = 2);
+    mtext("Fragment size", side=2, line=5);
+    axis(1, at = axTicks(1), labels = valToSci(signif(axTicks(1),4), "b"));
+    text.poss <- ((log10(seqd.bases) < mean(par("usr")[1:2]))+1)*2;
+    text.poss[is.na(text.poss)] <- 4;
+    text.col <- c("white","black")[((log10(seqd.bases) <
+                                     mean(par("usr")[1:2]))+1)];
+    text(seqd.bases,if(invert){rev(barPos)} else {barPos},
+         paste(valToSci(signif(seqd.bases,4)),
+               " (", seqd.counts, ")", sep = ""),
+         pos=text.poss, col=text.col, cex = 0.71);
+}
+
+pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
+    width=11, height=8);
+par(mar=c(5.5,6.5,2.5,1.5));
 dens.mat <- sapply(fileNames, function(x){
     cat(x,"...");
     data <- scan(x, comment.char=" ", quiet=TRUE);
@@ -13,8 +61,19 @@ dens.mat <- sapply(fileNames, function(x){
     res <- density(log10(data), from=2, to=6, bw=0.1);
     res.out <- res$y;
     names(res.out) <- round(res$x,3);
+    subName <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1", x);
+    png(sprintf("MinION_Reads_SequenceHist_%s.png",
+                subName), pointsize=24,
+        width=1280, height=960);
+    par(mar=c(5.5,6.5,2.5,1.5));
+    sequence.hist(data,
+                  main=sprintf("Read Length Distribution Plot (%s)",subName));
+    dummy <- dev.off();
+    sequence.hist(data,
+                  main=sprintf("Read Length Distribution Plot (%s)",subName));
     res.out;
 });
+dummy <- dev.off();
 colnames(dens.mat) <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1",colnames(dens.mat));
 
 bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
@@ -30,11 +89,11 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     abline(v=seq_len(ncol(bpdens.mat)+1)-0.5);
     abline(h=log10(c(1,2,5)) + rep(0:5, each=3),
            lty="dashed", col="#00000020");
-    axis(1,at=seq_len(length(fileNames)),labels=colnames(bpdens.mat),
+    axis(1,at=seq_len(length(fileNames)), labels=colnames(bpdens.mat),
          lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
-         labels=paste0(c(1,2,5),
-                       rep(substring("00000",first=0,last=0:5),each=3)));
+    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -49,11 +108,11 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     abline(v=seq_len(ncol(dens.mat)+1)-0.5);
     abline(h=log10(c(1,2,5)) + rep(0:5, each=3),
            lty="dashed", col="#00000020");
-    axis(1,at=seq_len(length(fileNames)),labels=colnames(dens.mat),
-         lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
-         labels=paste0(c(1,2,5),
-                       rep(substring("00000",first=0,last=0:5),each=3)));
+    axis(1,at=seq_len(length(fileNames)),
+         labels=colnames(dens.mat), lwd=0);
+    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -68,11 +127,12 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     abline(v=seq_len(ncol(bpdens.mat)+1)-0.5, lwd=3);
     abline(h=log10(c(1,2,5)) + rep(0:5, each=3),
            lty="dashed", col="#FFFFFF40");
-    axis(1,at=seq_len(length(fileNames)),labels=colnames(bpdens.mat),
+    axis(1,at=seq_len(length(fileNames)),
+         labels=colnames(bpdens.mat),
          lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
-         labels=paste0(c(1,2,5),
-                       rep(substring("00000",first=0,last=0:5),each=3)));
+    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -87,11 +147,12 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     abline(v=seq_len(ncol(dens.mat)+1)-0.5, lwd=3);
     abline(h=log10(c(1,2,5)) + rep(0:5, each=3),
            lty="dashed", col="#FFFFFF40");
-    axis(1,at=seq_len(length(fileNames)),labels=colnames(dens.mat),
+    axis(1,at=seq_len(length(fileNames)),
+         labels=colnames(dens.mat),
          lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
-         labels=paste0(c(1,2,5),
-                       rep(substring("00000",first=0,last=0:5),each=3)));
+    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -113,8 +174,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Cumulative Base Proportion",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -136,8 +197,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Cumulative Read Proportion",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -158,8 +219,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Read Density",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -181,8 +242,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Base Density (arbitrary scale)",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
@@ -199,9 +260,9 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            lty="dashed", col="#00000020");
     axis(1,at=seq_len(length(fileNames)),labels=colnames(bpdens.mat),
          lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
-         labels=paste0(c(1,2,5),
-                       rep(substring("00000",first=0,last=0:5),each=3)));
+    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     image(x=seq_len(ncol(bpdens.mat)), ann=TRUE, axes=FALSE,
           y=as.numeric(rownames(bpdens.mat)),
           z=t(bpdens.mat), col=colorRampPalette(hsv(h=27/360,s=1,v=seq(0,1,by=0.001)), bias=1.25)(100),
@@ -211,9 +272,9 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            lty="dashed", col="#FFFFFF40");
     axis(1,at=seq_len(length(fileNames)),labels=colnames(bpdens.mat),
          lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=1,
-         labels=paste0(c(1,2,5),
-                       rep(substring("00000",first=0,last=0:5),each=3)));
+    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     ## Cumulative Reads
     par(mar=c(5.5,5,0.5,0.5), mgp=c(4,1,0));
     plot(NA, xlim=range(as.numeric(rownames(dens.mat))), ylim=c(0,1),
@@ -229,8 +290,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Cumulative Read Proportion",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     ## Cumulative Bases
     plot(NA, xlim=range(as.numeric(rownames(bpdens.mat))), ylim=c(0,1),
          type="l", xaxt="n", xlab = "Read Length",
@@ -245,8 +306,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Cumulative Base Proportion",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     ## Base call density plot
     ymax <- max(t(bpdens.mat) / colSums(bpdens.mat));
     par(mgp=c(4,1,0), mar=c(5.5,5,1,1));
@@ -263,8 +324,8 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
            inset=0.05);
     mtext("Base Density (arbitrary scale)",2,3);
     axis(1,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)));
+         labels=valToSci(as.numeric(paste0(c(1,2,5),
+             rep(substring("00000",first=0,last=0:5),each=3)))));
     dummy <- dev.off();
 }
 
