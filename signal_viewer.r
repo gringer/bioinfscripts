@@ -73,9 +73,11 @@ if(doPlot){
     if(orig.sig.len > 100000){
         #smoothScatter(1:length(data.sig), data.sig, main="Untrimmed raw signal (smoothed scatter plot)", xlab="Samples",
         #              ylab="Unadjusted raw signal", nbin=c(512,256), nrpoints=1000, bandwidth = c(orig.sig.len/512,20));
-        plot(1:length(data.sig), data.sig, pch=".", main="Untrimmed raw signal", xlab="Samples", ylab="Unadjusted raw signal");
+        plot(1:length(data.sig), data.sig, pch=".", main="Untrimmed raw signal", xlab="Samples", ylab="Unadjusted raw signal",
+             ylim=c(min(data.sig),min(max(data.sig[data.sig < 2000]),2000)));
     } else {
-        plot(1:length(data.sig), data.sig, type="l", main="Untrimmed raw signal", xlab="Samples", ylab="Unadjusted raw signal");
+        plot(1:length(data.sig), data.sig, type="l", main="Untrimmed raw signal", xlab="Samples", ylab="Unadjusted raw signal",
+             ylim=c(min(data.sig),min(max(data.sig[data.sig < 2000]),2000)));
     }
     if(title != ""){
         mtext(title, line=0.5);
@@ -150,8 +152,10 @@ if(length(hp.likely) > 0){
 }
 
 if(doPlot){
-    abline(v=startPoint + hp.breakPoints, col="#00FF0080", lwd = 3);
-    text(x=startPoint + hp.breakPoints, y=dMax, pos=3, labels=startPoint + hp.breakPoints);
+    if(length(hp.breakPoints) >= 1){
+        abline(v=startPoint + hp.breakPoints, col="#00FF0080", lwd = 3);
+        text(x=startPoint + hp.breakPoints, y=dMax, pos=3, labels=startPoint + hp.breakPoints);
+    }
     dummy <- dev.off();
 }
 
