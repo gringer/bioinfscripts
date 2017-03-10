@@ -126,7 +126,8 @@ sub drawSeq{
   ## surrounding black rectangle so that white areas don't look odd
   printf("   <rect fill=\"black\" x=\"%s\" y=\"%s\" ".
          "width=\"%s\" height=\"%s\" />\n",
-         $xp - 0.5, $tSeqCount*$sf-(($sf-1)/2), length($tSeq)*$scale+1, $sf-1);
+         ($xp - 0.5)*$scale, ($tSeqCount*$sf-(($sf-1)/2)), 
+	 (length($tSeq)+1)*$scale, $sf-1);
   while($tSeq =~ s/^(.*?)(A{$hl,}|C{$hl,}|G{$hl,}|T{$hl,})//){
     my $preSeq = $1;
     my $hpSeq = $2;
