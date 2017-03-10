@@ -1,5 +1,8 @@
 #!/usr/bin/Rscript
 
+## Read length distribution plotter; expects input files named 'lengths_<id>.txt[.gz]'
+## The first [space-separated] column will be processed as sequence lengths
+
 fileNames <- commandArgs(TRUE);
 
 if(length(fileNames) == 0){
@@ -104,6 +107,7 @@ plain.hist <- function(lengths, invert = TRUE, ...){
 }
 
 
+## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
     width=11, height=8);
 par(mar=c(5.5,6.5,2.5,1.5));
