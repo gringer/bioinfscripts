@@ -12,7 +12,7 @@ my ($oldquery, $oldtarget, $olddir, $oldqs, $oldqe, $oldqml,
 while(<>){
   chomp;
   my ($query, $target, $dir, $qs, $qe, $qml, $ql, $ts, $tml, $tl) =
-    split(/\s+/);
+    split(/,/);
   if(($query eq $oldquery) && ($target eq $oldtarget) &&
      ($olddir eq $dir) && ($oldts <= $ts)){
     $qs = $oldqs;
@@ -20,7 +20,7 @@ while(<>){
     $ts = $oldts;
     $tml += $oldtml;
   } elsif($oldquery ne "") {
-    printf("%-55s %-15s %-3s %-4s %-4s %-4s %-4s %-4s %-4s %-4s\n",
+    printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
            $oldquery, $oldtarget, $olddir, $oldqs, $oldqe, $oldqml,
            $oldql, $oldts, $oldtml, $oldtl);
   }
@@ -29,6 +29,6 @@ while(<>){
      ($query, $target, $dir, $qs, $qe, $qml, $ql, $ts, $tml, $tl);
 }
 
-printf("%-55s %-15s %-3s %-4s %-4s %-4s %-4s %-4s %-4s %-4s\n",
+printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
        $oldquery, $oldtarget, $olddir, $oldqs, $oldqe, $oldqml,
        $oldql, $oldts, $oldtml, $oldtl);
