@@ -27,6 +27,20 @@ sequence.hist <- function(lengths, invert = TRUE, ...){
                              which.max(histBreaks > lengthRange[2])];
     seqd.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
     seqd.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    xBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
+    axRange <- range(seqd.bases);
+    xBreaks <- xBreaks[(which.min(xBreaks < axRange[1])):
+                       (which.max(xBreaks > axRange[2])-1)];
+    xBreaksMajor <- xBreaks[log10(xBreaks) - floor(log10(xBreaks)) < 0.001];
+    xBreaksMinor <- rep(xBreaksMajor,each=9) * 1:9;
+    xBreaksMinor <- xBreaksMinor[(which.min(xBreaksMinor < axRange[1])):
+                       (which.max(xBreaksMinor > axRange[2])-1)];
+    ## barPos <- barplot(if(invert){rev(seqd.bases)} else {seqd.bases},
+    ##                   log = "x", las = 1, axes = FALSE, ylab = "",
+    ##                   xlab = "", col=NA, border="NA", horiz=TRUE,
+    ##                   names.arg = "",
+    ##                   ...);
+    ## abline(v=xBreaksMajor, col="#00000040");
     barPos <- barplot(if(invert){rev(seqd.bases)} else {seqd.bases},
                       log = "x", las = 1, axes = FALSE, col = "steelblue",
                       horiz = TRUE, names.arg = rep("",length(seqd.bases)),
@@ -40,7 +54,8 @@ sequence.hist <- function(lengths, invert = TRUE, ...){
          else {seq(barOffset,by=barGap,length.out = length(histBreaks))},
          labels = valToSci(histBreaks,"b"), las = 2);
     mtext("Fragment size", side=2, line=5);
-    axis(1, at = axTicks(1), labels = valToSci(signif(axTicks(1),4), "b"));
+    axis(1, at = xBreaksMajor, labels = valToSci(xBreaksMajor, "b"), lwd=3);
+    axis(1, at = xBreaksMinor, labels = FALSE);
     text.poss <- ((log10(seqd.bases) < mean(par("usr")[1:2]))+1)*2;
     text.poss[is.na(text.poss)] <- 4;
     text.col <- c("white","black")[((log10(seqd.bases) <
@@ -48,7 +63,7 @@ sequence.hist <- function(lengths, invert = TRUE, ...){
     text(seqd.bases,if(invert){rev(barPos)} else {barPos},
          paste(valToSci(signif(seqd.bases,4)),
                " (", seqd.counts, ")", sep = ""),
-         pos=text.poss, col=text.col, cex = 0.71);
+         pos=text.poss, col=text.col, cex = 0.65);
 }
 
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
