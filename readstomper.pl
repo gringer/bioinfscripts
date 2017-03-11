@@ -29,6 +29,7 @@ my $maxCoverage = 10**9;
 my $writeCounts = 0;
 my $writeConsensus = 0;
 my $consThresholdCov = 5;
+my $insThresholdCov = 5;
 my $deletionSens = 0.15;
 my $edit = 1;
 
@@ -36,6 +37,7 @@ GetOptions("mincoverage=i" => \$minCoverage,
            "transposoncoverage=i" => \$maxCoverage,
 	   "samplename=s" => \$sampleName,
            "deletionsensitivity=s" => \$deletionSens,
+           "insertioncoverage=i" => \$insThresholdCov,
            "fasta=s" => \$writeConsensus,
            "counts!" => \$writeCounts,
            "edit!" => \$edit ) or
@@ -170,7 +172,7 @@ while(<>){
     ## determine consensus allele
     my $consAllele = $refAllele;
     if($edit && ($total > $consThresholdCov) &&
-       (($pr < 0.5) || ($pd > $deletionSens) || ($pi > 0.5))){
+       (($pr < 0.5) || ($pd > $deletionSens) || (($pi > 0.5) && ($maxInserts > $insThresholdCov)))){
       $seqChanged = 0;
       my %consCounts =
         (r => $rc,
@@ -193,7 +195,7 @@ while(<>){
         printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
         printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
                $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
-        if($maxInsertSeq){
+        if($maxInserts > $insThresholdCov){
           printf(STDERR ",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
           printf(STDERR ",[Insert %s]", $maxInsertSeq);
         } else {
@@ -205,7 +207,7 @@ while(<>){
     }
     #print(",$consAllele");
     print($consAllele); ## print current reference allele
-    if($pi > 0.5){ ## more than 50% of reads suggest insertion
+    if(($pi > 0.5) && ($maxInserts > $insThresholdCov)){ ## more than 50% of reads suggest insertion
       print(uc($maxInsertSeq));
     }
   } else {
