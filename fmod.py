@@ -27,6 +27,8 @@ def fmod(outFile, signal, minFreq, maxFreq, oldRate, newRate,
         minSig = min(signal)
     if(max(signal) < maxSig):
         maxSig = max(signal)
+    sys.stderr.write("Min: %f, Max: %f, Signal: %d\n" %
+                     (minSig, maxSig, len(signal)))
     ## limit signal to within MAD range, scale to 0..100
     signal = map(lambda x: float(0) if (x < minSig) else
                  (float(99) if x > maxSig else
@@ -91,11 +93,15 @@ if(".csv" in sys.argv[1]):
 else:
     with open(sys.argv[1], "rb") as f:
         outRate = 44100
-        data = array.array('H', f.read())
+        inData = f.read()
+        if(len(inData) % 2 == 1):
+            inData = inData[:-1]
+        sys.stderr.write("Input length: %d\n" % len(inData))
+        data = array.array('H', inData)
         #print(",".join(map(str,newData[:50])))
         fmodOut = wave.open('out.wav', 'w')
         fmodOut.setparams((1, 2, outRate, 0, 'NONE', 'not compressed'))
-        fmod(outFile=fmodOut, signal=data, minFreq=50, maxFreq=1000,
+        fmod(outFile=fmodOut, signal=data, minFreq=200, maxFreq=1000,
              speed=1.0,
              oldRate=rate, newRate=outRate, volume=0.1)
         fmodOut.close()
