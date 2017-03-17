@@ -2,39 +2,50 @@
 
 inFileName <- commandArgs(TRUE)[1];
 
+valToSci <- function(val, unit = ""){
+    sci.prefixes <- c("", "k", "M", "G", "T", "P", "E", "Z", "Y");
+    units <- rep(paste(sci.prefixes,unit,sep=""), each=3);
+    logRegion <- floor(log10(val))+1;
+    conv.units <- units[logRegion];
+    conv.div <- 10^rep(0:(length(sci.prefixes)-1) * 3, each = 3)[logRegion];
+    conv.val <- val / conv.div;
+    conv.val[val == 0] <- 0;
+    conv.units[val == 0] <- unit;
+    return(ifelse(conv.units == "", conv.val, sprintf("%s %s",conv.val,conv.units)));
+}
+
 rankPlot <- function(data){
     options(scipen = 6);
-    par(mar=c(8,8,1,1)+0.1, mgp = c(5,1,0), las = 1, mfrow=c(1,2),
-        cex.axis=1.5, cex.lab=1.5, bg="#FFFFFFFF");
-    dataRange <- range(c(data$minrank,data$maxrank));
+    par(mar=c(6,6,1,1)+0.1, mgp = c(4.5,1,0), las = 1, mfrow=c(1,2),
+        cex.lab=1.5, bg="#FFFFFFFF");
+    dataRange <- c(1,max(data$maxrank));
     plot(maxrank ~ minrank, data=data,
-         log="xy", xlim=dataRange, ylim=dataRange,
+         log="xy", xlim=dataRange, ylim=dataRange, ylab="Maximum Rank",
          cex=2, xlab="Minimum Rank (All Markers)", pch=21,
-         ylab="", axes=FALSE, bg="#4682B480", col="#4682B4");
+         axes=FALSE, bg="#4682B480", col="#4682B4");
     abline(h=10^(0:max(log10(dataRange))), v=10^(0:max(log10(dataRange))),
            col="#00000020", lty="dashed");
     abline(h=(nrow(data) * 0.05), col="red", lwd=2, lty="dotted");
     box(lwd=3);
-    axis(1, at= round(10^(0:2/3)) * rep(10^(0:max(log10(dataRange))), each=3),
-         las=2);
-    axis(2, at= round(10^(0:2/3)) * rep(10^(0:max(log10(dataRange))), each=3));
-    mtext("Maximum Rank", side=2, line=par("mgp")[1], las = 0,
-          cex=par("cex.axis"));
+    drMax <- max(log10(dataRange));
+    axis(1, at= 10^(0:drMax), las=2, lwd=3, cex.axis=1.5, labels=valToSci(10^(0:drMax)));
+    axis(2, at= 10^(0:drMax), lwd=3, cex.axis=1.5, labels=valToSci(10^(0:drMax)));
+    axis(1, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
+    axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
     plot(maxrank ~ minrank, data=subset(data,
                                 maxrank < (nrow(data) * 0.05)),
-         log="xy", xlim=dataRange, ylim=dataRange,
+         log="xy", xlim=dataRange, ylim=dataRange, ylab="Maximum Rank",
          cex=2, xlab=sprintf("Minimum Rank (%d Consistent Markers)",
                              sum(data$maxrank < (nrow(data) * 0.05))),
-         pch=21, ylab="", axes=FALSE, bg="#4682B480", col="#4682B4");
+         pch=21, axes=FALSE, bg="#4682B480", col="#4682B4");
     abline(h=10^(0:max(log10(dataRange))), v=10^(0:max(log10(dataRange))),
            col="#00000020", lty="dashed");
     box(lwd=3);
-    axis(1, at= round(10^(0:2/3)) * rep(10^(0:max(log10(dataRange))), each=3),
-         las=2, cex.axis=1.5);
-    axis(2, at= round(10^(0:2/3)) * rep(10^(0:max(log10(dataRange))), each=3),
-         cex.axis=1.5);
-    mtext("Maximum Rank", side=2, line=par("mgp")[1], las = 0,
-          cex=par("cex.axis"));
+    drMax <- max(log10(dataRange));
+    axis(1, at= 10^(0:drMax), las=2, lwd=3, cex.axis=1.5, labels=valToSci(10^(0:drMax)));
+    axis(2, at= 10^(0:drMax), lwd=3, cex.axis=1.5, labels=valToSci(10^(0:drMax)));
+    axis(1, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
+    axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
 }
 
 
@@ -157,6 +168,17 @@ cat("Loading data...");
 data.df <- read.csv(inFileName);
 cat(" done\n");
 
+cat("Getting chromosome parameters...");
+data.df$chrom <- as.numeric(sub("^.*?_([^_]*?)_[^_]*$","\\1",data.df$marker));
+data.df$pos <- as.numeric(sub("^.*_","",data.df$marker));
+data.df <- subset(data.df, chrom != 0);
+data.df$startPoint <- cs.stats[data.df$chrom,]$startPoint;
+data.df <- subset(data.df, !is.na(startPoint));
+data.df <- subset(data.df, (chrom > 0) & (chrom < 24)); ## exclude unknown, Y, MT chromosome
+data.df$adjPos <- data.df$startPoint + data.df$pos;
+consistent.data.df <- subset(data.df, (maxrank < (nrow(data.df) * 0.05)));
+cat(" done\n");
+
 cat("Creating rank plot...");
 rankFileName <- sprintf("%s/rankPlot_%s.png", inFileDir, inFileBase);
 png(rankFileName,
@@ -165,17 +187,6 @@ png(rankFileName,
 rankPlot(data = data.df);
 dummy <- graphics.off();
 cat(sprintf(" done [%s]\n", rankFileName));
-
-
-cat("Getting chromosome parameters...");
-data.df$chrom <- as.numeric(sub("^.*?_(.*?)_.*$","\\1",data.df$marker));
-data.df$pos <- as.numeric(sub("^.*_","",data.df$marker));
-data.df <- subset(data.df, chrom != 0);
-data.df$startPoint <- cs.stats[data.df$chrom,]$startPoint;
-data.df <- subset(data.df, !is.na(startPoint));
-data.df$adjPos <- data.df$startPoint + data.df$pos;
-consistent.data.df <- subset(data.df, (maxrank < (nrow(data.df) * 0.05)));
-cat(" done\n");
 
 cat("Creating genome plot...");
 genomeFileName <- sprintf("%s/genomePlot_%s.png", inFileDir, inFileBase);
