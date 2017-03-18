@@ -10,8 +10,9 @@ use Getopt::Long qw(:config auto_help pass_through);
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $seqFileName = "";
+my $ignoreSelf = 0;
 
-GetOptions("seqfile=s" => \$seqFileName) or
+GetOptions("seqfile=s" => \$seqFileName, "overlap!" => \$ignoreSelf) or
   die("Error in command line arguments");
 
 my %seqs = ();
@@ -64,7 +65,9 @@ my %quals = ();
 # }
 # close($seqFile);
 
-printf(STDERR "Read in %d sequences\n", scalar(keys(%seqs)));
+if(keys(%seqs)){
+  printf(STDERR "Read in %d sequences\n", scalar(keys(%seqs)));
+}
 
 my $qSeq = "";
 my $qStart = 0;
@@ -112,7 +115,9 @@ while(<>){
         sprintf("%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d",
                 $qName, $tName, $qStrand, $qStart, $qEnd, $qMatchLen, $qLen,
                 $tStart, $tEnd, $tMatchLen, $tLen);
-      print("$matchLine\n");
+      if(!$ignoreSelf || ($qName ne $tName)){
+        print("$matchLine\n");
+      }
       $matches{$qName}{$qStart} .= ":matchLine";
    } else {
       $tName = $F[1];
