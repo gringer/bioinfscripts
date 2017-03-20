@@ -19,11 +19,15 @@ if(type == "png"){
 } else if(type == "pdf"){
     pdf("sequence_matrix.pdf", width=12, height=12, pointsize=16);
 }
-subSeq <- inSeq[1:(floor(length(inSeq)/rptSize)*rptSize)];
-par(mar=c(0.5,0.5,1,0.5));
-image(matrix(subSeq,nrow=rptSize),
+lis <- length(inSeq);
+numLines <- floor(lis/rptSize + 1);
+inSeq <- c(inSeq,rep(5,rptSize));
+subSeq <- inSeq[1:(numLines*rptSize)];
+par(mar=c(0.5,5,1,0.5));
+image(x=1:rptSize, y=1:numLines-1, matrix(subSeq,nrow=rptSize),
       main=sprintf("%s (%0.3f kb, %d bases / line)",inName,
-                   length(inSeq)/1000, rptSize),
+                   lis/1000, rptSize), ylab="Base location",
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
-      col=c("green","blue","yellow","red"));
+      col=c("green","blue","yellow","red","lightgrey"));
+axis(2,at=1:numLines-1, labels=(1:numLines-1) * rptSize+1, las=2);
 dummy <- dev.off();
