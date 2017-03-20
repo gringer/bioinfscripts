@@ -1,8 +1,9 @@
 #!/usr/bin/Rscript
 
-rptSize <- as.numeric(commandArgs(TRUE)[1]);
+fileName <- commandArgs(TRUE)[1];
+rptSize <- as.numeric(commandArgs(TRUE)[2]);
 
-inLines <- readLines("stdin");
+inLines <- readLines(fileName);
 inLines[2] <- paste(inLines[-1],collapse="");
 
 inName <- substring(inLines[1],2);
@@ -21,7 +22,7 @@ if(type == "png"){
 subSeq <- inSeq[1:(floor(length(inSeq)/rptSize)*rptSize)];
 par(mar=c(0.5,0.5,1,0.5));
 image(matrix(subSeq,nrow=rptSize),
-      main=sprintf("%s (%0.3f kb, %d bp repeat)",inName,
+      main=sprintf("%s (%0.3f kb, %d bases / line)",inName,
                    length(inSeq)/1000, rptSize),
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
       col=c("green","blue","yellow","red"));
