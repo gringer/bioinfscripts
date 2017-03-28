@@ -56,7 +56,7 @@ while(<$fastaFile>){
   if($GFAspec == 2){
     printf("S\t%s\t%d\t*\n", $F[0], $F[1]);
   } else {
-    printf("S\t%s\t*\t%d\n", $F[0], $F[1]);
+    printf("S\t%s\t*\tLN:i:%d\n", $F[0], $F[1]);
   }
 }
 close($fastaFile);
@@ -92,16 +92,10 @@ while(<>){
       } else {
         if($qSeq ne $tSeq){
           if(($tEnd > ($tLen-$endLeniency)) && ($qStart < $endLeniency)){
-            print(join("\t",("L",$tName,"+",$qName,"+","*"))."\n");
+            print(join("\t",("L",$tName,"+",$qName,$qStrand,"*"))."\n");
           }
           if(($qEnd > ($qLen-$endLeniency)) && ($tStart < $endLeniency)){
-            print(join("\t",("L",$qName,"+",$tName,"+","*"))."\n");
-          }
-          if(($tStart < $endLeniency) && ($qStart < $endLeniency) && ($qStrand eq "-")){
-            print(join("\t",("L",$tName,"-",$qName,"+","*"))."\n");
-          }
-          if(($tEnd > ($tLen-$endLeniency)) && ($qEnd > ($qLen-$endLeniency)) && ($qStrand eq "-")){
-            print(join("\t",("L",$tName,"+",$qName,"-","*"))."\n");
+            print(join("\t",("L",$qName,$qStrand,$tName,"+","*"))."\n");
           }
           if(($qMatchLen / $qLen) >= $containFrac){
             print(join("\t",("C",$tName,"+",$qName,$qStrand,"*"))."\n");
