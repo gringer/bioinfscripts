@@ -11,7 +11,7 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 my $seqFileName = "";
 my $ignoreSelf = 0;
 
-my $endLeniency = 50; ## base pairs from end to allow
+my $endLeniency = 100; ## base pairs from end to allow
 my $containFrac = 0.9; ## minimum containment fraction
 my $containIdent = 0.9; ## minimum containment identity
 
@@ -97,11 +97,17 @@ while(<>){
           if(($qEnd > ($qLen-$endLeniency)) && ($tStart < $endLeniency)){
             print(join("\t",("L",$qName,"+",$tName,"+","*"))."\n");
           }
-          if(($tStart < $endLeniency) && ($qStart < $endLeniency)){
+          if(($tStart < $endLeniency) && ($qStart < $endLeniency) && ($qStrand eq "-")){
             print(join("\t",("L",$tName,"-",$qName,"+","*"))."\n");
           }
-          if(($tEnd > ($tLen-$endLeniency)) && ($qEnd > ($qLen-$endLeniency))){
+          if(($tEnd > ($tLen-$endLeniency)) && ($qEnd > ($qLen-$endLeniency)) && ($qStrand eq "-")){
             print(join("\t",("L",$tName,"+",$qName,"-","*"))."\n");
+          }
+          if(($qMatchLen / $qLen) >= $containFrac){
+            print(join("\t",("C",$tName,"+",$qName,$qStrand,"*"))."\n");
+          }
+          if(($tMatchLen / $tLen) >= $containFrac){
+            print(join("\t",("C",$qName,"+",$tName,$qStrand,"*"))."\n");
           }
         }
       }
