@@ -46,7 +46,6 @@ data.largeClContigs <- unique(unlist(sapply(data.largeClusters,names)));
 data.largeClLinks <- subset(data.link.df, (from %in% data.largeClContigs) | (to %in% data.largeClContigs));
 
 for(clName in names(data.largeClusters)){
-
     oldwd <- getwd();
     cat(clName,"\n",sep="");
     dirName <- tempfile(sprintf("GFAcluster_%s_",clName));
@@ -155,7 +154,7 @@ for(clName in names(data.largeClusters)){
             cat("found mapping for:",subpath.linkNames,"\n");
             sp.name <- paste(pNames.basic[found.start[subPath]:(found.end[subPath]+1)],collapse="_");
             sm <- subpath.mapping[1,];
-            current.sequences <- as.character(path.sequences[[sm$tid]]);
+            current.sequences <- as.character(path.sequences[[sm$qid]]);
             for(seqPos in seq_along(subpath.linkNames)){
                 sm <- subpath.mapping[seqPos,];
                 current.sequences <- c(current.sequences,as.character(path.sequences[[sm$tid]][(sm$tEnd+1):sm$tLen]));
@@ -171,8 +170,4 @@ for(clName in names(data.largeClusters)){
     if(any(cluster.links.df$fromDir != cluster.links.df$toDir)){
         break;
     }
-
 }
-
-plot(graph.data.frame(cluster.links.df[,c("from","to")]));
-
