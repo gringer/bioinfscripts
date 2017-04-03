@@ -8,7 +8,7 @@ library(Biostrings);
 
 idThreshold <- 0.9; ## identity threshold for overlap (don't trust anything below this)
 
-gfaName <- "NbL5_ONTDECAF_t1.contigs.cleaned.gfa";
+gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
 faName <- paste0(getwd(),"/",sub("\\.gfa$", ".fasta", gfaName));
 gfa.sequences <- readDNAStringSet(faName);
 names(gfa.sequences) <- sub(" .*$","",names(gfa.sequences));
@@ -53,6 +53,7 @@ for(clName in names(data.largeClusters)){
     setwd(dirName);
     clusterFastaName <- sprintf("cluster_%s_seqs.fa", clName);
     clusterComps <- names(data.largeClusters[[clName]]);
+    system2("samtools", args=c("faidx", faName));
     system2("samtools", args=c("faidx", faName, clusterComps),
             stdout=clusterFastaName);
     cat(" Generating LAST index... ");
@@ -67,6 +68,10 @@ for(clName in names(data.largeClusters)){
                              col.names=c("qid","tid","pctid","alnLen","mismatch","gapOpen",
                                          "qStart","qEnd","tStart","tEnd", "eval", "bscore",
                                          "qLen", "tLen"));
+    setwd(oldwd);
+    cat(" Removing temp directory... ");
+    unlink(dirName, recursive=TRUE);
+    cat("done\n");
     ## remove matches of a sequence with itself
     mapping.df <- subset(mapping.df, qid != tid);
     ## filter to select out only overlap sequences
@@ -151,7 +156,7 @@ for(clName in names(data.largeClusters)){
         for(subPath in seq_along(found.start)){
             subpath.linkNames <- path.linkNames[found.start[subPath]:found.end[subPath]];
             subpath.mapping <- mapping.df[match(subpath.linkNames, mapping.linkNames),];
-            cat("found mapping for:",subpath.linkNames,"\n");
+            ##cat("found mapping for:",subpath.linkNames,"\n");
             sp.name <- paste(pNames.basic[found.start[subPath]:(found.end[subPath]+1)],collapse="_");
             sm <- subpath.mapping[1,];
             current.sequences <- as.character(path.sequences[[sm$qid]]);
@@ -161,13 +166,9 @@ for(clName in names(data.largeClusters)){
             }
             cat(sprintf(">%s\n", sp.name),
                 sprintf("%s\n", paste(current.sequences, collapse="")), sep="",
-                file=sprintf("%s.fasta",sp.name));
+                file=sprintf("merged_%s.fasta",sp.name));
         }
         added.seqs <- c(added.seqs, paste(pNames.basic, collapse="_"),
                         paste(rev(pNames.basic), collapse="_"));
-    }
-    setwd(oldwd);
-    if(any(cluster.links.df$fromDir != cluster.links.df$toDir)){
-        break;
     }
 }
