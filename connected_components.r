@@ -134,10 +134,13 @@ for(clName in names(data.largeClusters)){
         cluster.paths <- cluster.paths[which(colSums(pathSubSeqs) == 0)];
     }
     ## generate path
-    current.sequence <- "";
+    added.seqs <- NULL;
     for(clPath in cluster.paths){
         pNames <- names(clPath);
         pNames.basic <- sub("[-\\+]$","",names(clPath));
+        if(paste(pNames.basic, collapse="_") %in% added.seqs){
+            next;
+        }
         pNames.dir <- sub("^.*([-\\+])$","\\1",names(clPath));
         path.sequences <- gfa.sequences[pNames.basic];
         path.sequences[pNames.dir == "-"] <- reverseComplement(path.sequences[pNames.dir == "-"]);
@@ -150,7 +153,19 @@ for(clName in names(data.largeClusters)){
             subpath.linkNames <- path.linkNames[found.start[subPath]:found.end[subPath]];
             subpath.mapping <- mapping.df[match(subpath.linkNames, mapping.linkNames),];
             cat("found mapping for:",subpath.linkNames,"\n");
+            sp.name <- paste(pNames.basic[found.start[subPath]:(found.end[subPath]+1)],collapse="_");
+            sm <- subpath.mapping[1,];
+            current.sequences <- as.character(path.sequences[[sm$tid]]);
+            for(seqPos in seq_along(subpath.linkNames)){
+                sm <- subpath.mapping[seqPos,];
+                current.sequences <- c(current.sequences,as.character(path.sequences[[sm$tid]][(sm$tEnd+1):sm$tLen]));
+            }
+            cat(sprintf(">%s\n", sp.name),
+                sprintf("%s\n", paste(current.sequences, collapse="")), sep="",
+                file=sprintf("%s.fasta",sp.name));
         }
+        added.seqs <- c(added.seqs, paste(pNames.basic, collapse="_"),
+                        paste(rev(pNames.basic), collapse="_"));
     }
     setwd(oldwd);
     if(any(cluster.links.df$fromDir != cluster.links.df$toDir)){
