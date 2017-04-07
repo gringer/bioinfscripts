@@ -108,13 +108,12 @@ while(<>){
       if($qStrand eq "-"){ ## correct for reverse complement
         $qEnd = $qLen - $qStart;
         $qStart = $qEnd - $qMatchLen;
-        $tEnd = $tLen - $tStart;
-        $tStart = $tEnd - $tMatchLen;
       }
       my $matchLine =
-        sprintf("%s,%s,%s,%d,%d,%d,%d,%d,%d,%d,%d",
-                $qName, $tName, $qStrand, $qStart, $qEnd, $qMatchLen, $qLen,
-                $tStart, $tEnd, $tMatchLen, $tLen);
+        sprintf("%s,%s,%s,%d,%d,%d,%d,%0.2f,%d,%d,%d,%d,%0.2f",
+                $qName, $tName, $qStrand,
+                $qStart, $qEnd, $qMatchLen, $qLen, ($qMatchLen / $qLen) * 100,
+                $tStart, $tEnd, $tMatchLen, $tLen, ($tMatchLen / $tLen) * 100);
       if(!$ignoreSelf || ($qName ne $tName)){
         print("$matchLine\n");
       }
