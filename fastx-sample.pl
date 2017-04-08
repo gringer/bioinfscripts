@@ -73,7 +73,7 @@ while(<>){
         if($maxCount && ($readsRead % 10000 == 0)){
           if($dotsPrinted % 50 == 0){
             if($readsRead > 1000){
-              printf(STDERR " (%d reads read)", $readsRead);
+              printf(STDERR " (%d reads processed)", $readsRead);
             }
             printf(STDERR "\n  ");
           }
