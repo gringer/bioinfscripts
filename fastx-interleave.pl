@@ -7,16 +7,18 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $singleLine = 0;
 my $minLength = 0;
+my $maxCount = 0; # use reservoir sampling to randomise reads
 
 my %seqFiles = ();
 my @seqFileOrder = ();
 
-GetOptions("singleLine!" => \$singleLine, "minLength=i" => \$minLength) or
+GetOptions("singleLine!" => \$singleLine, "minLength=i" => \$minLength,
+           "count=i" => \$maxCount) or
   die("Error in command line arguments");
 
 while(@ARGV){
   my $argument = shift(@ARGV);
-  if(-f $argument){ # file existence check
+  if(-e $argument){ # file existence check
     $seqFiles{$argument} = 1;
     push(@seqFileOrder, $argument);
   } else {
@@ -38,6 +40,15 @@ if($numFiles < 2){
   printf(STDERR "Interleaving %d input files\n", $numFiles);
 }
 
+if($minLength){
+  printf(STDERR "Only outputting read groups for reads of at least %d bases\n", $minLength);
+}
+
+if($maxCount){
+  printf(STDERR "Reservoir sampling to output at most %d read groups:",
+        $maxCount);
+}
+
 my @inQual = (0) x $numFiles; # false
 my @seqID = ("") x $numFiles;
 my @qualID = ("") x $numFiles;
@@ -46,6 +57,10 @@ my @qual = ("") x $numFiles;
 my @printable = ("") x $numFiles;
 my $lineCount = 0;
 my $inFile = 0;
+my $recordsRead = 0;
+my $dotsPrinted = 0;
+
+my @printReservoir = ();
 
 for(my @lines = map {
   $inFile = $seqFiles{$_}; my $res = <$inFile>; $res} @seqFileOrder;
@@ -116,9 +131,31 @@ for(my @lines = map {
         $printable[$i] = "";
       }
     } else {
+      if($maxCount && ($recordsRead % 10000 == 0)){
+        if($dotsPrinted % 50 == 0){
+          if($recordsRead > 1000){
+            printf(STDERR " (%d read groups processed)", $recordsRead);
+          }
+          printf(STDERR "\n  ");
+        }
+        print(STDERR ".");
+        $dotsPrinted++;
+      }
+      $recordsRead++;
+      my $linesToAdd = "";
       for(my $i = 0; $i < $numFiles; $i++){
-        print($printable[$i]);
+        $linesToAdd .= $printable[$i];
         $printable[$i] = "";
+      }
+      if(!$maxCount){
+        print($linesToAdd);
+      } elsif($maxCount >= $recordsRead){
+        push(@printReservoir, $linesToAdd);
+      } else {
+        my $swapPos = rand($recordsRead);
+        if($swapPos < $maxCount){
+          $printReservoir[$swapPos] = $linesToAdd;
+        }
       }
     }
   }
@@ -126,4 +163,9 @@ for(my @lines = map {
 
 foreach my $seqFileName (keys(%seqFiles)){
   close($seqFiles{$seqFileName});
+}
+
+if($maxCount){
+  printf(STDERR "\ndone (%d read groups processed)\n", $recordsRead);
+  print(join("",@printReservoir));
 }

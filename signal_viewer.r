@@ -10,6 +10,7 @@ read <- -1;
 imageName <- "signal_out.pdf";
 title <- "";
 doPlot <- TRUE;
+doTrim <- TRUE;
 
 usage <- function(){
   cat("usage: ./signal_viewer.r",
@@ -17,6 +18,7 @@ usage <- function(){
   cat("\nOther Options:\n");
   cat("-out <file> : Write image to <file> [default: signal_out.pdf]\n");
   cat("-noplot     : Don't plot any data (just carry out calculations)\n");
+  cat("-notrim     : Don't trim the raw signal for intermediate plot\n");
   cat("-title      : Title for additional annotations\n");
   cat("-help       : Only display this help message\n");
   cat("\n");
@@ -39,6 +41,9 @@ while(!is.na(commandArgs()[argLoc])){
     else if(commandArgs()[argLoc] == "-noplot"){
         doPlot <- FALSE;
     }
+    else if(commandArgs()[argLoc] == "-notrim"){
+        doTrim <- FALSE;
+    }
     else if(commandArgs()[argLoc] == "-out"){
       imageName <- commandArgs()[argLoc+1];
       argLoc <- argLoc + 1;
@@ -57,10 +62,18 @@ while(!is.na(commandArgs()[argLoc])){
   argLoc <- argLoc + 1;
 }
 
+sigFileBase <- sub("\\.[^\\.]*$","",basename(sigFileName));
+
+imageName <- sprintf("signal_out_%s.pdf",sigFileBase);
+
 fileLen <- file.size(sigFileName);
 data.sig <- readBin(sigFileName, what=integer(), size=2, signed=FALSE,
                     n=fileLen/2);
 
+orig.sig <- NULL;
+if(!doTrim){
+    orig.sig <- data.sig;
+}
 orig.sig.len <- length(data.sig);
 
 dMed <- median(data.sig);
@@ -69,7 +82,8 @@ dMin <- max(min(data.sig),dMed-4*dMad,0);
 dMax <- min(max(data.sig),dMed+4*dMad,65535);
 
 if(doPlot){
-    png("untrimmed.png", width=1280, height=720, pointsize=16);
+    png(sprintf("untrimmed_%s.png",sigFileBase),
+        width=1280, height=720, pointsize=16);
     if(orig.sig.len > 100000){
         #smoothScatter(1:length(data.sig), data.sig, main="Untrimmed raw signal (smoothed scatter plot)", xlab="Samples",
         #              ylab="Unadjusted raw signal", nbin=c(512,256), nrpoints=1000, bandwidth = c(orig.sig.len/512,20));
@@ -124,15 +138,6 @@ if(doPlot){
     text(x=startPoint + length(data.sig), y=dMax, pos=2, labels=startPoint + length(data.sig));
 }
 
-if(length(data.sig) / orig.sig.len < 0.25){
-    cat("Error: signal data reduced to less than 25% of original size after noise/plateau trimming\n");
-    cat(sprintf("[Remaining proportion: %0.2f%%]\n", 100 * length(data.sig) / orig.sig.len));
-    quit(save="no", status=1);
-    if(doPlot){
-        dummy <- dev.off();
-    }
-}
-
 ## filter out huge signal spikes
 data.sig[data.sig > dMax] <- dMax;
 
@@ -163,7 +168,8 @@ if(doPlot){
 
 rml <- round(length(data.sig)/50) * 2 + 1; ## running median length
 if(doPlot){
-    png("drift.png", width=1280, height=720, pointsize=24);
+    png(sprintf("drift_%s.png",sigFileBase),
+        width=1280, height=720, pointsize=24);
     par(mar=c(4,4,0.5,0.5));
     if(orig.sig.len > 100000){
         plot((1:length(data.sig))/4000, data.sig, pch=19, cex=0.25,
@@ -205,20 +211,50 @@ if(doPlot){
                  glm2.res$coefficients[2]), col="darkblue");
     dummy <- dev.off();
     if(length(data.sig) < 100000){
-        pdf("trimmed.pdf", width=12, height=8, pointsize=16);
-        par(mar=c(4.5,6,1,1), mfrow=c(3,1));
-        xsplit <- length(data.sig)/(3*4000);
-        for(start in 0:2){
-            plot((1:length(data.sig)+startPoint)/4000, data.sig, pch=19, type="l",
-                 xlim=c(xsplit*start,xsplit*(start+1)) + startPoint/4000,
-                 cex=0.25, xlab="", las=1, ylab="");
-            if(start == 1){
-                mtext("Unadjusted Raw Signal", side=2, line=4, xpd=NA);
+        if(!doTrim){
+            pdf(sprintf("untrimmed_expanded_raw_%s.pdf", sigFileBase),
+                width=12, height=8, pointsize=16);
+            par(mar=c(4.5,6,1,1), mfrow=c(3,1));
+            xsplit <- length(orig.sig)/(3*4000);
+            for(start in 0:2){
+                plot((1:length(orig.sig))/4000, orig.sig, pch=19,
+                     type="l", ylim=c(min(orig.sig),min(1400,max(orig.sig))),
+                     xlim=c(xsplit*start,xsplit*(start+1)),
+                     cex=0.25, xlab="", las=1, ylab="");
+                if(start == 1){
+                    mtext("Unadjusted Raw Signal", side=2, line=4, xpd=NA);
+                }
+                if(start == 2){
+                    mtext("Time (s)", side=1, line=3, xpd=NA);
+                }
             }
-            if(start == 2){
-                mtext("Time (s)", side=1, line=3, xpd=NA);
+            dummy <- dev.off();
+        } else {
+            pdf(sprintf("expanded_raw_%s.pdf", sigFileBase),
+                width=12, height=8, pointsize=16);
+            par(mar=c(4.5,6,1,1), mfrow=c(3,1));
+            xsplit <- length(data.sig)/(3*4000);
+            for(start in 0:2){
+                plot((1:length(data.sig)+startPoint)/4000, data.sig, pch=19, type="l",
+                     xlim=c(xsplit*start,xsplit*(start+1)) + startPoint/4000,
+                     cex=0.25, xlab="", las=1, ylab="");
+                if(start == 1){
+                    mtext("Unadjusted Raw Signal", side=2, line=4, xpd=NA);
+                }
+                if(start == 2){
+                    mtext("Time (s)", side=1, line=3, xpd=NA);
+                }
             }
+            dummy <- dev.off();
         }
+    }
+}
+
+if(length(data.sig) / orig.sig.len < 0.25){
+    cat("Error: signal data reduced to less than 25% of original size after noise/plateau trimming\n");
+    cat(sprintf("[Remaining proportion: %0.2f%%]\n", 100 * length(data.sig) / orig.sig.len));
+    quit(save="no", status=1);
+    if(doPlot){
         dummy <- dev.off();
     }
 }

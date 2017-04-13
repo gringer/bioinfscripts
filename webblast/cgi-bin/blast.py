@@ -284,6 +284,8 @@ def getResults(parameters):
             return('The results file is empty. Have a sip of your favourite beverage then click "Results" again.')
         resultFile = open(mostRecentFileName, 'r')
         blast_records = NCBIXML.parse(resultFile)
+        formattedPreResult += ('<p>Reference Database: %s</p>\n'
+                               % parameters['queryDB'])
         formattedPreResult += ('<p>BLAST Run started: %s</p>\n'
                                % time.strftime('%Y-%b-%d %H:%M:%S',
                                                time.localtime(mostRecentTime)))
@@ -308,8 +310,8 @@ def getResults(parameters):
                     if(" " in subject):
                         subject = subject[0:subject.find(" ")];
                     identity = float(hsp.identities) / (hsp.align_length) * 100
-                    coverage = float(abs(hsp.query_end - hsp.query_start)) / blast_record.query_length * 100
-                    subjCoverage = float(abs(hsp.sbjct_end - hsp.sbjct_start)) / alignment.length * 100
+                    coverage = float(abs(hsp.query_end - hsp.query_start)+1) / blast_record.query_length * 100
+                    subjCoverage = float(abs(hsp.sbjct_end - hsp.sbjct_start)+1) / alignment.length * 100
                     # place appropriate hyperlinks into subject names
                     for subPattern in gbrowsePatterns:
                         if(subPattern in subject):
@@ -329,6 +331,8 @@ def getResults(parameters):
                     alignmentText += 'subject: %s\n' % subject
                     alignmentText += 'subject length: %s\n' % alignment.length
                     alignmentText += 'align length: %s\n' % hsp.align_length
+                    if('frame' in vars(hsp)):
+                        alignmentText += 'frame: (%d,%d)\n' % hsp.frame
                     alignmentText += 'score: %s\n' % hsp.score
                     alignmentText += 'bits: %s\n' % hsp.bits
                     alignmentText += 'identity: %0.2f%%\n' % identity
