@@ -29,5 +29,6 @@ image(x=1:rptSize, y=1:numLines-1, matrix(subSeq,nrow=rptSize),
                    lis/1000, rptSize), ylab="Base location",
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
       col=c("green","blue","yellow","red","lightgrey"));
-axis(2,at=1:numLines-1, labels=(1:numLines-1) * rptSize+1, las=2);
+axis(2,at=1:numLines-1, labels=(1:numLines-1) * rptSize+1, las=2,
+     cex.axis=0.5);
 dummy <- dev.off();
