@@ -18,10 +18,11 @@ import sys
 import h5py
 import numpy
 from collections import deque, Counter, OrderedDict
-from itertools import islice
+from itertools import islice, repeat
 from bisect import insort, bisect_left
 from struct import pack
 from array import array
+from multiprocessing.dummy import Pool, cpu_count
 
 def generate_consensus_matrix(fileName, header=True):
     '''write out 2D consensus matrix from fast5, return False if not present'''
@@ -379,10 +380,20 @@ def generate_dir_raw(fileName, callID="000", medianWindow=1, direction=None):
         signal = rangeFilt(signal)
         sys.stdout.write(signal) # write to file
 
-def strip_analyses(fileName):
+def strip_analyses(inArgs):
+    fileName = inArgs[0]
+    jobID = inArgs[1]
+    totalJobs = inArgs[2]
+    remJobs = totalJobs - jobID - 1
+    if((remJobs == 1) or ((jobID-1) % 100 == 0)):
+        sys.stderr.write("  Processing file '%s'..." % fileName)
     try:
         h5File = h5py.File(fileName, 'r')
         if(not('Analyses' in h5File)):
+            if(remJobs == 1):
+                sys.stderr.write(" done (%d more file to process)\n" % remJobs)
+            elif((jobID-1) % 100 == 0):
+                sys.stderr.write(" done (%d more files to process)\n" % remJobs)
             return True
         h5File.close()
     except:
@@ -401,6 +412,10 @@ def strip_analyses(fileName):
     if(moveFile):
         os.unlink(fileName)
         os.rename(newName, fileName)
+    if(remJobs == 1):
+        sys.stderr.write(" done (%d more file to process)\n" % remJobs)
+    elif((jobID-1) % 100 == 0):
+        sys.stderr.write(" done (%d more files to process)\n" % remJobs)
 
 def usageQuit(message):
     sys.stderr.write(message + "\n\n")
@@ -433,30 +448,38 @@ seenHeader = False
 
 if(os.path.isdir(fileArg)):
     sys.stderr.write("Processing directory '%s':\n" % fileArg)
-    for dirPath, dirNames, fileNames in os.walk(fileArg):
-        fc = len(fileNames)
-        for fileName in fileNames:
-            if(fileName.endswith(".fast5")): # only process fast5 files
-                if((fc == 2) or ((fc-1) % 100 == 0)):
-                    sys.stderr.write("  Processing file '%s'..." % fileName)
-                if(dataType == "event"):
-                    generate_event_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
-                elif(dataType == "consensus"):
-                    generate_consensus_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
-                elif(dataType == "telemetry"):
-                    generate_telemetry(os.path.join(dirPath, fileName), header=not seenHeader)
-                elif(dataType == "fastq"):
-                    generate_fastq(os.path.join(dirPath, fileName))
-                elif(dataType == "strip"):
-                    strip_analyses(os.path.join(dirPath, fileName))
-                elif(dataType == "raw"):
-                    usageQuit('Error: raw output only works for single files!')
-                fc -= 1
-                seenHeader = True
-                if(fc == 1):
-                    sys.stderr.write(" done (%d more file to process)\n" % fc)
-                elif(fc % 100 == 0):
-                    sys.stderr.write(" done (%d more files to process)\n" % fc)
+    if(dataType == "strip"): # use multithreading
+        pool = Pool(cpu_count() / 2) if (cpu_count() > 8) else Pool(4)
+        for dirPath, dirNames, fileNames in os.walk(fileArg):
+            fileNames = filter(lambda x: x.endswith(".fast5"), fileNames)
+            fileNames = map(lambda x: os.path.join(dirPath, x), fileNames)
+            fc = len(fileNames)
+            res = pool.map(strip_analyses, zip(fileNames, range(fc), repeat(fc,fc)));
+    else:
+        for dirPath, dirNames, fileNames in os.walk(fileArg):
+            fc = len(fileNames)
+            for fileName in fileNames:
+                if(fileName.endswith(".fast5")): # only process fast5 files
+                    if((fc == 2) or ((fc-1) % 100 == 0)):
+                        sys.stderr.write("  Processing file '%s'..." % fileName)
+                    if(dataType == "event"):
+                        generate_event_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
+                    elif(dataType == "consensus"):
+                        generate_consensus_matrix(os.path.join(dirPath, fileName), header=not seenHeader)
+                    elif(dataType == "telemetry"):
+                        generate_telemetry(os.path.join(dirPath, fileName), header=not seenHeader)
+                    elif(dataType == "fastq"):
+                        generate_fastq(os.path.join(dirPath, fileName))
+                    elif(dataType == "strip"):
+                        strip_analyses(os.path.join(dirPath, fileName))
+                    elif(dataType == "raw"):
+                        usageQuit('Error: raw output only works for single files!')
+                    fc -= 1
+                    seenHeader = True
+                    if(fc == 1):
+                        sys.stderr.write(" done (%d more file to process)\n" % fc)
+                    elif(fc % 100 == 0):
+                        sys.stderr.write(" done (%d more files to process)\n" % fc)
 elif(os.path.isfile(fileArg)):
     if(dataType == "event"):
         generate_event_matrix(fileArg)
