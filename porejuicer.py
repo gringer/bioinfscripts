@@ -382,21 +382,22 @@ def generate_dir_raw(fileName, callID="000", medianWindow=1, direction=None):
 def strip_analyses(fileName):
     try:
         h5File = h5py.File(fileName, 'r')
+        if(not('Analyses' in h5File)):
+            return True
         h5File.close()
     except:
         return False
     newName = fileName + '.stripped.fast5'
     moveFile = False
     with h5py.File(fileName, 'r+', driver='core') as h5File:
-        if('Analyses' in h5File):
-            moveFile = True
-            del h5File['Analyses']
-            with h5py.File(newName, "w") as newH5:
-                for id in h5File:
-                    h5File.copy(h5File[id],newH5)
-                    oldAttrs = h5File.attrs
-                for attrName in oldAttrs:
-                    newH5.attrs.create(attrName,oldAttrs[attrName])
+        moveFile = True
+        del h5File['Analyses']
+        with h5py.File(newName, "w") as newH5:
+            for id in h5File:
+                h5File.copy(h5File[id],newH5)
+                oldAttrs = h5File.attrs
+            for attrName in oldAttrs:
+                newH5.attrs.create(attrName,oldAttrs[attrName])
     if(moveFile):
         os.unlink(fileName)
         os.rename(newName, fileName)
