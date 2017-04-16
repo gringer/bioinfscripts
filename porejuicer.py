@@ -441,15 +441,15 @@ seenHeader = False
 if(os.path.isdir(fileArg)):
     sys.stderr.write("Processing directory '%s':\n" % fileArg)
     if(dataType == "strip"): # use multithreading
-        pool = Pool(cpu_count()-1) if (cpu_count() > 1) else Pool(1)
+        pool = Pool(cpu_count()/2) if (cpu_count() > 1) else Pool(1)
         for dirPath, dirNames, fileNames in os.walk(fileArg):
             fileNames = filter(lambda x: x.endswith(".fast5"), fileNames)
             fileNames = map(lambda x: os.path.join(dirPath, x), fileNames)
             fc = len(fileNames)
             poolArgs = zip(fileNames, range(fc), repeat(fc,fc))
-            for pStart in range(fc)[0:fc:100]:
+            for pStart in range(fc)[0:fc:1000]:
                 res=pool.map_async(strip_analyses,
-                                   poolArgs[pStart:(pStart+100)]);
+                                   poolArgs[pStart:(pStart+1000)]);
                 res.wait()
     else:
         for dirPath, dirNames, fileNames in os.walk(fileArg):
