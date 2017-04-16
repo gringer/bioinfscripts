@@ -22,7 +22,7 @@ from itertools import islice, repeat
 from bisect import insort, bisect_left
 from struct import pack
 from array import array
-from multiprocessing.dummy import Pool, cpu_count
+from multiprocessing import Pool, cpu_count
 
 def generate_consensus_matrix(fileName, header=True):
     '''write out 2D consensus matrix from fast5, return False if not present'''
@@ -448,7 +448,9 @@ if(os.path.isdir(fileArg)):
             fc = len(fileNames)
             poolArgs = zip(fileNames, range(fc), repeat(fc,fc))
             for pStart in range(fc)[0:fc:100]:
-                pool.apply_async(strip_analyses, poolArgs[pStart:pStart+100]);
+                res=pool.map_async(strip_analyses,
+                                   poolArgs[pStart:(pStart+100)]);
+                res.wait()
     else:
         for dirPath, dirNames, fileNames in os.walk(fileArg):
             fc = len(fileNames)
