@@ -22,7 +22,7 @@ from itertools import islice, repeat
 from bisect import insort, bisect_left
 from struct import pack
 from array import array
-from multiprocessing.dummy import Pool, cpu_count
+from multiprocessing import Pool, cpu_count
 
 def generate_consensus_matrix(fileName, header=True):
     '''write out 2D consensus matrix from fast5, return False if not present'''
@@ -385,15 +385,11 @@ def strip_analyses(inArgs):
     jobID = inArgs[1]
     totalJobs = inArgs[2]
     remJobs = totalJobs - jobID - 1
-    if((remJobs == 1) or ((jobID-1) % 100 == 0)):
-        sys.stderr.write("  Processing file '%s'..." % fileName)
+    if((remJobs == 1) or (remJobs % 100 == 0)):
+        sys.stderr.write("  Processing file '%s...%s', %d more file(s) to process\n" % (fileName[0:20], fileName[-20:], remJobs))
     try:
         h5File = h5py.File(fileName, 'r')
         if(not('Analyses' in h5File)):
-            if(remJobs == 1):
-                sys.stderr.write(" done (%d more file to process)\n" % remJobs)
-            elif((jobID-1) % 100 == 0):
-                sys.stderr.write(" done (%d more files to process)\n" % remJobs)
             return True
         h5File.close()
     except:
@@ -412,10 +408,6 @@ def strip_analyses(inArgs):
     if(moveFile):
         os.unlink(fileName)
         os.rename(newName, fileName)
-    if(remJobs == 1):
-        sys.stderr.write(" done (%d more file to process)\n" % remJobs)
-    elif((jobID-1) % 100 == 0):
-        sys.stderr.write(" done (%d more files to process)\n" % remJobs)
 
 def usageQuit(message):
     sys.stderr.write(message + "\n\n")
@@ -449,7 +441,7 @@ seenHeader = False
 if(os.path.isdir(fileArg)):
     sys.stderr.write("Processing directory '%s':\n" % fileArg)
     if(dataType == "strip"): # use multithreading
-        pool = Pool(cpu_count() / 2) if (cpu_count() > 8) else Pool(4)
+        pool = Pool(cpu_count() / 2) if (cpu_count() > 20) else Pool(10)
         for dirPath, dirNames, fileNames in os.walk(fileArg):
             fileNames = filter(lambda x: x.endswith(".fast5"), fileNames)
             fileNames = map(lambda x: os.path.join(dirPath, x), fileNames)
