@@ -217,7 +217,10 @@ if(doPlot){
             par(mar=c(4.5,6,1,1), mfrow=c(3,1));
             xsplit <- length(orig.sig)/(3*4000);
             for(start in 0:2){
-                plot((1:length(orig.sig))/4000, orig.sig, pch=19,
+                srS = (start*length(orig.sig)/3);
+                srE = ((start+1)*length(orig.sig)/3);
+                plot(((1:length(orig.sig))/4000)[srS:srE],
+                     orig.sig[srS:srE], pch=19,
                      type="l", ylim=c(min(orig.sig),min(1400,max(orig.sig))),
                      xlim=c(xsplit*start,xsplit*(start+1)),
                      cex=0.25, xlab="", las=1, ylab="");

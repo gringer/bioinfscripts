@@ -3,24 +3,22 @@
 ## Find clusters of contigs from a GFA produced by Canu that have a total length of >1Mb
 ## Identify sub-paths that have link identities >90%
 
-library(igraph);
-library(Biostrings);
+library(igraph, quiet=TRUE);
+library(Biostrings, quiet=TRUE);
 
 idThreshold <- 0.9; ## identity threshold for overlap (don't trust anything below this)
 
-gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
+gfaName <- commandArgs(TRUE)[1];
+gfaName <- "NbL5_18878.flipped.gfa";
 faName <- paste0(getwd(),"/",sub("\\.gfa$", ".fasta", gfaName));
 gfa.sequences <- readDNAStringSet(faName);
 names(gfa.sequences) <- sub(" .*$","",names(gfa.sequences));
 
 data.lines <- readLines(gfaName);
 
-data.lengths <- sapply(strsplit(grep("^S", data.lines, value=TRUE),"\t"),
-                          function(x){
-                              val <- as.numeric(substring(x[4],6));
-                              names(val) <- x[2];
-                              val;
-                          });
+data.lengths <- lengths(gfa.sequences);
+names(data.lengths) <- names(gfa.sequences);
+
 data.linklist <- strsplit(grep("^L", data.lines, value=TRUE),"\t");
 
 ## rbind.fill doesn't work here
@@ -34,16 +32,25 @@ data.link.df[invertLines,"fromDir"] <- "+";
 data.link.df[invertLines,"toDir"] <- "+";
 data.link.df <- unique(data.link.df);
 
+print(data.link.df[,c("from","to")]);
+
 data.graph <- graph.data.frame(data.link.df[,c("from","to")]);
 
 data.clusters <- clusters(data.graph);
+print(data.clusters);
 data.clLengths <- tapply(data.clusters$membership, data.clusters$membership,
                          function(x){data.lengths[names(x)]});
+
+print(data.clLengths);
 
 ## pick clusters over 1Mb
 data.largeClusters <- Filter(function(x){sum(x) >= 1e6}, data.clLengths);
 data.largeClContigs <- unique(unlist(sapply(data.largeClusters,names)));
 data.largeClLinks <- subset(data.link.df, (from %in% data.largeClContigs) | (to %in% data.largeClContigs));
+
+if(length(data.largeClusters) == 0){
+    cat(sprintf("No large clusters found. Largest was %dbp\n",max(sapply(data.clLengths,sum))));
+}
 
 for(clName in names(data.largeClusters)){
     oldwd <- getwd();
@@ -158,13 +165,17 @@ for(clName in names(data.largeClusters)){
             subpath.mapping <- mapping.df[match(subpath.linkNames, mapping.linkNames),];
             ##cat("found mapping for:",subpath.linkNames,"\n");
             sp.name <- paste(pNames.basic[found.start[subPath]:(found.end[subPath]+1)],collapse="_");
+            overlaps <- NULL;
             sm <- subpath.mapping[1,];
             current.sequences <- as.character(path.sequences[[sm$qid]]);
             for(seqPos in seq_along(subpath.linkNames)){
                 sm <- subpath.mapping[seqPos,];
                 current.sequences <- c(current.sequences,as.character(path.sequences[[sm$tid]][(sm$tEnd+1):sm$tLen]));
+                overlaps <- c(overlaps, sm$tEnd);
             }
-            cat(sprintf(">%s\n", sp.name),
+            cat(sprintf(">%s component_lengths:%s overlap:%s\n", sp.name,
+                        paste(nchar(current.sequences),collapse=";"),
+                        paste(overlaps, collapse=";")),
                 sprintf("%s\n", paste(current.sequences, collapse="")), sep="",
                 file=sprintf("merged_%s.fasta",sp.name));
         }
