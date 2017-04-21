@@ -319,6 +319,7 @@ def generate_raw(fileName, callID="000", medianWindow=21):
         h5File = h5py.File(fileName, 'r')
         h5File.close()
     except:
+        sys.stderr.write("Unable to open file '%s' as a fast5 file\n" % fileName)
         return False
     with h5py.File(fileName, 'r') as h5File:
       runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
