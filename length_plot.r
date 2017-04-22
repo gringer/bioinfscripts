@@ -133,8 +133,10 @@ dens.mat <- sapply(fileNames, function(x){
     plain.hist(data,
                main=sprintf("Read Count Distribution Plot (%s)",subName));
     dummy <- dev.off();
+    par(mar=c(5.5,6.5,2.5,1.5));
     sequence.hist(data,
                   main=sprintf("Read Length Distribution Plot (%s)",subName));
+    par(mar=c(5.5,1.5,2.5,6.5));
     plain.hist(data,
                main=sprintf("Read Count Distribution Plot (%s)",subName));
     res.out;
@@ -300,10 +302,10 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
          ylab = "");
     for(col in seq_len(ncol(bpdens.mat))){
         points(as.numeric(rownames(bpdens.mat)),bpdens.mat[,col] /
-                   sum(bpdens.mat[,col]), type="l", lwd=3,
+                   sum(bpdens.mat[,col]), type="l", lwd=5,
                col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80));
     }
-    legend("topleft", cex=0.71, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
+    legend("topleft", cex=1.5, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
            fill=hcl(h=(1:ncol(bpdens.mat))/ncol(bpdens.mat)*360, l=70, c=80),
            inset=0.05);
     mtext("Base Density (arbitrary scale)",2,3);
@@ -382,10 +384,10 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
          ylab = "");
     for(col in seq_len(ncol(bpdens.mat))){
         points(as.numeric(rownames(bpdens.mat)),bpdens.mat[,col] /
-                   sum(bpdens.mat[,col]), type="l", lwd=3,
+                   sum(bpdens.mat[,col]), type="l", lwd=4,
                col=hcl(h=col/ncol(bpdens.mat)*360, l=70, c=80));
     }
-    legend("topleft", cex=0.71, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
+    legend("topleft", cex=1.5, legend=colnames(bpdens.mat), ncol=ceiling(ncol(bpdens.mat)/16),
            fill=hcl(h=(1:ncol(bpdens.mat))/ncol(bpdens.mat)*360, l=70, c=80),
            inset=0.05);
     mtext("Base Density (arbitrary scale)",2,3);
