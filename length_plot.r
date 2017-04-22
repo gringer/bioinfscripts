@@ -38,7 +38,8 @@ sequence.hist <- function(lengths, invert = TRUE, ...){
     xBreaksMinor <- rep(xBreaksMajor,each=9) * 1:9;
     xBreaksMinor <- xBreaksMinor[(which.min(xBreaksMinor < axRange[1])):
                                  (which.max(xBreaksMinor > axRange[2])-1)];
-    barPos <- barplot(if(invert){rev(seqd.bases)} else {seqd.bases},
+    barData <- if(invert){rev(seqd.bases)} else {seqd.bases};
+    barPos <- barplot(barData,
                       log = "x", las = 1, axes = FALSE, col = "steelblue",
                       horiz = TRUE, names.arg = rep("",length(seqd.bases)),
                       ylab = "",
@@ -83,8 +84,7 @@ plain.hist <- function(lengths, invert = TRUE, ...){
     barPos <- barplot(log10(if(invert){rev(seqd.counts)} else {seqd.counts})+0.025,
                       las = 1, axes = FALSE, col = "steelblue",
                       horiz = TRUE, names.arg = rep("",length(seqd.counts)),
-                      ylab = "", xlim=c(log10(max(seqd.counts, na.rm=TRUE))+0.025,
-                                        log10(min(seqd.counts, na.rm=TRUE))-0.025),
+                      ylab = "", xlim=c(log10(max(seqd.counts, na.rm=TRUE))+0.025,0),
                       xlab = "Number of sequences (Aggregate length)",
                       ...);
     barGap <- diff(barPos)[1];
