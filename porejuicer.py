@@ -112,7 +112,7 @@ def generate_eventdir_matrix(fileName, header=True, direction=None):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-      rowData = get_telemetry(h5File, "000")
+      rowData = get_telemetry(h5File, "000", fileName)
       channel = str(rowData['channel'])
       mux = str(rowData['mux'])
       runID = rowData['runID']
@@ -147,7 +147,7 @@ def generate_event_matrix(fileName, header=True):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-      rowData = get_telemetry(h5File, "000")
+      rowData = get_telemetry(h5File, "000", fileName)
       runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
       channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
       runID = '%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])
@@ -183,7 +183,7 @@ def generate_fastq(fileName, callID="000"):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-        rowData = get_telemetry(h5File, callID)
+        rowData = get_telemetry(h5File, callID, fileName)
         seqBase1D = "/Analyses/Basecall_1D_%s" % callID
         seqBase2D = "/Analyses/Basecall_2D_%s" % callID
         while((seqBase1D in h5File) or (seqBase2D in h5File)):
@@ -217,7 +217,7 @@ def generate_fastq(fileName, callID="000"):
                     sys.stdout.write(str(h5File[base2D][()][1:]))
             callID = "%03d" % (int(callID)+1)
             callStr = callID + "_"
-            rowData = get_telemetry(h5File, callID)
+            rowData = get_telemetry(h5File, callID, fileName)
             seqBase1D = "/Analyses/Basecall_1D_%s" % callID
             seqBase2D = "/Analyses/Basecall_2D_%s" % callID
 
@@ -244,7 +244,7 @@ def runningMedian(seq, M):
     medians.extend([median()] * (m))
     return medians
 
-def get_telemetry(h5File, callID):
+def get_telemetry(h5File, callID, fileName):
     runMeta = h5File['UniqueGlobalKey/tracking_id'].attrs
     channelMeta = h5File['UniqueGlobalKey/channel_id'].attrs
     useRaw = False
@@ -260,7 +260,8 @@ def get_telemetry(h5File, callID):
          ('templateRawStart',''),('templateRawLength',-1),
          ('templateCalledEvents',''),('templateCalledBases',-1),
          ('complementRawStart',''),('complementRawLength',-1),
-         ('complementCalledEvents',''),('complementCalledBases',-1)
+         ('complementCalledEvents',''),('complementCalledBases',-1),
+         ('fileName',fileName)
         ])
     callBase = "/Analyses/Basecall_1D_%s/Summary" % (callID)
     eventBase = "/Analyses/EventDetection_000/Reads"
@@ -304,7 +305,7 @@ def generate_telemetry(fileName, callID="000", header=True):
     except:
         return False
     with h5py.File(fileName, 'r') as h5File:
-        rowData = get_telemetry(h5File, callID)
+        rowData = get_telemetry(h5File, callID, fileName)
         if(header):
             sys.stdout.write(",".join(rowData.keys()) + "\n")
             # here's the raw to pA formula for future reference:
