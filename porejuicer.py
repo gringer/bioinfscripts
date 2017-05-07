@@ -186,6 +186,10 @@ def generate_fastq(fileName, callID="000"):
         rowData = get_telemetry(h5File, callID, fileName)
         seqBase1D = "/Analyses/Basecall_1D_%s" % callID
         seqBase2D = "/Analyses/Basecall_2D_%s" % callID
+        callEnd = "%s_ch%d_mux%d_read%d" % (rowData["runID"],
+                                            rowData["channel"],
+                                            rowData["mux"],
+                                            rowData["read"])
         while((seqBase1D in h5File) or (seqBase2D in h5File)):
             v1_2File = False
             if(not (seqBase1D in h5File) and (seqBase2D in h5File)):
@@ -194,26 +198,17 @@ def generate_fastq(fileName, callID="000"):
             if( (rowData["templateCalledBases"] > 0) and
                 (rowData["templateRawLength"] / rowData["templateCalledBases"] <= 25)):
                 baseTemp = "%s/BaseCalled_template/Fastq" % seqBase1D
-                sys.stdout.write("@1Dtemp_" + callStr +
-                                 "_".join(map(lambda x: str(rowData[x]),
-                                              ("runID","channel","mux","read"))) +
-                                 " ")
+                sys.stdout.write("@1Dtemp_%s%s " % (callStr, callEnd))
                 sys.stdout.write(str(h5File[baseTemp][()][1:]))
             if( (rowData["complementCalledBases"] > 0) and
                 (rowData["complementRawLength"] / rowData["complementCalledBases"] <= 25)):
                 baseComp = "%s/BaseCalled_complement/Fastq" % seqBase1D
-                sys.stdout.write("@1Dcomp_" + callStr +
-                                 "_".join(map(lambda x: str(rowData[x]),
-                                              ("runID","channel","mux","read"))) +
-                                 " ")
+                sys.stdout.write("@1Dcomp_%s%s " % (callStr, callEnd))
                 sys.stdout.write(str(h5File[baseComp][()][1:]))
             if(seqBase2D in h5File):
                 base2D = "%s/BaseCalled_2D/Fastq" % seqBase2D
                 if((base2D in h5File)):
-                    sys.stdout.write("@2Dcons_" + callStr +
-                                     "_".join(map(lambda x: str(rowData[x]),
-                                                  ("runID","channel","mux","read")))+
-                                     " ")
+                    sys.stdout.write("@2Dcons_%s%s " % (callStr, callEnd))
                     sys.stdout.write(str(h5File[base2D][()][1:]))
             callID = "%03d" % (int(callID)+1)
             callStr = callID + "_"
@@ -250,8 +245,8 @@ def get_telemetry(h5File, callID, fileName):
     useRaw = False
     rowData = OrderedDict(
         [('runID','%s_%s' % (runMeta["device_id"],runMeta["run_id"][0:16])),
-         ('channel',channelMeta["channel_number"]),
-         ('mux',''),('read',''),
+         ('channel',int(channelMeta["channel_number"])),
+         ('mux',-1),('read',-1),
          ('offset',channelMeta["offset"]),
          ('range',channelMeta["range"]),
          ('digitisation',channelMeta["digitisation"]),
@@ -273,8 +268,8 @@ def get_telemetry(h5File, callID, fileName):
     for readName in readNames:
         readMetaLocation = "%s/%s" % (eventBase,readName)
         outMeta = h5File[readMetaLocation].attrs
-        rowData["mux"] = outMeta["start_mux"]
-        rowData["read"] = readName
+        rowData["mux"] = int(outMeta["start_mux"])
+        rowData["read"] = int(readName.replace("Read_",""))
         rowData["rawStart"] = (outMeta["start_time"] if "start_time" in outMeta else -1)
         rowData["rawLength"] = (outMeta["duration"] if "duration" in outMeta else -1)
     for dir in ('template','complement'):
