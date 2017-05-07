@@ -13,11 +13,13 @@ while(<>){
   if(!$inQual){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
-      printf("#seq:%s", $seqID);
-      printf(" %s", $seq);
-      if($qual){
-	printf("#qual:%s", $seqID);
-	printf(" %s", $qual);
+      if($seq){
+	printf("#seq:%s", $seqID);
+	printf(" %s", $seq);
+	if($qual){
+	  printf("#qual:%s", $seqID);
+	  printf(" %s", $qual);
+	}
       }
       $seq = "";
       $qual = "";
