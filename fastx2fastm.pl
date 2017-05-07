@@ -39,10 +39,10 @@ while(<>){
 }
 
 if($seqID){
-  printf("#seq:%s", $seqID);
-  printf(" %s", $seq);
+  printf("#seq:%s\n", $seqID);
+  printf(" %s\n", $seq);
   if($qual){
-    printf("#qual:%s", $seqID);
-    printf(" %s", $qual);
+    printf("#qual:%s\n", $seqID);
+    printf(" %s\n", $qual);
   }
 }
