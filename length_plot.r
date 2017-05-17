@@ -47,8 +47,10 @@ sequence.hist <- function(lengths, horiz = TRUE, barValues=TRUE, invert = TRUE, 
     ## filter on actual data range
     histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
                              which.max(histBreaks > lengthRange[2])];
-    seqd.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
-    seqd.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    seqd.bases <- seqd.na.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
+    seqd.counts <- seqd.na.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    seqd.bases[is.na(seqd.bases)] <- 0;
+    seqd.counts[is.na(seqd.counts)] <- 0;
     xBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
     axRange <- range(seqd.bases);
     xBreaks <- xBreaks[(which.min(xBreaks < axRange[1])):
@@ -57,7 +59,7 @@ sequence.hist <- function(lengths, horiz = TRUE, barValues=TRUE, invert = TRUE, 
     xBreaksMinor <- rep(xBreaksMajor,each=9) * 1:9;
     xBreaksMinor <- xBreaksMinor[(which.min(xBreaksMinor < axRange[1])):
                                  (which.max(xBreaksMinor > axRange[2])-1)];
-    barPos <- barplot(if(invert){seqd.bases} else {rev(seqd.bases)}, main = "",
+    barPos <- barplot(if(invert){seqd.na.bases} else {rev(seqd.na.bases)}, main = "",
                       log = ifelse(horiz, "x", "y"), axes = FALSE, col = "steelblue",
                       horiz = horiz, names.arg = rep("",length(seqd.bases)), ann=FALSE,
                       ...);
@@ -92,8 +94,10 @@ plain.hist <- function(lengths, horiz=TRUE, barValues=TRUE, invert = TRUE, main 
     ## filter on actual data range
     histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
                              which.max(histBreaks > lengthRange[2])];
-    seqd.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
-    seqd.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    seqd.bases <- seqd.na.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
+    seqd.counts <- seqd.na.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    seqd.bases[is.na(seqd.bases)] <- 0;
+    seqd.counts[is.na(seqd.counts)] <- 0;
     xBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
     axRange <- range(seqd.counts);
     xBreaks <- xBreaks[(which.min(xBreaks < axRange[1])):
@@ -102,13 +106,13 @@ plain.hist <- function(lengths, horiz=TRUE, barValues=TRUE, invert = TRUE, main 
     xBreaksMinor <- rep(xBreaksMajor,each=9) * 1:9;
     xBreaksMinor <- xBreaksMinor[(which.min(xBreaksMinor < min(xBreaksMajor))):
                                  (which.max(xBreaksMinor > max(xBreaksMajor))-1)];
-    barPos <- barplot(log10(if(!invert){rev(seqd.counts)} else {seqd.counts})+0.025,
+    barPos <- barplot(log10(if(!invert){rev(seqd.na.counts)} else {seqd.na.counts})+0.025,
                       las = 1, axes = FALSE, ann=FALSE, col = "steelblue", main = "",
                       horiz = horiz, names.arg = rep("",length(seqd.counts)),
-                      xlim=if(!horiz){NULL} else {c(log10(max(seqd.counts, na.rm=TRUE))+0.025,
-                                                   log10(min(seqd.counts, na.rm=TRUE))-0.025)},
-                      ylim=if(horiz){NULL} else {c(log10(max(seqd.counts, na.rm=TRUE))+0.025,
-                                                   log10(min(seqd.counts, na.rm=TRUE))-0.025)},
+                      xlim=if(!horiz){NULL} else {c(log10(max(seqd.na.counts, na.rm=TRUE))+0.025,
+                                                   log10(min(seqd.na.counts, na.rm=TRUE))-0.025)},
+                      ylim=if(horiz){NULL} else {c(log10(max(seqd.na.counts, na.rm=TRUE))+0.025,
+                                                   log10(min(seqd.na.counts, na.rm=TRUE))-0.025)},
                       ...);
     mtext(main, side=ifelse(horiz,3,1), line=ifelse(horiz,0,1.5), cex=2);
     mtext("Number of sequences (Aggregate length)", side=ifelse(horiz,1,2), line=ifelse(horiz,4,5));
@@ -144,6 +148,9 @@ dens.mat <- sapply(fileNames, function(x){
     cat(x,"...");
     data <- scan(x, comment.char=" ", quiet=TRUE);
     cat(" done\n");
+    cat("Number of sequences:",length(data),"\n");
+    cat("Length quantiles:\n");
+    print(quantile(data, probs=seq(0,1,by=0.1)));
     res <- density(log10(data), from=2, to=6, bw=0.1);
     res.out <- res$y;
     names(res.out) <- round(res$x,3);
