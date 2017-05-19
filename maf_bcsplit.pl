@@ -85,9 +85,8 @@ my $tName = "";
 
 my %matches = ();
 
-printf("%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
-       "query", "target", "dir", "qS", "qE", "qML", "qL", "qPct",
-       "tS", "tE", "tML", "tL", "tPct");
+print("query,target,dir,qS,qE,qML,qL,qPct,tS,tE,tML,tL,tPct\n");
+
 while(<>){
   if(!/^[as]/){
     next;
