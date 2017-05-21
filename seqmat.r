@@ -25,7 +25,7 @@ inSeq <- c(inSeq,rep(5,rptSize));
 subSeq <- inSeq[1:(numLines*rptSize)];
 par(mar=c(0.5,5,1,0.5), mgp=c(3.5,1,0));
 image(x=1:rptSize, y=1:numLines-1, matrix(subSeq,nrow=rptSize),
-      main=sprintf("%s (%0.3f kb, %d bases / line)",inName,
+      main=sprintf("%s (%0.3f kb, %d bases / line)", sub(" .*$","",inName),
                    lis/1000, rptSize), ylab="Base location",
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
       col=c("green","blue","yellow","red","lightgrey"));
