@@ -34,7 +34,7 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID){
+      if($seqID && (length($seq) > 0)){
 	bzip2 \$seq => \$buffer;
 	my $cProp = (length($buffer) * 1000) / length($seq);
         printf("%0.3f %s\n", (1000 / $cProp), $seqID);
@@ -58,7 +58,7 @@ while(<>){
   }
 }
 
-if($seqID){
+if($seqID && (length($seq) > 0)){
   bzip2 \$seq => \$buffer;
   my $cProp = (length($buffer) * 1000) / length($seq);
   printf("%0.3f %s\n", (1000 / $cProp), $seqID);
