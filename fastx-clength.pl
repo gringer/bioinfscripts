@@ -8,7 +8,7 @@ use IO::File;
 
 my $trim = 0;
 
-GetOptions("trim=i" => \$trim) or
+GetOptions("trim=s" => \$trim) or
   die("Error in command line arguments");
 
 my @clengths = ();
@@ -31,16 +31,17 @@ while(<>){
 	bzip2 \$seq => \$buffer;
 	my $cProp = length($seq) / length($buffer);
         my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
-        if(($trim * 3) < $len){
-          my $ltSeq = substr($seq, 0, $trim);
-          my $midSeq = substr($seq, $trim, -$trim);
-          my $rtSeq = substr($seq, -$trim);
+        my $bTrim = ($trim < 1) ? ($len * $trim) : $trim;
+        if($trim && (($bTrim * 3) < $len)){
+          my $ltSeq = substr($seq, 0, $bTrim);
+          my $midSeq = substr($seq, $bTrim, -$bTrim);
+          my $rtSeq = substr($seq, -$bTrim);
           bzip2 \$ltSeq => \$buffer;
-          $ltProp = $trim / length($buffer);
+          $ltProp = $bTrim / length($buffer);
           bzip2 \$midSeq => \$buffer;
-          $midProp = ($len - $trim * 2) / length($buffer);
+          $midProp = ($len - $bTrim * 2) / length($buffer);
           bzip2 \$rtSeq => \$buffer;
-          $rtProp = $trim / length($buffer);
+          $rtProp = $bTrim / length($buffer);
         }
         printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len, $ltProp, $midProp, $rtProp, $seqID);
 	push(@lengths, $cProp);
@@ -68,18 +69,20 @@ if($seqID && (length($seq) > $trim)){
   bzip2 \$seq => \$buffer;
   my $cProp = length($seq) / length($buffer);
   my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
-  if (($trim * 3) < $len) {
-    my $ltSeq = substr($seq, 0, $trim);
-    my $midSeq = substr($seq, $trim, -$trim);
-    my $rtSeq = substr($seq, -$trim);
+  my $bTrim = ($trim < 1) ? ($len * $trim) : $trim;
+  if ($trim && (($bTrim * 3) < $len)) {
+    my $ltSeq = substr($seq, 0, $bTrim);
+    my $midSeq = substr($seq, $bTrim, -$bTrim);
+    my $rtSeq = substr($seq, -$bTrim);
     bzip2 \$ltSeq => \$buffer;
-    $ltProp = $trim / length($buffer);
+    $ltProp = $bTrim / length($buffer);
     bzip2 \$midSeq => \$buffer;
-    $midProp = ($len - $trim * 2) / length($buffer);
+    $midProp = ($len - $bTrim * 2) / length($buffer);
     bzip2 \$rtSeq => \$buffer;
-    $rtProp = $trim / length($buffer);
+    $rtProp = $bTrim / length($buffer);
   }
-  printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len, $ltProp, $midProp, $rtProp, $seqID);
+  printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len,
+         $ltProp, $midProp, $rtProp, $seqID);
   push(@lengths, $cProp);
 }
 
