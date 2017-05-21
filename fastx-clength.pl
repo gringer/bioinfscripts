@@ -2,22 +2,14 @@
 use warnings;
 use strict;
 
+use Getopt::Long qw(:config auto_help pass_through);
 use IO::Compress::Bzip2 qw(bzip2 $Bzip2Error);
 use IO::File;
 
-sub SIConvert{
-  my ($val) = @_;
-  my @largePrefixes = ("k", "M", "G");
-  my $pID = 0;
-  my $prefix = "";
-  my $changed=0;
-  while(($val > 1000) && ($pID < $#largePrefixes)){
-    $prefix = $largePrefixes[$pID];
-    $val /= 1000;
-    $pID++;
-  }
-  return(sprintf("%.12g %s", $val, $prefix));
-}
+my $trim = 0;
+
+GetOptions("trim=i" => \$trim) or
+  die("Error in command line arguments");
 
 my @clengths = ();
 my @lengths = ();
@@ -34,11 +26,24 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID && (length($seq) > 0)){
+      if($seqID && (length($seq) > $trim)){
+	my $len = length($seq);
 	bzip2 \$seq => \$buffer;
-	my $cProp = (length($buffer) * 1000) / length($seq);
-        printf("%0.3f %s\n", (1000 / $cProp), $seqID);
-	push(@lengths, 1000 / $cProp);
+	my $cProp = length($seq) / length($buffer);
+        my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
+        if(($trim * 3) < $len){
+          my $ltSeq = substr($seq, 0, $trim);
+          my $midSeq = substr($seq, $trim, -$trim);
+          my $rtSeq = substr($seq, -$trim);
+          bzip2 \$ltSeq => \$buffer;
+          $ltProp = $trim / length($buffer);
+          bzip2 \$midSeq => \$buffer;
+          $midProp = ($len - $trim * 2) / length($buffer);
+          bzip2 \$rtSeq => \$buffer;
+          $rtProp = $trim / length($buffer);
+        }
+        printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len, $ltProp, $midProp, $rtProp, $seqID);
+	push(@lengths, $cProp);
       }
       $seq = "";
       $qual = "";
@@ -58,11 +63,24 @@ while(<>){
   }
 }
 
-if($seqID && (length($seq) > 0)){
+if($seqID && (length($seq) > $trim)){
+  my $len = length($seq);
   bzip2 \$seq => \$buffer;
-  my $cProp = (length($buffer) * 1000) / length($seq);
-  printf("%0.3f %s\n", (1000 / $cProp), $seqID);
-  push(@lengths, 1000 / $cProp);
+  my $cProp = length($seq) / length($buffer);
+  my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
+  if (($trim * 3) < $len) {
+    my $ltSeq = substr($seq, 0, $trim);
+    my $midSeq = substr($seq, $trim, -$trim);
+    my $rtSeq = substr($seq, -$trim);
+    bzip2 \$ltSeq => \$buffer;
+    $ltProp = $trim / length($buffer);
+    bzip2 \$midSeq => \$buffer;
+    $midProp = ($len - $trim * 2) / length($buffer);
+    bzip2 \$rtSeq => \$buffer;
+    $rtProp = $trim / length($buffer);
+  }
+  printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len, $ltProp, $midProp, $rtProp, $seqID);
+  push(@lengths, $cProp);
 }
 
 ## calculate statistics
