@@ -26,10 +26,16 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      if($seqID && (length($seq) > $trim)){
-	my $len = length($seq);
+      my $len = length($seq);
+      if($seqID && ($len > 1) && ($len > $trim)){
 	bzip2 \$seq => \$buffer;
 	my $cProp = length($seq) / length($buffer);
+        # repetition statistic, appears to correlate with repetitiveness
+        # a non-repetitive sequence tends to have this number < 5
+        my $cStat = exp($cProp) / log($len);
+        # normalised version of the repetitiveness statistic
+        # [approximately normal when repetitive sequences are excluded]
+        my $ncStat = ($cProp) / log($len);
         my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
         my $bTrim = ($trim < 1) ? ($len * $trim) : $trim;
         if($trim && (($bTrim * 3) < $len)){
@@ -43,7 +49,7 @@ while(<>){
           bzip2 \$rtSeq => \$buffer;
           $rtProp = $bTrim / length($buffer);
         }
-        printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len, $ltProp, $midProp, $rtProp, $seqID);
+        printf("%0.3f %d %0.3f %0.3f %0.3f %0.3f %0.3f %s\n", $cProp, $len, $cStat, $ncStat, $ltProp, $midProp, $rtProp, $seqID);
 	push(@lengths, $cProp);
       }
       $seq = "";
