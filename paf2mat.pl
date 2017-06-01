@@ -14,6 +14,7 @@ while(<>){
     foreach my $t1 (@tigs){
       foreach my $t2 (@tigs){
         $links{$t1}{$t2}++;
+        $links{$t2}{$t1}++;
       }
     }
     $read = $F[0];
