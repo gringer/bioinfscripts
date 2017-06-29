@@ -11,6 +11,7 @@ imageName <- "signal_out.pdf";
 title <- "";
 doPlot <- TRUE;
 doTrim <- TRUE;
+expandRegions <- NULL;
 
 usage <- function(){
   cat("usage: ./signal_viewer.r",
@@ -19,6 +20,7 @@ usage <- function(){
   cat("-out <file> : Write image to <file> [default: signal_out.pdf]\n");
   cat("-noplot     : Don't plot any data (just carry out calculations)\n");
   cat("-notrim     : Don't trim the raw signal for intermediate plot\n");
+  cat("-expand A-B : Produce an additional plot expanding region A-B (in seconds)\n");
   cat("-title      : Title for additional annotations\n");
   cat("-help       : Only display this help message\n");
   cat("\n");
@@ -45,8 +47,13 @@ while(!is.na(commandArgs()[argLoc])){
         doTrim <- FALSE;
     }
     else if(commandArgs()[argLoc] == "-out"){
-      imageName <- commandArgs()[argLoc+1];
-      argLoc <- argLoc + 1;
+        imageName <- commandArgs()[argLoc+1];
+        argLoc <- argLoc + 1;
+    }
+    else if(commandArgs()[argLoc] == "-expand"){
+        expandRegions <- rbind(expandRegions,
+                               as.numeric(unlist(strsplit(commandArgs()[argLoc+1],"-"))));
+        argLoc <- argLoc + 1;
     }
     else if(commandArgs()[argLoc] == "-title"){
       title <- commandArgs()[argLoc+1];
@@ -224,11 +231,37 @@ if(doPlot){
                      type="l", ylim=c(min(orig.sig),min(1400,max(orig.sig))),
                      xlim=c(xsplit*start,xsplit*(start+1)),
                      cex=0.25, xlab="", las=1, ylab="");
+                if(length(expandRegions) > 0){
+                    for(row in 1:nrow(expandRegions)){
+                        erS <- expandRegions[row,1];
+                        erE <- expandRegions[row,2];
+                        rect(xleft=erS, xright=erE, ytop=min(orig.sig), ybottom=min(1400,max(orig.sig)), col="#A0A0A040", border=NA);
+                    }
+                }
                 if(start == 1){
                     mtext("Unadjusted Raw Signal", side=2, line=4, xpd=NA);
                 }
                 if(start == 2){
                     mtext("Time (s)", side=1, line=3, xpd=NA);
+                }
+            }
+            if(length(expandRegions) > 0){
+                for(row in 1:nrow(expandRegions)){
+                    erS <- expandRegions[row,1] * 4000;
+                    erE <- expandRegions[row,2] * 4000;
+                    plot(((1:length(orig.sig))/4000)[erS:erE],
+                         orig.sig[erS:erE], pch=19,
+                         type="l", ylim=c(min(orig.sig),min(1400,max(orig.sig))),
+                         xlim=c(erS / 4000, erE / 4000),
+                         cex=0.25, xlab="", las=1, ylab="");
+                    if(row < nrow(expandRegions)){
+                        for(rowN in (row+1):nrow(expandRegions)){
+                            erSN <- expandRegions[rowN,1];
+                            erEN <- expandRegions[rowN,2];
+                            rect(xleft=erSN, xright=erEN, ytop=min(orig.sig), ybottom=min(1400,max(orig.sig)),
+                                 col="#A0A0A040", border=NA);
+                        }
+                    }
                 }
             }
             dummy <- dev.off();
