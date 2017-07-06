@@ -39,8 +39,6 @@ my $qualID = "";
 my $seq = "";
 my $qual = "";
 
-print(STDERR join(";",@ARGV)."\n");
-
 foreach my $file (@ARGV) {
   # This little gzip dance makes sure the script can handle both
   # gzip-compressed and uncompressed input, regardless of whether
