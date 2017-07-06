@@ -7,12 +7,9 @@ use strict;
 use Getopt::Long qw(:config auto_help pass_through);
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
-my $idFileName = "";
 my $quiet = 0;
-my $base = 33;
 
-GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet,
-           "base" => \$base ) or
+GetOptions("quiet!" => \$quiet) or
   die("Error in command line arguments");
 
 # unknown commands are treated as identifiers
@@ -40,22 +37,29 @@ my $seq = "";
 my $qual = "";
 
 foreach my $file (@ARGV) {
-  # This little gzip dance makes sure the script can handle both
+  # This little gunzip dance makes sure the script can handle both
   # gzip-compressed and uncompressed input, regardless of whether
   # or not it is piped
   my $z = new IO::Uncompress::Gunzip($file, "transparent", 1)
     or die "gunzip failed: $GunzipError\n";
   while(<$z>){
-    chomp;
-    chomp;
+    s/\s+$//; # remove ending whitespace
     if (!$inQual) {
       if (/^(>|@)((.+?)( .*?\s*)?)$/) {
         my $newSeqID = $2;
         my $newShortID = $3;
         $baseCount += length($seq);
-        while ($seq =~ s/(.)(\1*)//) {
-          $hpCounts{"$1$2"}++;
-        }
+        my $cur = "";
+        my $cchr = "";
+        grep { # collect homopolymers
+          if($_ ne $cchr){
+            $hpCounts{$cur}++ if($cur);
+            $cur = $cchr = $_;
+          } else {
+            $cur .= $cchr;
+          }
+        } split(//, $seq);
+        $hpCounts{$cur}++ if($cur); # collect remaining homopolymer (if any)
         $seq = "";
         $qual = "";
         $seqID = $newSeqID;
@@ -63,7 +67,7 @@ foreach my $file (@ARGV) {
         $inQual = 1;            # true
         $qualID = $1;
       } else {
-        $seq .= $_;
+        $seq .= uc($_);
       }
     } else {
       $qual .= $_;
@@ -76,19 +80,27 @@ foreach my $file (@ARGV) {
 }
 
 $baseCount += length($seq);
-while($seq =~ s/(.)(\1*)//){
-  $hpCounts{"$1$2"}++;
-}
+my $cur = "";
+my $cchr = "";
+grep { # collect homopolymers
+  if($_ ne $cchr){
+    $hpCounts{$cur}++ if($cur);
+    $cur = $cchr = $_;
+  } else {
+    $cur .= $cchr;
+  }
+} split(//, $seq);
+$hpCounts{$cur}++ if($cur); # collect remaining homopolymer (if any)
 
 my $cumCount = 0;
 foreach my $hpChar (sort {length($a) <=> length($b) || $a cmp $b} (keys(%hpCounts))){
   my $hpCount = $hpCounts{$hpChar};
   my $hpBaseCount = $hpCount * length($hpChar);
   $cumCount += $hpBaseCount;
-  printf("%10d %10d ( %6.2f%% / %6.2f%% ) %s\n",
+  printf("%10d %10d ( %6.2f%% / %6.2f%% ) '%s'\n",
          $hpCount,  $hpBaseCount,
          $hpBaseCount * 100 / $baseCount,
          $cumCount * 100 / $baseCount, $hpChar);
 }
 
-printf(STDERR "Total sequence length: %d\n", $baseCount);
+printf(STDERR "Total sequence length: %d\n", $baseCount) unless $quiet;
