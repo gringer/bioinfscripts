@@ -97,10 +97,12 @@ foreach my $hpChar (sort {length($a) <=> length($b) || $a cmp $b} (keys(%hpCount
   my $hpCount = $hpCounts{$hpChar};
   my $hpBaseCount = $hpCount * length($hpChar);
   $cumCount += $hpBaseCount;
-  printf("%10d %10d ( %6.2f%% / %6.2f%% ) '%s'\n",
+  printf("%10d %10d ( %6.2f%% / %6.2f%% ) %10s %s %d\n",
          $hpCount,  $hpBaseCount,
          $hpBaseCount * 100 / $baseCount,
-         $cumCount * 100 / $baseCount, $hpChar);
+         $cumCount * 100 / $baseCount,
+	 (length($hpChar) < 10 ? $hpChar : substr($hpChar,0,1)."........."),
+	 (length($hpChar) < 10 ? ":" : "x" ), length($hpChar));
 }
 
 printf(STDERR "Total sequence length: %d\n", $baseCount) unless $quiet;
