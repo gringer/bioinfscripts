@@ -139,6 +139,7 @@ plain.hist <- function(lengths, horiz=TRUE, barValues=TRUE, invert = TRUE, main 
     }
 }
 
+sampled.lengths <- NULL;
 
 ## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
@@ -155,6 +156,8 @@ dens.mat <- sapply(fileNames, function(x){
     res.out <- res$y;
     names(res.out) <- round(res$x,3);
     subName <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1", x);
+    sampled.lengths <<- cbind(sampled.lengths, sample(data, 10000, replace=TRUE));
+    str(sampled.lengths);
     if(plotCombined){
         png(sprintf("MinION_Reads_SequenceHist_%s.png",
                     subName), pointsize=24,
@@ -372,6 +375,15 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     dummy <- dev.off();
 }
 
+{
+    qqpfun <- function(A, B){
+        points(qqplot(A, B, plot.it=FALSE));
+    }
+    png("MinION_QQPlot.png", pointsize=24,
+        width=1600, height=1600);
+    pairs(sampled.lengths, labels=colnames(dens.mat), panel=qqpfun);
+    invisible(dev.off());
+}
 
 {
     pdf("MinION_Reads_DigElec.pdf", width=12, height=8);
