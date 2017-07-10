@@ -84,6 +84,8 @@ while(<>){
         if($qual){
           printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
         } else {
+          $seq =~ s/(.{100})/$1\n/g;
+          $seq =~ s/\n$//;
           printf(">%s\n%s\n", $seqID, $seq);
         }
       }
@@ -122,6 +124,8 @@ if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
   if($qual){
     printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
   } else {
+    $seq =~ s/(.{100})/$1\n/g;
+    $seq =~ s/\n$//;
     printf(">%s\n%s\n", $seqID, $seq);
   }
 }
