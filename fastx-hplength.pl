@@ -53,6 +53,10 @@ foreach my $file (@ARGV) {
         my $cur = "";
         my $cchr = "";
         if($mode ne "ACGT"){
+          $seq =~ tr/ACGT/ABBB/ if ($mode eq "B");
+          $seq =~ tr/ACGT/DCDD/ if ($mode eq "D");
+          $seq =~ tr/ACGT/HHGH/ if ($mode eq "H");
+          $seq =~ tr/ACGT/VVVT/ if ($mode eq "V");
           $seq =~ tr/ACGT/RYRY/ if (($mode eq "RY") || ($mode eq "YR"));
           $seq =~ tr/ACGT/WSSW/ if (($mode eq "WS") || ($mode eq "SW"));
           $seq =~ tr/ACGT/MMKK/ if (($mode eq "MK" || $mode eq "KM"));
@@ -91,6 +95,10 @@ $baseCount += length($seq);
 my $cur = "";
 my $cchr = "";
 if($mode ne "ACGT"){
+  $seq =~ tr/ACGT/ABBB/ if ($mode eq "B");
+  $seq =~ tr/ACGT/DCDD/ if ($mode eq "D");
+  $seq =~ tr/ACGT/HHGH/ if ($mode eq "H");
+  $seq =~ tr/ACGT/VVVT/ if ($mode eq "V");
   $seq =~ tr/ACGT/RYRY/ if (($mode eq "RY") || ($mode eq "YR"));
   $seq =~ tr/ACGT/WSSW/ if (($mode eq "WS") || ($mode eq "SW"));
   $seq =~ tr/ACGT/MMKK/ if (($mode eq "MK" || $mode eq "KM"));
