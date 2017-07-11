@@ -88,10 +88,10 @@ while(<>){
           $seq =~ s/\n$//;
           printf(">%s\n%s\n", $seqID, $seq);
         }
-      }
-      if($count-- == 0){
-        $seqID = "";
-        last;
+        if(--$count == 0){
+          $seqID = "";
+          last;
+        }
       }
       $seq = "";
       $qual = "";
