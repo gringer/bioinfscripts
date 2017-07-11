@@ -40,15 +40,15 @@ while(<>){
     if(/^(>|@)(.*)$/){
       my $newSeqID = $2;
       if($seqID){
-        if(!$qual){
-          $seq =~ s/(.{100})/$1\n/g;
-          $seq =~ s/\n$//;
-        }
         if($seqID =~ /$searchPattern/){
+          $fastXLengths{$seqID} = length($seq);
+          if(!$qual){
+            $seq =~ s/(.{100})/$1\n/g;
+            $seq =~ s/\n$//;
+          }
           $fastXStrs{$seqID} = ($qual) ?
             sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
             sprintf(">%s\n%s\n", $seqID, $seq);
-          $fastXLengths{$seqID} = length($seq);
         } else {
           printf(STDERR "Warning: No match for pattern '$searchPattern' for sequence '$seqID'\n");
         }
