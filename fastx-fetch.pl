@@ -29,13 +29,18 @@ if($trim){
 my @files = ();
 while(@ARGV){
   my $arg = shift(@ARGV);
-  if(-f $arg){
+  if(-e $arg){
     push(@files, $arg);
   } else {
     $idsToGet{$arg} = 1;
   }
 }
 @ARGV = @files;
+
+# use stdin if no files supplied
+if(!@ARGV){
+  @ARGV = '-' unless (-t STDIN);
+}
 
 if($idFileName){
   # read sequence IDs from input file
@@ -61,55 +66,61 @@ if(!$quiet && $invert){
   printf(STDERR "Excluding IDs, rather than selecting\n");
 }
 
-
 my $inQual = 0; # false
 my $seqID = "";
 my $qualID = "";
 my $seq = "";
 my $qual = "";
-while(<>){
-  chomp;
-  chomp;
-  if(!$inQual){
-    if(/^(>|@)((.+?)( .*?\s*)?)$/){
-      my $newSeqID = $2;
-      my $newShortID = $3;
-      if($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)){
-        if($trim > 0){
-          $seq = substr($seq, $trim, length($seq)-($trim * 2));
-          if($qual){
-            $qual = substr($qual, $trim, length($qual)-($trim * 2));
+foreach my $file (@ARGV) {
+  # This little gunzip dance makes sure the script can handle both
+  # gzip-compressed and uncompressed input, regardless of whether
+  # or not it is piped
+  my $z = new IO::Uncompress::Gunzip($file, "transparent", 1)
+    or die "gunzip failed: $GunzipError\n";
+  while(<$z>){
+    chomp;
+    chomp;
+    if (!$inQual) {
+      if (/^(>|@)((.+?)( .*?\s*)?)$/) {
+        my $newSeqID = $2;
+        my $newShortID = $3;
+        if ($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)) {
+          if ($trim > 0) {
+            $seq = substr($seq, $trim, length($seq)-($trim * 2));
+            if ($qual) {
+              $qual = substr($qual, $trim, length($qual)-($trim * 2));
+            }
+          }
+          if ($qual) {
+            printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+          } else {
+            $seq =~ s/(.{100})/$1\n/g;
+            $seq =~ s/\n$//;
+            printf(">%s\n%s\n", $seqID, $seq);
+          }
+          if (--$count == 0) {
+            $seqID = "";
+            last;
           }
         }
-        if($qual){
-          printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+        $seq = "";
+        $qual = "";
+        if ((!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})) xor $invert) {
+          $seqID = $newSeqID;
         } else {
-          $seq =~ s/(.{100})/$1\n/g;
-          $seq =~ s/\n$//;
-          printf(">%s\n%s\n", $seqID, $seq);
-        }
-        if(--$count == 0){
           $seqID = "";
-          last;
         }
-      }
-      $seq = "";
-      $qual = "";
-      if((!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})) xor $invert){
-        $seqID = $newSeqID;
+      } elsif (/^\+(.*)$/) {
+        $inQual = 1;            # true
+        $qualID = $1;
       } else {
-        $seqID = "";
+        $seq .= $_;
       }
-    } elsif(/^\+(.*)$/) {
-      $inQual = 1; # true
-      $qualID = $1;
     } else {
-      $seq .= $_;
-    }
-  } else {
-    $qual .= $_;
-    if(length($qual) >= length($seq)){
-      $inQual = 0; # false
+      $qual .= $_;
+      if (length($qual) >= length($seq)) {
+        $inQual = 0;            # false
+      }
     }
   }
 }
