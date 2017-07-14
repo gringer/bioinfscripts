@@ -12,17 +12,25 @@ my $maxLength = 10 ** 12; # 1 Tbp
 my $count = -1;
 my $invert = 0; # invert logic
 my $trim = 0;
+my $trimString = "";
 
 GetOptions("idfile=s" => \$idFileName, "quiet!" => \$quiet,
            "reverse|v!" => \$invert, "trim=i" => \$trim,
            "minLength=i" => \$minLength, "maxLength=i" => \$maxLength,
-           "count=i" => \$count, ) or
+           "count=i" => \$count, "nametrim=s" => \$trimString, ) or
   die("Error in command line arguments");
 
 my %idsToGet = ();
 if($trim){
   $minLength = $minLength + $trim * 2;
   $maxLength = $maxLength + $trim * 2;
+}
+
+if($trimString){
+  printf(STDERR "Will remove text matching '(%s)' from the sequence IDs",
+         $trimString);
+  $trimString =~ s/^\|//;
+  $trimString = "($trimString)";
 }
 
 # unknown commands are treated as identifiers
@@ -84,6 +92,12 @@ foreach my $file (@ARGV) {
       if (/^(>|@)((.+?)( .*?\s*)?)$/) {
         my $newSeqID = $2;
         my $newShortID = $3;
+        my $testSeqID = $newSeqID;
+        my $testShortID = $newShortID;
+        if($trimString){
+          $testShortID =~ s/$trimString//;
+          $testSeqID =~ s/$trimString//;
+        }
         if ($seqID && (length($seq) >= $minLength) && (length($seq) <= $maxLength)) {
           if ($trim > 0) {
             $seq = substr($seq, $trim, length($seq)-($trim * 2));
@@ -105,7 +119,7 @@ foreach my $file (@ARGV) {
         }
         $seq = "";
         $qual = "";
-        if ((!(keys(%idsToGet)) || exists($idsToGet{$newSeqID}) || exists($idsToGet{$newShortID})) xor $invert) {
+        if ((!(keys(%idsToGet)) || exists($idsToGet{$testSeqID}) || exists($idsToGet{$testShortID})) xor $invert) {
           $seqID = $newSeqID;
         } else {
           $seqID = "";
