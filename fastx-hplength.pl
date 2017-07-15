@@ -8,8 +8,9 @@ use Getopt::Long qw(:config auto_help pass_through);
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $quiet = 0;
+my $mode = "ACGT";
 
-GetOptions("quiet!" => \$quiet) or
+GetOptions("quiet!" => \$quiet, "mode=s" => \$mode) or
   die("Error in command line arguments");
 
 # unknown commands are treated as identifiers
@@ -51,6 +52,15 @@ foreach my $file (@ARGV) {
         $baseCount += length($seq);
         my $cur = "";
         my $cchr = "";
+        if($mode ne "ACGT"){
+          $seq =~ tr/ACGT/ABBB/ if ($mode eq "B");
+          $seq =~ tr/ACGT/DCDD/ if ($mode eq "D");
+          $seq =~ tr/ACGT/HHGH/ if ($mode eq "H");
+          $seq =~ tr/ACGT/VVVT/ if ($mode eq "V");
+          $seq =~ tr/ACGT/RYRY/ if (($mode eq "RY") || ($mode eq "YR"));
+          $seq =~ tr/ACGT/WSSW/ if (($mode eq "WS") || ($mode eq "SW"));
+          $seq =~ tr/ACGT/MMKK/ if (($mode eq "MK" || $mode eq "KM"));
+        }
         grep { # collect homopolymers
           if($_ ne $cchr){
             $hpCounts{$cur}++ if($cur);
@@ -79,9 +89,20 @@ foreach my $file (@ARGV) {
   close($z);
 }
 
+$mode = uc($mode);
+
 $baseCount += length($seq);
 my $cur = "";
 my $cchr = "";
+if($mode ne "ACGT"){
+  $seq =~ tr/ACGT/ABBB/ if ($mode eq "B");
+  $seq =~ tr/ACGT/DCDD/ if ($mode eq "D");
+  $seq =~ tr/ACGT/HHGH/ if ($mode eq "H");
+  $seq =~ tr/ACGT/VVVT/ if ($mode eq "V");
+  $seq =~ tr/ACGT/RYRY/ if (($mode eq "RY") || ($mode eq "YR"));
+  $seq =~ tr/ACGT/WSSW/ if (($mode eq "WS") || ($mode eq "SW"));
+  $seq =~ tr/ACGT/MMKK/ if (($mode eq "MK" || $mode eq "KM"));
+}
 grep { # collect homopolymers
   if($_ ne $cchr){
     $hpCounts{$cur}++ if($cur);
@@ -93,7 +114,8 @@ grep { # collect homopolymers
 $hpCounts{$cur}++ if($cur); # collect remaining homopolymer (if any)
 
 my $cumCount = 0;
-foreach my $hpChar (sort {length($a) <=> length($b) || $a cmp $b} (keys(%hpCounts))){
+foreach my $hpChar (sort {length($a) <=> length($b) || $a cmp $b}
+                    (keys(%hpCounts))){
   my $hpCount = $hpCounts{$hpChar};
   my $hpBaseCount = $hpCount * length($hpChar);
   $cumCount += $hpBaseCount;
