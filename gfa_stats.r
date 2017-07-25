@@ -40,15 +40,17 @@ sequence.hist <- function(lengths, lengthRange=NULL){
     seqd.bases;
 }
 
-wtsi.lengths <- read.table("~/db/fasta/nippo/lengths_Nb_WTSI.txt",
+#wtsi.lengths <- read.table("~/db/fasta/nippo/lengths_Nb_WTSI.txt",
+wtsi.lengths <- read.table("lengths_Nb_WTSI.txt",
                            col.names=c("length","contig"));
 ghost.data[["WTSI"]] <- sequence.hist(wtsi.lengths$length,
                                       lengthRange=myXRange);
 
-setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
+#setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
+setwd("/bioinf/MIMR-2017-Jul-01-GBIS/GLG/paper");
 
-#gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
-gfaName <- "NbL5_ONTA.contigs.gfa";
+gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
+#gfaName <- "NbL5_ONTA.contigs.gfa";
 #gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
 #gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
 data.lines <- readLines(gfaName);
@@ -77,11 +79,15 @@ dup.toDir <- table(paste0(data.link.df$to,data.link.df$toDir));
 dup.toDir <- dup.toDir[dup.toDir > 1];
 dup.toDir <- sub(".$","",names(dup.toDir));
 dup.contigs <- union(dup.fromDir, dup.toDir);
+
+
 link.lines.df <- data.link.df[(data.link.df$from %in% dup.contigs) |
                               (data.link.df$to   %in% dup.contigs),];
 link.lines.contigs <- union(link.lines.df$from,link.lines.df$to);
 paste(sub("tig0+","",link.lines.contigs),collapse=",");
 length(link.lines.contigs);
+
+
 
 #data.bilink.df <- unique(rbind(data.link.df[,c("from","to")],
 #                               data.link.df[,c("to","from")]));
@@ -90,26 +96,65 @@ data.clusters <- clusters(data.graph);
 data.clLengths <- tapply(data.clusters$membership, data.clusters$membership,
                          function(x){data.lengths[names(x)]});
 data.clSizes <- data.clusters$csize;
-data.unlinked <-
-    names(data.lengths)[!(names(data.lengths) %in%
-                          c(data.link.df$from,data.link.df$to))];
-tigs.clSizes <- data.clusters$membership[names(data.lengths)];
-names(tigs.clSizes) <- names(data.lengths);
-tigs.clSizes[is.na(tigs.clSizes)] <- 0;
+tigs.clIDs <- data.clusters$membership[names(data.lengths)];
+names(tigs.clIDs) <- names(data.lengths);
+tigs.clIDs[is.na(tigs.clIDs)] <- 0;
+tigs.clSizes <- rep(0, length(names(data.lengths)));
+names(tigs.clSizes) <- names(tigs.clIDs);
+tigs.clSizes[names(tigs.clSizes)] <- ifelse(tigs.clIDs[names(tigs.clSizes)] == 0, 0,
+                                            data.clSizes[tigs.clIDs[names(tigs.clSizes)]]);
+tigs.adj.clSizes <- tigs.clSizes; ## TODO: numbers are still being assigned to the wrong ones
+tigs.adj.clSizes[tigs.adj.clSizes >= 12] <- 12; ## more than 11 links === lots
+data.linked.cIDs <-
+    unique(tigs.clIDs[dup.contigs]);
+data.unlinked.cIDs <- setdiff(unique(data.clusters$membership),
+                              data.linked.cIDs);
+## number of unlinked (or simply-linked) subgraphs
+length(data.unlinked.cIDs) + sum(tigs.clIDs == 0);
+## number of unlinked (or simply-linked) contigs
+sum(tigs.clIDs %in% data.unlinked.cIDs) + sum(tigs.clIDs == 0);
+## length of longest unlinked contigs
+tail(sort(data.lengths[names(tigs.clIDs)[(tigs.clIDs %in% data.unlinked.cIDs) | (tigs.clIDs == 0)]]));
+## aggregate length of unlinked contigs
+sum(data.lengths[names(tigs.clIDs)[(tigs.clIDs %in% data.unlinked.cIDs) | (tigs.clIDs == 0)]]);
+## length of longest linked contigs
+tail(sort(data.lengths[names(tigs.clIDs)[(tigs.clIDs %in% data.linked.cIDs)]]));
+sum(data.lengths);
+## aggregate length of linked contigs
+sum(data.lengths[names(tigs.clIDs)[tigs.clIDs %in% data.linked.cIDs]]);
+## total length of all clusters
+sum(data.lengths);
+## non-trivial subgraph count
+sum(tigs.clIDs %in% data.linked.cIDs);
+## non-trivial subgraph contig count
+length(data.linked.cIDs);
+## non-trivial subgraph list
+paste(sub("tig0*","",names(tigs.clIDs)[tigs.clIDs %in% data.linked.cIDs]), collapse=",");
+
+## get single-branch contigs
+table(data.clSizes[data.linked.cIDs]);
+data.3way <- data.linked.cIDs[data.clSizes[data.linked.cIDs] == 3];
+contigs.3way <- names(tigs.clIDs)[tigs.clIDs %in% data.3way];
+
+## look at BUSCO contigs
+busco.df <- read.delim(comment.char="#", "full_table_BUSCO_longgeno_CDLI_CD98LMOHC50_TBNOCFED_nematodes.tsv",
+                       header=FALSE, col.names=c("Busco id", "Status", "Contig", "Start", "End", "Score", "Length"));
+
+
+unique(data.clSizes);
+
 
 ## barplot for length of contigs
 pdf(sprintf("%s.pdf",gfaName), width=12, height=4);
 par(mar=c(4.5,4.5,2,0.5));
 options(scipen=15);
-clBreaks <- c(0,paste(tail(sort(unique(floor((tigs.clSizes-1)/30))),-1)*30+1,
-                      tail(sort(unique(floor((tigs.clSizes-1)/30))),-1)*30+30,
-                      sep="-"));
+clBreaks <- 0:12;
 bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(length(clBreaks));
-bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(10);
+#bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(10);
 myXRange <- c(1672,2048309); #range(data.lengths);
 myYRange <- c(0,60); #range(data.lengths);
-bar.data <- t(sapply(sort(unique(floor((tigs.clSizes-1)/30))), function(x){
-    sequence.hist(data.lengths[floor((tigs.clSizes-1)/30) == x],
+bar.data <- t(sapply(as.character(clBreaks), function(x){
+    sequence.hist(data.lengths[tigs.adj.clSizes == as.numeric(x)],
                   lengthRange=myXRange);
 }));
 ghost.data[[sprintf("%s",gfaName)]] <- colSums(bar.data);
