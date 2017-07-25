@@ -11,8 +11,11 @@ use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
 
 my $seqFileName = "";
 my $ignoreSelf = 0;
+my $includeQuery = 0;
+my $includeTarget = 0;
 
-GetOptions("seqfile=s" => \$seqFileName, "overlap!" => \$ignoreSelf) or
+GetOptions("seqfile=s" => \$seqFileName, "overlap!" => \$ignoreSelf,
+           "query!" => \$includeQuery, "target!" => \$includeTarget) or
   die("Error in command line arguments");
 
 my %seqs = ();
@@ -85,7 +88,10 @@ my $tName = "";
 
 my %matches = ();
 
-print("query,target,dir,qS,qE,qML,qL,qPct,tS,tE,tML,tL,tPct\n");
+print("query,target,dir,qS,qE,qML,qL,qPct,tS,tE,tML,tL,tPct");
+print(",qStr") if($includeQuery);
+print(",tStr") if($includeTarget);
+print("\n");
 
 while(<>){
   if(!/^[as]/){
@@ -114,7 +120,10 @@ while(<>){
                 $qStart, $qEnd, $qMatchLen, $qLen, ($qMatchLen / $qLen) * 100,
                 $tStart, $tEnd, $tMatchLen, $tLen, ($tMatchLen / $tLen) * 100);
       if(!$ignoreSelf || ($qName ne $tName)){
-        print("$matchLine\n");
+        print("${matchLine}");
+        print(",${qSeq}") if($includeQuery);
+        print(",${tSeq}") if($includeTarget);
+        print("\n");
       }
       $matches{$qName}{$qStart} .= ":matchLine";
    } else {
