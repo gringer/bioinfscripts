@@ -7,6 +7,7 @@ use strict;
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $quiet = 0;
+my $preserve = 0;
 
 sub rc {
   my ($seq) = @_;
@@ -16,7 +17,7 @@ sub rc {
   return(scalar(reverse($seq)));
 }
 
-GetOptions("quiet!" => \$quiet) or
+GetOptions("quiet!" => \$quiet, "preserve!" => \$preserve) or
   die("Error in command line arguments");
 
 # unknown commands are treated as identifiers
@@ -42,6 +43,15 @@ while(<>){
       my $newSeqID = $2;
       my $newShortID = $3;
       if($seqID){
+	if($preserve){
+	  if($qual){
+	    printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+	  } else {
+	    $seq =~ s/(.{70})/$1\n/g;
+	    $seq =~ s/\n$//;
+	    printf(">%s\n%s\n", $seqID, $seq);
+	  }
+	}
         if($qual){
           printf("@%s [RC]\n%s\n+\n%s\n", $seqID, rc($seq), scalar(reverse($qual)));
         } else {
@@ -69,6 +79,15 @@ while(<>){
 }
 
 if($seqID){
+  if($preserve){
+    if($qual){
+      printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
+    } else {
+      $seq =~ s/(.{70})/$1\n/g;
+      $seq =~ s/\n$//;
+      printf(">%s\n%s\n", $seqID, $seq);
+    }
+  }
   if($qual){
     printf("@%s [RC]\n%s\n+\n%s\n", $seqID, rc($seq), scalar(reverse($qual)));
   } else {
