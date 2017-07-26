@@ -40,18 +40,18 @@ sequence.hist <- function(lengths, lengthRange=NULL){
     seqd.bases;
 }
 
-#wtsi.lengths <- read.table("~/db/fasta/nippo/lengths_Nb_WTSI.txt",
-wtsi.lengths <- read.table("lengths_Nb_WTSI.txt",
+wtsi.lengths <- read.table("~/db/fasta/nippo/lengths_Nb_WTSI.txt",
+#wtsi.lengths <- read.table("lengths_Nb_WTSI.txt",
                            col.names=c("length","contig"));
 ghost.data[["WTSI"]] <- sequence.hist(wtsi.lengths$length,
                                       lengthRange=myXRange);
 
-#setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
-setwd("/bioinf/MIMR-2017-Jul-01-GBIS/GLG/paper");
+setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
+#setwd("/bioinf/MIMR-2017-Jul-01-GBIS/GLG/paper");
 
-gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
+#gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
 #gfaName <- "NbL5_ONTA.contigs.gfa";
-#gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
+gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
 #gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
 data.lines <- readLines(gfaName);
 
@@ -84,7 +84,6 @@ dup.contigs <- union(dup.fromDir, dup.toDir);
 link.lines.df <- data.link.df[(data.link.df$from %in% dup.contigs) |
                               (data.link.df$to   %in% dup.contigs),];
 link.lines.contigs <- union(link.lines.df$from,link.lines.df$to);
-paste(sub("tig0+","",link.lines.contigs),collapse=",");
 length(link.lines.contigs);
 
 
@@ -98,12 +97,14 @@ data.clLengths <- tapply(data.clusters$membership, data.clusters$membership,
 data.clSizes <- data.clusters$csize;
 tigs.clIDs <- data.clusters$membership[names(data.lengths)];
 names(tigs.clIDs) <- names(data.lengths);
-tigs.clIDs[is.na(tigs.clIDs)] <- 0;
 tigs.clSizes <- rep(0, length(names(data.lengths)));
 names(tigs.clSizes) <- names(tigs.clIDs);
-tigs.clSizes[names(tigs.clSizes)] <- ifelse(tigs.clIDs[names(tigs.clSizes)] == 0, 0,
-                                            data.clSizes[tigs.clIDs[names(tigs.clSizes)]]);
-tigs.adj.clSizes <- tigs.clSizes; ## TODO: numbers are still being assigned to the wrong ones
+tigs.clSizes[names(tigs.clSizes)] <- data.clSizes[tigs.clIDs[names(tigs.clSizes)]];
+tigs.clSizes[is.na(tigs.clSizes)] <- 1;
+tigs.clIDs[is.na(tigs.clIDs)] <- 0; ## must be done after clSizes is populated, otherwise arrays are compressed
+
+
+tigs.adj.clSizes <- tigs.clSizes;
 tigs.adj.clSizes[tigs.adj.clSizes >= 12] <- 12; ## more than 11 links === lots
 data.linked.cIDs <-
     unique(tigs.clIDs[dup.contigs]);
@@ -135,20 +136,25 @@ paste(sub("tig0*","",names(tigs.clIDs)[tigs.clIDs %in% data.linked.cIDs]), colla
 table(data.clSizes[data.linked.cIDs]);
 data.3way <- data.linked.cIDs[data.clSizes[data.linked.cIDs] == 3];
 contigs.3way <- names(tigs.clIDs)[tigs.clIDs %in% data.3way];
+paste(sub("tig0*","",contigs.3way), collapse=",");
+cat(contigs.3way);
+
+cat(tapply(names(tigs.clIDs[contigs.3way]),tigs.clIDs[contigs.3way],paste,collapse=" "),sep="\n");
 
 ## look at BUSCO contigs
 busco.df <- read.delim(comment.char="#", "full_table_BUSCO_longgeno_CDLI_CD98LMOHC50_TBNOCFED_nematodes.tsv",
                        header=FALSE, col.names=c("Busco id", "Status", "Contig", "Start", "End", "Score", "Length"));
 
 
-unique(data.clSizes);
+sort(unique(data.clSizes));
+sort(unique(tigs.clSizes));
 
 
 ## barplot for length of contigs
 pdf(sprintf("%s.pdf",gfaName), width=12, height=4);
 par(mar=c(4.5,4.5,2,0.5));
 options(scipen=15);
-clBreaks <- 0:12;
+clBreaks <- 1:12;
 bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(length(clBreaks));
 #bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(10);
 myXRange <- c(1672,2048309); #range(data.lengths);
@@ -157,13 +163,14 @@ bar.data <- t(sapply(as.character(clBreaks), function(x){
     sequence.hist(data.lengths[tigs.adj.clSizes == as.numeric(x)],
                   lengthRange=myXRange);
 }));
+rownames(bar.data)[nrow(bar.data)] <- paste0(rownames(bar.data)[nrow(bar.data)],"+");
 ghost.data[[sprintf("%s",gfaName)]] <- colSums(bar.data);
 ghost.data[[sprintf("%s",gfaName)]];
 b.res <- barplot(bar.data/1000000, col=bcols, border=NA,
                  main=sprintf("%s",gfaName),
-                 legend.text=clBreaks, las=2, ylab = "Aggregate length (Mb)",
+                 legend.text=rownames(bar.data), las=2, ylab = "Aggregate length (Mb)",
                  xlab="Contig length", xaxt="n", ylim=c(0,60),
-                 args.legend=list(x="topright", inset=0.05,
+                 args.legend=list(x="topright", inset=0.05, ncol=2,
                                   title="Linked Contigs", cex=0.6));
 for(gi in 1:length(ghost.data)){
     points(spline(x=b.res, y=ghost.data[[gi]]/1000000, n=100),
