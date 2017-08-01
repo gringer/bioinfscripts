@@ -2,6 +2,10 @@
 use warnings;
 use strict;
 
+use Getopt::Long qw(:config auto_help pass_through);
+use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
+use Digest::MD5 qw(md5_hex);
+
 sub SIConvert{
   my ($val) = @_;
   my @largePrefixes = ("k", "M", "G");
@@ -16,43 +20,79 @@ sub SIConvert{
   return(sprintf("%.12g %s", $val, $prefix));
 }
 
+my $showMD5 = 0; # false
+my $showFName = 0; # false
+
+GetOptions("md5!" => \$showMD5, "fname!" => \$showFName, ) or
+  die("Error in command line arguments");
+
+# use stdin if no files supplied
+if(!@ARGV){
+  @ARGV = '-' unless (-t STDIN);
+}
+
 my @lengths = ();
 my $inQual = 0; # false
 my $seqID = "";
 my $qualID = "";
 my $seq = "";
 my $qual = "";
-while(<>){
-  chomp;
-  chomp;
-  if(!$inQual){
-    if(/^(>|@)((.+?)( .*?\s*)?)$/){
-      my $newSeqID = $2;
-      my $newShortID = $3;
-      if($seqID){
-        printf("%d %s\n", length($seq), $seqID);
-	push(@lengths, length($seq));
+my $seqFName = "";
+foreach my $file (@ARGV) {
+  # This little gunzip dance makes sure the script can handle both
+  # gzip-compressed and uncompressed input, regardless of whether
+  # or not it is piped
+  my $z = new IO::Uncompress::Gunzip($file, "transparent", 1)
+    or die "gunzip failed: $GunzipError\n";
+  while(<$z>){
+    chomp;
+    chomp;
+    if (!$inQual) {
+      if (/^(>|@)((.+?)( .*?\s*)?)$/) {
+        my $newSeqID = $2;
+        my $newShortID = $3;
+        if ($seqID) {
+          print(length($seq));
+          if($showMD5){
+            print(" ".md5_hex($seq));
+          }
+          print(" ${seqID}");
+          if($showFName){
+            print(" ".$seqFName);
+          }
+          print("\n");
+          push(@lengths, length($seq));
+        }
+        $seq = "";
+        $qual = "";
+        $seqID = $newSeqID;
+        $seqFName = $file;
+      } elsif (/^\+(.*)$/) {
+        $inQual = 1;            # true
+        $qualID = $1;
+      } else {
+        $seq .= $_;
       }
-      $seq = "";
-      $qual = "";
-      $seqID = $newSeqID;
-    } elsif(/^\+(.*)$/) {
-      $inQual = 1; # true
-      $qualID = $1;
     } else {
-      $seq .= $_;
-    }
-  } else {
-    $qual .= $_;
-    if(length($qual) >= length($seq)){
-      $inQual = 0; # false
+      $qual .= $_;
+      if (length($qual) >= length($seq)) {
+        $inQual = 0;            # false
+      }
     }
   }
 }
 
-if($seqID){
-    printf("%d %s\n", length($seq), $seqID);
-    push(@lengths, length($seq));
+if ($seqID) {
+  print(length($seq));
+  if($showMD5){
+    print(" ".md5_hex($seq));
+  }
+  print(" ${seqID}");
+  if($showFName){
+    print(" ".$seqFName);
+  }
+  print("\n");
+  push(@lengths, length($seq));
 }
 
 ## calculate statistics
