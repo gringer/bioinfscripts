@@ -45,8 +45,8 @@ sequence.hist <- function(lengths, horiz = TRUE, barValues=TRUE, invert = TRUE, 
     histBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
     lengthRange <- range(lengths);
     ## filter on actual data range
-    histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
-                             which.max(histBreaks > lengthRange[2])];
+    histBreaks <- unique(histBreaks[(which.min(histBreaks < lengthRange[1])-1):
+                                    which.max(histBreaks > lengthRange[2])]);
     seqd.bases <- seqd.na.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
     seqd.counts <- seqd.na.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
     seqd.bases[is.na(seqd.bases)] <- 0;
@@ -92,8 +92,8 @@ plain.hist <- function(lengths, horiz=TRUE, barValues=TRUE, invert = TRUE, main 
     histBreaks <- round(rep(10^(0:16),each=5) * fib.divs);
     lengthRange <- range(lengths);
     ## filter on actual data range
-    histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
-                             which.max(histBreaks > lengthRange[2])];
+    histBreaks <- unique(histBreaks[(which.min(histBreaks < lengthRange[1])-1):
+                                    which.max(histBreaks > lengthRange[2])]);
     seqd.bases <- seqd.na.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
     seqd.counts <- seqd.na.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
     seqd.bases[is.na(seqd.bases)] <- 0;
@@ -144,15 +144,16 @@ sampled.lengths <- NULL;
 ## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
     width=11, height=8);
-par(mar=c(5.5,6.5,2.5,1.5));
+par(mar=c(5.5,6.5,2.5,4.5));
 dens.mat <- sapply(fileNames, function(x){
     cat(x,"...");
     data <- scan(x, comment.char=" ", quiet=TRUE);
+    data <- data[data>0];
     cat(" done\n");
     cat("Number of sequences:",length(data),"\n");
     cat("Length quantiles:\n");
     print(quantile(data, probs=seq(0,1,by=0.1)));
-    res <- density(log10(data), from=2, to=6, bw=0.1);
+    res <- density(log10(data), bw=0.1);
     res.out <- res$y;
     names(res.out) <- round(res$x,3);
     subName <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1", x);
@@ -172,7 +173,7 @@ dens.mat <- sapply(fileNames, function(x){
                     subName), pointsize=24,
             width=1280, height=960);
     }
-    par(mar=c(5.5,6.5,3.5,1.5));
+    par(mar=c(5.5,6.5,3.5,4.5));
     sequence.hist(data, horiz=plotHoriz, barValues=plotVals,
                   main=sprintf("Read Length Distribution Plot (%s)",subName));
     if(!plotCombined){
@@ -182,20 +183,20 @@ dens.mat <- sapply(fileNames, function(x){
             width=1280, height=960);
     }
     if(plotHoriz){
-        par(mar=c(5.5,6.5,2.5,1.5));
+        par(mar=c(5.5,6.5,2.5,4.5));
     } else {
-        par(mar=c(3,6.5,4.5,1.5));
+        par(mar=c(5,6.5,4.5,4.5));
     }
     plain.hist(data, horiz=plotHoriz, barValues=plotVals,
                main=sprintf("Read Count Distribution Plot (%s)",subName));
     dummy <- dev.off();
-    par(mar=c(5.5,6.5,3.5,1.5));
+    par(mar=c(5.5,6.5,3.5,4.5));
     sequence.hist(data, horiz=plotHoriz, barValues=plotVals,
                   main=sprintf("Read Length Distribution Plot (%s)",subName));
     if(plotHoriz){
-        par(mar=c(5.5,6.5,2.5,1.5));
+        par(mar=c(5.5,6.5,2.5,4.5));
     } else {
-        par(mar=c(3,6.5,4.5,1.5));
+        par(mar=c(5,6.5,4.5,4.5));
     }
     plain.hist(data, horiz=plotHoriz, barValues=plotVals,
                main=sprintf("Read Count Distribution Plot (%s)",subName));
@@ -379,10 +380,12 @@ bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
     qqpfun <- function(A, B){
         points(qqplot(A, B, plot.it=FALSE));
     }
-    png("MinION_QQPlot.png", pointsize=24,
-        width=1600, height=1600);
-    pairs(sampled.lengths, labels=colnames(dens.mat), panel=qqpfun);
-    invisible(dev.off());
+    if(ncol(dens.mat)>1){
+        png("MinION_QQPlot.png", pointsize=24,
+            width=1600, height=1600);
+        pairs(sampled.lengths, labels=colnames(dens.mat), panel=qqpfun);
+        invisible(dev.off());
+    }
 }
 
 {
