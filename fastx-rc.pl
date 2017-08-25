@@ -47,6 +47,7 @@ while(<>){
 	  if($qual){
 	    printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
 	  } else {
+	    $seq =~ s/\n//g;
 	    $seq =~ s/(.{70})/$1\n/g;
 	    $seq =~ s/\n$//;
 	    printf(">%s\n%s\n", $seqID, $seq);
@@ -55,6 +56,7 @@ while(<>){
         if($qual){
           printf("@%s [RC]\n%s\n+\n%s\n", $seqID, rc($seq), scalar(reverse($qual)));
         } else {
+          $seq =~ s/\n//g;
           $seq = rc($seq);
           $seq =~ s/(.{70})/$1\n/g;
           $seq =~ s/\n$//;
@@ -83,6 +85,7 @@ if($seqID){
     if($qual){
       printf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual);
     } else {
+      $seq =~ s/\n//g;
       $seq =~ s/(.{70})/$1\n/g;
       $seq =~ s/\n$//;
       printf(">%s\n%s\n", $seqID, $seq);
@@ -91,6 +94,7 @@ if($seqID){
   if($qual){
     printf("@%s [RC]\n%s\n+\n%s\n", $seqID, rc($seq), scalar(reverse($qual)));
   } else {
+    $seq =~ s/\n//g;
     $seq = rc($seq);
     $seq =~ s/(.{70})/$1\n/g;
     $seq =~ s/\n$//;
