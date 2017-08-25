@@ -27,19 +27,18 @@ image(x=1:rptSize, y=1:numLines-1, matrix(subSeq,nrow=rptSize),
       main=sprintf("%s (%0.3f kb, %d bases / line)", sub(" .*$","",inName),
                    lis/1000, rptSize), ylab="Base location",
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
-      col=c("green","blue","yellow","red","lightgrey"));
+      col=c("#006400","#0000FF","#FFD700","#FF6347","lightgrey"));
 axis(2, at=round(seq(0, numLines, length.out=20)),
      labels=round(seq(0, numLines, length.out=20)) * rptSize+1,
      las=2, cex.axis=1);
 dummy <- dev.off();
 
-numLoops <- ceiling(length(inSeq) / rptSize);
+numLoops <- (length(inSeq) / rptSize);
 ##startCount <- rptSize / 1.2;
 startCount <- rptSize;
-startRadius <- 0.2;
+startRadius <- ifelse(numLoops < 10, 0.5, 0.2);
 endRadius <- 1.0;
 ##loopIncrement <- ((rptSize * 1.2) - (rptSize / 1.2)) / numLoops;
-loopIncrement <- 0;
 
 
 if(type == "png"){
@@ -52,16 +51,27 @@ plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
 mtext(sprintf("%s (%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
               lis/1000, rptSize));
 ## Pre-population plot variables
-radiusFactor <- (endRadius - startRadius) / numLoops;
-radius <- unlist(sapply(1:numLoops,function(x){
-  loopCount <- startCount + loopIncrement * (x-1);
-  ((x-1) + seq(0, 1-(1/loopCount), length.out=loopCount-1)) *
-    radiusFactor + startRadius}));
-angle <- unlist(sapply(1:numLoops,function(x){
-  loopCount <- startCount + loopIncrement * (x-1);
-  seq(0, 2*pi-(2*pi/loopCount), length.out=loopCount-1)}));
+## integrate(2*pi*r,r=startRadius..endRadius)
+## => pi((endRadius)²-(startRadius)²)
+dTot <- pi*(endRadius^2 - startRadius^2); ## total "distance" travelled
+theta <- seq(0, numLoops * 2*pi, length.out=length(inSeq)); ## traversed angle
+deg <- (theta / (2*pi)) * 360;
+r <- seq(sqrt(startRadius), sqrt(endRadius),
+         length.out=length(inSeq))^2; ## path radius
+s <- pi * (r^2 - startRadius^2); ## traversed distance at each pos
+ds <- c(s[2],diff(s)); ## distance difference at each pos
+
+## par(mfrow=c(4,1));
+## plot(s, main="s");
+## plot(r, main="r");
+## plot(deg, main="deg");
+## plot(theta, main="theta");
+
 ## draw the spiral
-points(rev(radius) * cos(rev(angle)), rev(radius) * sin(rev(angle)),
-       col=c("#00FF0060","#0000FF60","#FFFF0060","#FF000060")[rev(inSeq)],
-       pch=16, cex=rev(sqrt(radius)) * 2);
-dummy <- dev.off();
+points(rev(r) * cos(rev(theta)), rev(r) * sin(rev(theta)),
+       col=c("#00640080","#0000FF80","#FFD70080","#FF634780")[rev(inSeq)],
+       pch=16, cex=rev(sqrt(r)) * (7/log(numLoops)));
+legend("center", legend=c("A","C","G","T"), inset=0.2,
+       fill=c("#006400","#0000FF","#FFD700","#FF6347"),
+       cex=ifelse(numLoops < 10, 1, 0.71));
+invisible(dev.off());
