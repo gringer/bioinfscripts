@@ -49,9 +49,9 @@ ghost.data[["WTSI"]] <- sequence.hist(wtsi.lengths$length,
 setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
 #setwd("/bioinf/MIMR-2017-Jul-01-GBIS/GLG/paper");
 
-#gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
+gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
 #gfaName <- "NbL5_ONTA.contigs.gfa";
-gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
+#gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
 #gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
 data.lines <- readLines(gfaName);
 
@@ -151,13 +151,14 @@ sort(unique(tigs.clSizes));
 
 
 ## barplot for length of contigs
-pdf(sprintf("%s.pdf",gfaName), width=12, height=4);
-par(mar=c(4.5,4.5,2,0.5));
+#pdf(sprintf("%s.pdf",gfaName), width=12, height=4);
+svg(sprintf("%s.svg",gfaName), width=12, height=4);
+par(mar=c(4.5,0.5,2,4.5), cex.lab=1.3);
 options(scipen=15);
 clBreaks <- 1:12;
 bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(length(clBreaks));
 #bcols <- colorRampPalette(brewer.pal(11,"Spectral"))(10);
-myXRange <- c(1672,2048309); #range(data.lengths);
+myXRange <- c(400,2048309); #range(data.lengths);
 myYRange <- c(0,60); #range(data.lengths);
 bar.data <- t(sapply(as.character(clBreaks), function(x){
     sequence.hist(data.lengths[tigs.adj.clSizes == as.numeric(x)],
@@ -168,15 +169,20 @@ ghost.data[[sprintf("%s",gfaName)]] <- colSums(bar.data);
 ghost.data[[sprintf("%s",gfaName)]];
 b.res <- barplot(bar.data/1000000, col=bcols, border=NA,
                  main=sprintf("%s",gfaName),
-                 legend.text=rownames(bar.data), las=2, ylab = "Aggregate length (Mb)",
-                 xlab="Contig length", xaxt="n", ylim=c(0,60),
-                 args.legend=list(x="topright", inset=0.05, ncol=2,
-                                  title="Linked Contigs", cex=0.6));
+                 legend.text=rownames(bar.data), las=2,
+                 ylab = "",
+                 xlab= "", xaxt="n", ylim=c(0,60),
+                 args.legend=list(x="topleft", inset=c(0.02,0.06), ncol=3,
+                                  title="Linked Contigs", cex=1.2),
+                 yaxt="n");
+axis(4);
+mtext("Contig length", side=1, line=3.5, cex=par("cex.lab"));
+mtext("Aggregate length (Mb)", side=4, line=3, cex=par("cex.lab"));
 for(gi in 1:length(ghost.data)){
     points(spline(x=b.res, y=ghost.data[[gi]]/1000000, n=100),
-           type="l", lty=gi);
+           type="l", lty=gi, lwd=2);
 }
-legend("topleft", lty=1:length(ghost.data), legend=names(ghost.data),
+legend("topright", lty=1:length(ghost.data), legend=names(ghost.data),
        inset=0.05, cex=0.6);
 b.int <- b.res[2]-b.res[1];
 axis(1, at=seq(head(b.res,1)-b.int/2, tail(b.res,1)+b.int/2, by=b.int),
