@@ -16,7 +16,6 @@ fLimit <- 300;
 spectrum <- matrix(0, slen, fLimit);
 colnames(spectrum) <- 1:ncol(spectrum);
 for(cycle in 1:ncol(spectrum)){
-    cat(cycle);
     for(base in c("A","C","G","T")){
         for(pshift in -2:2){
             poss <- basePoss[[base]] - cycle + pshift;
@@ -29,9 +28,10 @@ for(cycle in 1:ncol(spectrum)){
 
 smoothSpec <- apply(spectrum, 2, runmean, 20);
 
-png("Spectral_decomposition.png", height=1800, width=1800, pointsize=36);
+png("DNA_spectrogram.png", height=1800, width=1800, pointsize=36);
 image(x=1:length(seqs), y=1:ncol(spectrum), spectrum,
       col=(colorRampPalette(c("white",blues9)))(100),
       xlab="Sequence location (bp)",
       ylab="Repeat width (bp)");
+abline(h=seq(0,fLimit, by=10), lty="dashed", lwd=2, col="#FF5000A0");
 invisible(dev.off());
