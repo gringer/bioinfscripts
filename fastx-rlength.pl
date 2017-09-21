@@ -9,6 +9,7 @@ use IO::File;
 my $trim = 0;
 my $maxUnit = 1000;
 my $sampleSize = 1000; ## number of positions to check
+my $maxChunks = 10; ## maximum number of chunks to split a contig into
 
 GetOptions("trim=s" => \$trim) or
   die("Error in command line arguments");
@@ -37,29 +38,37 @@ while(<>){
         my $minOffs = 0;
         if ($len > ($maxUnit * 2)) {
           my $localMU = (($len / 5) > $maxUnit) ? $maxUnit : int($len / 5);
-          for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
-            my $score = 0;
-            for (my $i = 0; $i < ($sampleSize); $i++) {
-              my $seqPos = rand(length($seq) - $slipOffs);
-              $score++ if (substr($seq,$seqPos,1) eq
-                           substr($seq,$seqPos + $slipOffs,1));
+          ## limit search region to 10*$maxUnit bp chunks, to allow for non-global-repeats
+          my $chunkCount = ($len > ($localMU * 10)) ? int($len / ($localMU * 10) + 1) : 1;
+          $chunkCount = $maxChunks if $chunkCount > $maxChunks;
+          my $chunkSize = int($len / $chunkCount + 1);
+          my @seqArr = split("",$seq);
+          for (my $chunkOffs = 0; ($chunkOffs + $chunkSize) < $len; $chunkOffs += $chunkSize) {
+            ## Scanning for repeats within the range [$chunkOffs .. $chunkOffs + $chunkSize]
+            for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
+              my $score = 0;
+              for (my $i = 0; $i < ($sampleSize); $i++) {
+                my $seqPos = int(rand($chunkSize - $slipOffs));
+                $score++ if ($seqArr[$chunkOffs + $seqPos] eq
+                             $seqArr[$chunkOffs + $seqPos + $slipOffs]);
+              }
+              if ($score > $scoreMax) {
+                $maxOffs = $slipOffs;
+                $scoreMax = $score;
+              }
+              if ($score < $scoreMin) {
+                $minOffs = $slipOffs;
+                $scoreMin = $score;
+              }
+              $scoreTotal += $score;
+              $scoreCount++;
             }
-            if ($score > $scoreMax) {
-              $maxOffs = $slipOffs;
-              $scoreMax = $score;
-            }
-            if ($score < $scoreMin) {
-              $minOffs = $slipOffs;
-              $scoreMin = $score;
-            }
-            $scoreTotal += $score;
-            $scoreCount++;
           }
         }
         my $scoreMean = ($scoreCount) ? ($scoreTotal / $scoreCount) : 0;
         my $minFrac = $scoreMean ? ($scoreMean - $scoreMin) / ($scoreMax - $scoreMean) : 0;
         my $maxFrac = $scoreMean ? ($scoreMax - $scoreMean) / ($scoreMean - $scoreMin) : 0;
-        printf("%d %0.3f %0.3f  %0.3f %d %0.3f %d %0.3f %s\n",
+        printf("%8d %0.3f %0.3f %0.3f %3d %0.3f %3d %0.3f %s\n",
                $len, $scoreMin/$sampleSize, $scoreMean/$sampleSize, $scoreMax/$sampleSize,
                $minOffs, $minFrac, $maxOffs, $maxFrac, $seqID);
         push(@rlengths, $maxOffs);
@@ -92,29 +101,39 @@ if ($seqID && (length($seq) > $trim)) {
   my $minOffs = 0;
   if ($len > ($maxUnit * 2)) {
     my $localMU = (($len / 5) > $maxUnit) ? $maxUnit : int($len / 5);
-    for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
-      my $score = 0;
-      for (my $i = 0; $i < ($sampleSize); $i++) {
-        my $seqPos = rand(length($seq) - $slipOffs);
-        $score++ if (substr($seq,$seqPos,1) eq
-                     substr($seq,$seqPos + $slipOffs,1));
+    ## limit search region to 10*$maxUnit bp chunks, to allow for non-global-repeats
+    my $chunkCount = ($len > ($localMU * 10)) ? int($len / ($localMU * 10) + 1) : 1;
+    $chunkCount = $maxChunks if $chunkCount > $maxChunks;
+    my $chunkSize = int($len / $chunkCount + 1);
+    my @seqArr = split("",$seq);
+    for (my $chunkOffs = 0; ($chunkOffs + $chunkSize) < $len; $chunkOffs += $chunkSize) {
+      ## Scanning for repeats within the range [$chunkOffs .. $chunkOffs + $chunkSize]
+      for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
+        my $score = 0;
+        for (my $i = 0; $i < ($sampleSize); $i++) {
+          my $seqPos = int(rand($chunkSize - $slipOffs));
+          $score++ if ($seqArr[$chunkOffs + $seqPos] eq
+                       $seqArr[$chunkOffs + $seqPos + $slipOffs]);
+        }
+        if ($score > $scoreMax) {
+          $maxOffs = $slipOffs;
+          $scoreMax = $score;
+        }
+        if ($score < $scoreMin) {
+          $minOffs = $slipOffs;
+          $scoreMin = $score;
+        }
+        $scoreTotal += $score;
+        $scoreCount++;
       }
-      if ($score > $scoreMax) {
-        $maxOffs = $slipOffs;
-        $scoreMax = $score;
-      }
-      if ($score < $scoreMin) {
-        $minOffs = $slipOffs;
-        $scoreMin = $score;
-      }
-      $scoreTotal += $score;
-      $scoreCount++;
     }
   }
   my $scoreMean = ($scoreCount) ? ($scoreTotal / $scoreCount) : 0;
-  printf("%d %0.3f %0.3f  %0.3f %d %d %s\n",
+  my $minFrac = $scoreMean ? ($scoreMean - $scoreMin) / ($scoreMax - $scoreMean) : 0;
+  my $maxFrac = $scoreMean ? ($scoreMax - $scoreMean) / ($scoreMean - $scoreMin) : 0;
+  printf("%8d %0.3f %0.3f %0.3f %3d %0.3f %3d %0.3f %s\n",
          $len, $scoreMin/$sampleSize, $scoreMean/$sampleSize, $scoreMax/$sampleSize,
-         $minOffs, $maxOffs, $seqID);
+         $minOffs, $minFrac, $maxOffs, $maxFrac, $seqID);
   push(@rlengths, $maxOffs);
 }
 
