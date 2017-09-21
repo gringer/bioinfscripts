@@ -8,7 +8,7 @@ usage <- function(){
   cat("-help               : Only display this help message\n");
   cat("-type (png/pdf)     : Image type (default 'png')\n");
   cat("-size <x>x<y>       : Image size (default 1200x1200 for png, 12x12 for PDF)\n");
-  cat("-col (ef|cb)     : Colour palette (electrophoresis, colour-blind [default])\n");
+  cat("-col (ef|cb)     : Colour palette (electrophoresis [default], colour-blind)\n");
  cat("\n");
 }
 
@@ -17,7 +17,9 @@ rptSize <- -1;
 type <- "png";
 sizeX <- -1;
 sizeY <- -1;
-colType <- "cb";
+colType <- "ef";
+
+seqRange <- FALSE;
 
 if(length(commandArgs(TRUE)) == 0){
       usage();
@@ -44,6 +46,11 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         argLoc <- argLoc + 1;
         colType <- arg;
     } else {
+        if(grepl(":",arg)){
+            subArgs <- unlist(strsplit(arg,"[:\\-]"));
+            arg <- subArgs[1];
+            seqRange <- subArgs[2:3];
+        }
         if(file.exists(arg)){
             fileName <- arg;
         } else if ((rptSize == -1) && grepl("^[0-9]+$", arg)){
@@ -68,6 +75,10 @@ inLines <- readLines(fileName);
 
 inName <- substring(inLines[1],2);
 inSeq <- c(A=1, C=2, G=3, T=4)[unlist(strsplit(paste(inLines[-1],collapse=""),""))];
+
+if(seqRange[1] != FALSE){
+    inSeq <- inSeq[seqRange[1]:seqRange[2]];
+}
 
 if(type == "png"){
     if(sizeX == -1){
@@ -103,7 +114,9 @@ inSeq <- c(inSeq,rep(5,rptSize));
 subSeq <- inSeq[1:(numLines*rptSize)];
 par(mar=c(0.5,5,1,0.5), mgp=c(3.5,1,0));
 image(x=1:rptSize, y=1:numLines-1, matrix(subSeq,nrow=rptSize),
-      main=sprintf("%s (%0.3f kb, %d bases / line)", sub(" .*$","",inName),
+      main=sprintf("%s%s (%0.3f kb, %d bases / line)", sub(" .*$","",inName),
+                   ifelse(seqRange[1] == FALSE,"",
+                          paste0(":",seqRange[1],"-",seqRange[2])),
                    lis/1000, rptSize), ylab="Base location",
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
       col=colPal);
@@ -115,7 +128,7 @@ dummy <- dev.off();
 numLoops <- (length(subSeq) / rptSize);
 ##startCount <- rptSize / 1.2;
 startCount <- rptSize;
-startRadius <- ifelse(numLoops < 10, 0.5, 0.2);
+startRadius <- 0.3;
 endRadius <- 1.0;
 ##loopIncrement <- ((rptSize * 1.2) - (rptSize / 1.2)) / numLoops;
 
@@ -125,10 +138,12 @@ if(type == "png"){
 } else if(type == "pdf"){
     pdf("sequence_circle.pdf", width=max(sizeX,sizeY), height=max(sizeX,sizeY), pointsize=16);
 }
-par(mar=c(3,3,3,3));
+par(mar=c(1.5,1.5,0.5,1.5));
 plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
-mtext(sprintf("%s (%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
-              lis/1000, rptSize));
+mtext(sprintf("%s%s (%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
+              ifelse(seqRange[1] == FALSE,"",
+                     paste0(":",seqRange[1],"-",seqRange[2])),
+              lis/1000, rptSize), side=1, cex=1.5);
 ## Pre-population plot variables
 ## integrate(2*pi*r,r=startRadius..endRadius)
 ## => pi((endRadius)²-(startRadius)²)
@@ -148,8 +163,8 @@ ds <- c(s[2],diff(s)); ## distance difference at each pos
 
 ## draw the spiral
 points(rev(r) * cos(rev(theta)), rev(r) * sin(rev(theta)),
-       col=paste0(colPal[rev(subSeq)],"80"),
-       pch=16, cex=rev(sqrt(r)) * (7/log(numLoops)));
+       col=paste0(colPal[rev(subSeq)],"A0"),
+       pch=20, cex=rev(sqrt(r)) * (7/log(numLoops)));
 legend("center", legend=c("A","C","G","T"), inset=0.2,
        fill=colPal[1:4],
        cex=ifelse(numLoops < 10, 1, 0.71));
