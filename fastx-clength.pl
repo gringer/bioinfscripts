@@ -3,16 +3,17 @@ use warnings;
 use strict;
 
 use Getopt::Long qw(:config auto_help pass_through);
-use IO::Compress::Bzip2 qw(bzip2 $Bzip2Error);
+#use IO::Compress::Bzip2 qw(bzip2 $Bzip2Error);
 use IO::File;
 
 my $trim = 0;
+my $maxUnit = 1000;
+my $sampleSize = 1000; ## number of positions to check
 
 GetOptions("trim=s" => \$trim) or
   die("Error in command line arguments");
 
-my @clengths = ();
-my @lengths = ();
+my @rlengths = ();
 my $inQual = 0; # false
 my $seqID = "";
 my $qualID = "";
@@ -27,30 +28,41 @@ while(<>){
       my $newSeqID = $2;
       my $newShortID = $3;
       my $len = length($seq);
-      if($seqID && ($len > 1) && ($len > $trim)){
-	bzip2 \$seq => \$buffer;
-	my $cProp = length($seq) / length($buffer);
-        # repetition statistic, appears to correlate with repetitiveness
-        # a non-repetitive sequence tends to have this number < 5
-        my $cStat = exp($cProp) / log($len);
-        # normalised version of the repetitiveness statistic
-        # [approximately normal when repetitive sequences are excluded]
-        my $ncStat = ($cProp) / log($len);
-        my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
-        my $bTrim = ($trim < 1) ? ($len * $trim) : $trim;
-        if($trim && (($bTrim * 3) < $len)){
-          my $ltSeq = substr($seq, 0, $bTrim);
-          my $midSeq = substr($seq, $bTrim, -$bTrim);
-          my $rtSeq = substr($seq, -$bTrim);
-          bzip2 \$ltSeq => \$buffer;
-          $ltProp = $bTrim / length($buffer);
-          bzip2 \$midSeq => \$buffer;
-          $midProp = ($len - $bTrim * 2) / length($buffer);
-          bzip2 \$rtSeq => \$buffer;
-          $rtProp = $bTrim / length($buffer);
+      if($seqID && (length($seq) > $trim)){
+        my $scoreTotal = 0;
+        my $scoreMax = 0;
+        my $scoreMin = $sampleSize;
+        my $scoreCount = 0;
+        my $maxOffs = 0;
+        my $minOffs = 0;
+        if ($len > ($maxUnit * 2)) {
+          my $localMU = (($len / 5) > $maxUnit) ? $maxUnit : int($len / 5);
+          for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
+            my $score = 0;
+            for (my $i = 0; $i < ($sampleSize); $i++) {
+              my $seqPos = rand(length($seq) - $slipOffs);
+              $score++ if (substr($seq,$seqPos,1) eq
+                           substr($seq,$seqPos + $slipOffs,1));
+            }
+            if ($score > $scoreMax) {
+              $maxOffs = $slipOffs;
+              $scoreMax = $score;
+            }
+            if ($score < $scoreMin) {
+              $minOffs = $slipOffs;
+              $scoreMin = $score;
+            }
+            $scoreTotal += $score;
+            $scoreCount++;
+          }
         }
-        printf("%0.3f %d %0.3f %0.3f %0.3f %0.3f %0.3f %s\n", $cProp, $len, $cStat, $ncStat, $ltProp, $midProp, $rtProp, $seqID);
-	push(@lengths, $cProp);
+        my $scoreMean = ($scoreCount) ? ($scoreTotal / $scoreCount) : 0;
+        my $minFrac = $scoreMean ? ($scoreMean - $scoreMin) / ($scoreMax - $scoreMean) : 0;
+        my $maxFrac = $scoreMean ? ($scoreMax - $scoreMean) / ($scoreMean - $scoreMin) : 0;
+        printf("%d %0.3f %0.3f  %0.3f %d %0.3f %d %0.3f %s\n",
+               $len, $scoreMin/$sampleSize, $scoreMean/$sampleSize, $scoreMax/$sampleSize,
+               $minOffs, $minFrac, $maxOffs, $maxFrac, $seqID);
+        push(@rlengths, $maxOffs);
       }
       $seq = "";
       $qual = "";
@@ -70,35 +82,49 @@ while(<>){
   }
 }
 
-if($seqID && (length($seq) > $trim)){
-  my $len = length($seq);
-  bzip2 \$seq => \$buffer;
-  my $cProp = length($seq) / length($buffer);
-  my ($ltProp, $midProp, $rtProp) = (0, 0, 0);
-  my $bTrim = ($trim < 1) ? ($len * $trim) : $trim;
-  if ($trim && (($bTrim * 3) < $len)) {
-    my $ltSeq = substr($seq, 0, $bTrim);
-    my $midSeq = substr($seq, $bTrim, -$bTrim);
-    my $rtSeq = substr($seq, -$bTrim);
-    bzip2 \$ltSeq => \$buffer;
-    $ltProp = $bTrim / length($buffer);
-    bzip2 \$midSeq => \$buffer;
-    $midProp = ($len - $bTrim * 2) / length($buffer);
-    bzip2 \$rtSeq => \$buffer;
-    $rtProp = $bTrim / length($buffer);
+my $len = length($seq);
+if ($seqID && (length($seq) > $trim)) {
+  my $scoreTotal = 0;
+  my $scoreMax = 0;
+  my $scoreMin = $sampleSize;
+  my $scoreCount = 0;
+  my $maxOffs = 0;
+  my $minOffs = 0;
+  if ($len > ($maxUnit * 2)) {
+    my $localMU = (($len / 5) > $maxUnit) ? $maxUnit : int($len / 5);
+    for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
+      my $score = 0;
+      for (my $i = 0; $i < ($sampleSize); $i++) {
+        my $seqPos = rand(length($seq) - $slipOffs);
+        $score++ if (substr($seq,$seqPos,1) eq
+                     substr($seq,$seqPos + $slipOffs,1));
+      }
+      if ($score > $scoreMax) {
+        $maxOffs = $slipOffs;
+        $scoreMax = $score;
+      }
+      if ($score < $scoreMin) {
+        $minOffs = $slipOffs;
+        $scoreMin = $score;
+      }
+      $scoreTotal += $score;
+      $scoreCount++;
+    }
   }
-  printf("%0.3f %d %0.3f %0.3f %0.3f %s\n", $cProp, $len,
-         $ltProp, $midProp, $rtProp, $seqID);
-  push(@lengths, $cProp);
+  my $scoreMean = ($scoreCount) ? ($scoreTotal / $scoreCount) : 0;
+  printf("%d %0.3f %0.3f  %0.3f %d %d %s\n",
+         $len, $scoreMin/$sampleSize, $scoreMean/$sampleSize, $scoreMax/$sampleSize,
+         $minOffs, $maxOffs, $seqID);
+  push(@rlengths, $maxOffs);
 }
 
 ## calculate statistics
-@lengths = sort {$b <=> $a} (@lengths);
+@rlengths = sort {$b <=> $a} (@rlengths);
 my $sum = 0;
-my @cumLengths = map {$sum += $_} (@lengths);
+my @cumLengths = map {$sum += $_} (@rlengths);
 
-printf(STDERR "Total sequences: %d\n", scalar(@lengths));
-printf(STDERR "Highest compression: %0.3f\n", $lengths[0]);
-printf(STDERR "Lowest compression: %0.3f\n", $lengths[$#lengths]);
-printf(STDERR "Mean compression: %0.3f\n", $sum / scalar(@lengths));
-printf(STDERR "Median compression: %0.3f\n", $lengths[$#lengths / 2]);
+printf(STDERR "Total sequences: %d\n", scalar(@rlengths));
+printf(STDERR "Longest repeat: %0.3f\n", $rlengths[0]);
+printf(STDERR "Shortest repeat: %0.3f\n", $rlengths[$#rlengths]);
+printf(STDERR "Mean repeat length: %0.3f\n", $sum / scalar(@rlengths));
+printf(STDERR "Median repeat length: %0.3f\n", $rlengths[$#rlengths / 2]);
