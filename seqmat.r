@@ -164,8 +164,7 @@ ds <- c(s[2],diff(s)); ## distance difference at each pos
 ## draw the spiral
 points(rev(r) * cos(rev(theta)), rev(r) * sin(rev(theta)),
        col=paste0(colPal[rev(subSeq)],"A0"),
-       pch=20, cex=rev(sqrt(r)) * (7/log(numLoops)));
+       pch=20, cex=rev(sqrt(r)) * (13/log(numLoops)));
 legend("center", legend=c("A","C","G","T"), inset=0.2,
-       fill=colPal[1:4],
-       cex=ifelse(numLoops < 10, 1, 0.71));
+       fill=colPal[1:4], cex=1);
 invisible(dev.off());

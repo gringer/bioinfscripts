@@ -4,15 +4,16 @@ use strict;
 
 use Getopt::Long qw(:config auto_help pass_through);
 #use IO::Compress::Bzip2 qw(bzip2 $Bzip2Error);
-use IO::File;
+#use IO::File;
 
 my $trim = 0;
 my $maxUnit = 1000;
 my $sampleSize = 1000; ## number of positions to check
 my $maxChunks = 10; ## maximum number of chunks to split a contig into
+my $kmerLength = 13; ## number of bases in hash keys
 
 GetOptions("trim=s" => \$trim) or
-  die("Error in command line arguments");
+    die("Error in command line arguments");
 
 my @rlengths = ();
 my $inQual = 0; # false
@@ -30,48 +31,49 @@ while(<>){
       my $newShortID = $3;
       my $len = length($seq);
       if($seqID && (length($seq) > $trim)){
-        my $scoreTotal = 0;
-        my $scoreMax = 0;
-        my $scoreMin = $sampleSize;
-        my $scoreCount = 0;
-        my $maxOffs = 0;
-        my $minOffs = 0;
-        if ($len > ($maxUnit * 2)) {
-          my $localMU = (($len / 5) > $maxUnit) ? $maxUnit : int($len / 5);
-          ## limit search region to 10*$maxUnit bp chunks, to allow for non-global-repeats
-          my $chunkCount = ($len > ($localMU * 10)) ? int($len / ($localMU * 10) + 1) : 1;
-          $chunkCount = $maxChunks if $chunkCount > $maxChunks;
-          my $chunkSize = int($len / $chunkCount + 1);
-          my @seqArr = split("",$seq);
-          for (my $chunkOffs = 0; ($chunkOffs + $chunkSize) < $len; $chunkOffs += $chunkSize) {
-            ## Scanning for repeats within the range [$chunkOffs .. $chunkOffs + $chunkSize]
-            for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
-              my $score = 0;
-              for (my $i = 0; $i < ($sampleSize); $i++) {
-                my $seqPos = int(rand($chunkSize - $slipOffs));
-                $score++ if ($seqArr[$chunkOffs + $seqPos] eq
-                             $seqArr[$chunkOffs + $seqPos + $slipOffs]);
-              }
-              if ($score > $scoreMax) {
-                $maxOffs = $slipOffs;
-                $scoreMax = $score;
-              }
-              if ($score < $scoreMin) {
-                $minOffs = $slipOffs;
-                $scoreMin = $score;
-              }
-              $scoreTotal += $score;
-              $scoreCount++;
-            }
-          }
-        }
-        my $scoreMean = ($scoreCount) ? ($scoreTotal / $scoreCount) : 0;
-        my $minFrac = $scoreMean ? ($scoreMean - $scoreMin) / ($scoreMax - $scoreMean) : 0;
-        my $maxFrac = $scoreMean ? ($scoreMax - $scoreMean) / ($scoreMean - $scoreMin) : 0;
-        printf("%8d %0.3f %0.3f %0.3f %3d %0.3f %3d %0.3f %s\n",
-               $len, $scoreMin/$sampleSize, $scoreMean/$sampleSize, $scoreMax/$sampleSize,
-               $minOffs, $minFrac, $maxOffs, $maxFrac, $seqID);
-        push(@rlengths, $maxOffs);
+        my $countTotal = 0;
+        my $countMax = 0;
+        my $maxKmer = "";
+	my @rptCounts = ();
+	my %rptHash = ();
+	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
+	  push(@{$rptHash{substr($seq, $p, $kmerLength)}}, $p);
+	}
+	my $numKmers = scalar(keys(%rptHash));
+	my $kmerRatio = $numKmers/($len - $kmerLength + 1);
+	my @repeatedKmers = grep {scalar(@{$rptHash{$_}}) > 1} keys(%rptHash);
+	my @gaps = ();
+	foreach my $kmer (@repeatedKmers){
+	  my @posList = @{$rptHash{$kmer}};
+	  my $posCount = scalar(@posList);
+	  $countTotal += $posCount;
+	  if($posCount > $countMax){
+	    $countMax = $posCount;
+	  }
+	  if(@posList){
+	    push(@rptCounts, scalar(@posList));
+	    #print(join(" ",@posList)."\n");
+	    my $lastPos = $posList[0];
+	    for(my $p = 0; $p <= $#posList; $p++){
+	      my $nextPos = $posList[$p];
+	      push(@gaps, $nextPos - $lastPos) if ($nextPos > $lastPos);
+	      $lastPos = $nextPos;
+	    }
+	  }
+	}
+	@gaps = sort {$a <=> $b} (@gaps);
+	@rptCounts = sort {$a <=> $b} (@rptCounts);
+	#print(join(" ", @gaps),"\n") if (@gaps);
+	my $medianGap = @gaps ? $gaps[$#gaps / 2] : 0;
+	my $medianCount = @rptCounts ? $rptCounts[$#rptCounts / 2] : 0;
+	my $numRepeats = scalar(@repeatedKmers);
+        printf("%8d %0.3f %5d %5d %5d %5d %s\n",
+               $len, $kmerRatio, scalar(@repeatedKmers), 
+	       $countTotal, 
+	       $medianCount,
+	       $medianGap,
+	       $seqID);
+        push(@rlengths, $medianGap) if $medianGap;
       }
       $seq = "";
       $qual = "";
@@ -92,49 +94,50 @@ while(<>){
 }
 
 my $len = length($seq);
-if ($seqID && (length($seq) > $trim)) {
-  my $scoreTotal = 0;
-  my $scoreMax = 0;
-  my $scoreMin = $sampleSize;
-  my $scoreCount = 0;
-  my $maxOffs = 0;
-  my $minOffs = 0;
-  if ($len > ($maxUnit * 2)) {
-    my $localMU = (($len / 5) > $maxUnit) ? $maxUnit : int($len / 5);
-    ## limit search region to 10*$maxUnit bp chunks, to allow for non-global-repeats
-    my $chunkCount = ($len > ($localMU * 10)) ? int($len / ($localMU * 10) + 1) : 1;
-    $chunkCount = $maxChunks if $chunkCount > $maxChunks;
-    my $chunkSize = int($len / $chunkCount + 1);
-    my @seqArr = split("",$seq);
-    for (my $chunkOffs = 0; ($chunkOffs + $chunkSize) < $len; $chunkOffs += $chunkSize) {
-      ## Scanning for repeats within the range [$chunkOffs .. $chunkOffs + $chunkSize]
-      for (my $slipOffs = 4; $slipOffs < $localMU; $slipOffs++) {
-        my $score = 0;
-        for (my $i = 0; $i < ($sampleSize); $i++) {
-          my $seqPos = int(rand($chunkSize - $slipOffs));
-          $score++ if ($seqArr[$chunkOffs + $seqPos] eq
-                       $seqArr[$chunkOffs + $seqPos + $slipOffs]);
-        }
-        if ($score > $scoreMax) {
-          $maxOffs = $slipOffs;
-          $scoreMax = $score;
-        }
-        if ($score < $scoreMin) {
-          $minOffs = $slipOffs;
-          $scoreMin = $score;
-        }
-        $scoreTotal += $score;
-        $scoreCount++;
+if($seqID && (length($seq) > $trim)){
+  my $countTotal = 0;
+  my $countMax = 0;
+  my $maxKmer = "";
+  my @rptCounts = ();
+  my %rptHash = ();
+  for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
+    push(@{$rptHash{substr($seq, $p, $kmerLength)}}, $p);
+  }
+  my $numKmers = scalar(keys(%rptHash));
+  my $kmerRatio = $numKmers/($len - $kmerLength + 1);
+  my @repeatedKmers = grep {scalar(@{$rptHash{$_}}) > 1} keys(%rptHash);
+  my @gaps = ();
+  foreach my $kmer (@repeatedKmers){
+    my @posList = @{$rptHash{$kmer}};
+    my $posCount = scalar(@posList);
+    $countTotal += $posCount;
+    if($posCount > $countMax){
+      $countMax = $posCount;
+    }
+    if(@posList){
+      push(@rptCounts, scalar(@posList));
+      #print(join(" ",@posList)."\n");
+      my $lastPos = $posList[0];
+      for(my $p = 0; $p <= $#posList; $p++){
+	my $nextPos = $posList[$p];
+	push(@gaps, $nextPos - $lastPos) if ($nextPos > $lastPos);
+	$lastPos = $nextPos;
       }
     }
   }
-  my $scoreMean = ($scoreCount) ? ($scoreTotal / $scoreCount) : 0;
-  my $minFrac = $scoreMean ? ($scoreMean - $scoreMin) / ($scoreMax - $scoreMean) : 0;
-  my $maxFrac = $scoreMean ? ($scoreMax - $scoreMean) / ($scoreMean - $scoreMin) : 0;
-  printf("%8d %0.3f %0.3f %0.3f %3d %0.3f %3d %0.3f %s\n",
-         $len, $scoreMin/$sampleSize, $scoreMean/$sampleSize, $scoreMax/$sampleSize,
-         $minOffs, $minFrac, $maxOffs, $maxFrac, $seqID);
-  push(@rlengths, $maxOffs);
+  @gaps = sort {$a <=> $b} (@gaps);
+  @rptCounts = sort {$a <=> $b} (@rptCounts);
+  #print(join(" ", @gaps),"\n") if (@gaps);
+  my $medianGap = @gaps ? $gaps[$#gaps / 2] : 0;
+  my $medianCount = @rptCounts ? $rptCounts[$#rptCounts / 2] : 0;
+  my $numRepeats = scalar(@repeatedKmers);
+  printf("%8d %0.3f %5d %5d %5d %5d %s\n",
+	 $len, $kmerRatio, scalar(@repeatedKmers), 
+	 $countTotal, 
+	 $medianCount,
+	 $medianGap,
+	 $seqID);
+  push(@rlengths, $medianGap) if $medianGap;
 }
 
 ## calculate statistics
