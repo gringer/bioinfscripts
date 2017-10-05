@@ -30,7 +30,7 @@ while(<>){
       my $newSeqID = $2;
       my $newShortID = $3;
       my $len = length($seq);
-      if($seqID && (length($seq) > $trim)){
+      if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
         my $countTotal = 0;
         my $countMax = 0;
         my $maxKmer = "";
@@ -94,7 +94,7 @@ while(<>){
 }
 
 my $len = length($seq);
-if($seqID && (length($seq) > $trim)){
+if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
   my $countTotal = 0;
   my $countMax = 0;
   my $maxKmer = "";
