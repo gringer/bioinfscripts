@@ -72,6 +72,11 @@ if(!$quiet){
 
 if(!$quiet && $invert){
   printf(STDERR "Excluding IDs, rather than selecting\n");
+} else {
+  ## Stop when all IDs have been seen
+  if(($count == -1) && (keys(%idsToGet))){
+    $count = scalar(keys(%idsToGet));
+  }
 }
 
 my $inQual = 0; # false
@@ -120,6 +125,8 @@ foreach my $file (@ARGV) {
         $seq = "";
         $qual = "";
         if ((!(keys(%idsToGet)) || exists($idsToGet{$testSeqID}) || exists($idsToGet{$testShortID})) xor $invert) {
+          delete $idsToGet{$testSeqID};
+          delete $idsToGet{$testShortID};
           $seqID = $newSeqID;
         } else {
           $seqID = "";
