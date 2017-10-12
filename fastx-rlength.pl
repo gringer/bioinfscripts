@@ -36,6 +36,7 @@ while(<>){
         my $maxKmer = "";
 	my @rptCounts = ();
 	my %rptHash = ();
+        my %gapCounts = ();
 	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
 	  push(@{$rptHash{substr($seq, $p, $kmerLength)}}, $p);
 	}
@@ -56,20 +57,23 @@ while(<>){
 	    my $lastPos = $posList[0];
 	    for(my $p = 0; $p <= $#posList; $p++){
 	      my $nextPos = $posList[$p];
-	      push(@gaps, $nextPos - $lastPos) if ($nextPos > $lastPos);
+              my $gap = $nextPos - $lastPos;
+              if($gap > 0){
+                push(@gaps, $gap);
+                $gapCounts{$gap}++;
+              }
 	      $lastPos = $nextPos;
 	    }
 	  }
 	}
 	@gaps = sort {$a <=> $b} (@gaps);
 	@rptCounts = sort {$a <=> $b} (@rptCounts);
-	#print(join(" ", @gaps),"\n") if (@gaps);
-	my $medianGap = @gaps ? $gaps[$#gaps / 2] : 0;
-	my $medianCount = @rptCounts ? $rptCounts[$#rptCounts / 2] : 0;
+	my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
+	my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
 	my $numRepeats = scalar(@repeatedKmers);
         printf("%8d %0.3f %5d %5d %5d %5d %s\n",
-               $len, $kmerRatio, scalar(@repeatedKmers), 
-	       $countTotal, 
+               $len, $kmerRatio, scalar(@repeatedKmers),
+	       $countTotal,
 	       $medianCount,
 	       $medianGap,
 	       $seqID);
@@ -100,6 +104,7 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
   my $maxKmer = "";
   my @rptCounts = ();
   my %rptHash = ();
+  my %gapCounts = ();
   for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
     push(@{$rptHash{substr($seq, $p, $kmerLength)}}, $p);
   }
@@ -119,21 +124,25 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
       #print(join(" ",@posList)."\n");
       my $lastPos = $posList[0];
       for(my $p = 0; $p <= $#posList; $p++){
-	my $nextPos = $posList[$p];
-	push(@gaps, $nextPos - $lastPos) if ($nextPos > $lastPos);
-	$lastPos = $nextPos;
+        my $nextPos = $posList[$p];
+        my $gap = $nextPos - $lastPos;
+        if($gap > 0){
+          push(@gaps, $gap);
+          $gapCounts{$gap}++;
+        }
+        $lastPos = $nextPos;
       }
     }
   }
   @gaps = sort {$a <=> $b} (@gaps);
   @rptCounts = sort {$a <=> $b} (@rptCounts);
   #print(join(" ", @gaps),"\n") if (@gaps);
-  my $medianGap = @gaps ? $gaps[$#gaps / 2] : 0;
-  my $medianCount = @rptCounts ? $rptCounts[$#rptCounts / 2] : 0;
+  my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
+  my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
   my $numRepeats = scalar(@repeatedKmers);
   printf("%8d %0.3f %5d %5d %5d %5d %s\n",
-	 $len, $kmerRatio, scalar(@repeatedKmers), 
-	 $countTotal, 
+	 $len, $kmerRatio, scalar(@repeatedKmers),
+	 $countTotal,
 	 $medianCount,
 	 $medianGap,
 	 $seqID);
