@@ -46,10 +46,11 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         argLoc <- argLoc + 1;
         colType <- arg;
     } else {
-        if(grepl(":",arg)){
-            subArgs <- unlist(strsplit(arg,"[:\\-]"));
-            arg <- subArgs[1];
-            seqRange <- subArgs[2:3];
+        if(grepl(":[0-9]+\\-[0-9]+$",arg)){
+            prefix <- sub(":[^:]+$","",arg);
+            suffix <- sub("^.*:","",arg);
+            arg <- prefix;
+            seqRange <- unlist(strsplit(suffix,"[\\-]"));
         }
         if(file.exists(arg)){
             fileName <- arg;
@@ -70,15 +71,43 @@ if(rptSize == -1){
     quit(save = "no", status=0);
 }
 
-
 inLines <- readLines(fileName);
 
+cat("Reading from file:",fileName,"...");
 inName <- substring(inLines[1],2);
+if(substring(inLines[1],1,1) == "@"){
+    ## assume FASTQ files are one line per sequence (four lines per record)
+    inLines <- inLines[c(-seq(3,length(inLines), by=4),
+                         -seq(4,length(inLines), by=4))];
+}
 inSeq <- c(A=1, C=2, G=3, T=4)[unlist(strsplit(paste(inLines[-1],collapse=""),""))];
+cat(" done\n");
 
 if(seqRange[1] != FALSE){
     inSeq <- inSeq[seqRange[1]:seqRange[2]];
 }
+
+## rptVal <-
+##     sapply(12:rptSize, function(ofs){
+##         sum(head(inSeq, -ofs) == tail(inSeq, -ofs)) / (length(inSeq) - ofs);
+##     });
+
+## rptMat <-
+##     sapply(12:rptSize, function(ofs){
+##         c((head(inSeq, -ofs) == tail(inSeq, -ofs)), rep(NA,ofs));
+##     });
+
+## pdf(sprintf("rptSummary_%s%s.pdf", sub(" .*$","",inName),
+##             ifelse(seqRange[1] == FALSE,"",
+##                    paste0("_",seqRange[1],"-",seqRange[2]))
+##             ));
+## plot(12:rptSize, rptVal);
+## text((12:rptSize)[rptVal == max(rptVal)], max(rptVal),
+##      labels=sprintf("%d = %0.2f",
+##      (12:rptSize)[rptVal == max(rptVal)],
+##      max(rptVal)), pos=2);
+## invisible(dev.off());
+
 
 if(type == "png"){
     if(sizeX == -1){
@@ -103,6 +132,7 @@ colPal <-
         c("#006400","#0000FF","#FFD700","#8B0000","#D3D3D3");
     }
 
+cat("Creating matrix plot...");
 if(type == "png"){
     png("sequence_matrix.png", width=sizeX, height=sizeY, pointsize=24);
 } else if(type == "pdf"){
@@ -131,8 +161,9 @@ startCount <- rptSize;
 startRadius <- 0.3;
 endRadius <- 1.0;
 ##loopIncrement <- ((rptSize * 1.2) - (rptSize / 1.2)) / numLoops;
+cat(" done\n");
 
-
+cat("Creating spiral plot...");
 if(type == "png"){
     png("sequence_circle.png", width=max(sizeX,sizeY), height=max(sizeX,sizeY), pointsize=24);
 } else if(type == "pdf"){
@@ -168,3 +199,4 @@ points(rev(r) * cos(rev(theta)), rev(r) * sin(rev(theta)),
 legend("center", legend=c("A","C","G","T"), inset=0.2,
        fill=colPal[1:4], cex=1);
 invisible(dev.off());
+cat(" done\n");
