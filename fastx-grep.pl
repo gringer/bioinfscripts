@@ -19,7 +19,7 @@ GetOptions("filter=s" => \$filterSeqs, "idfilter=s" => \$filterIDs,
 my @files = ();
 while(@ARGV){
   my $arg = shift(@ARGV);
-  if(-f $arg){
+  if(-e $arg){
     push(@files, $arg);
   } else {
     $filterSeqs .= "|$arg";
