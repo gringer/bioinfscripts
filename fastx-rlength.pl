@@ -7,9 +7,6 @@ use Getopt::Long qw(:config auto_help pass_through);
 #use IO::File;
 
 my $trim = 0;
-my $maxUnit = 1000;
-my $sampleSize = 1000; ## number of positions to check
-my $maxChunks = 10; ## maximum number of chunks to split a contig into
 my $kmerLength = 13; ## number of bases in hash keys
 
 GetOptions("trim=s" => \$trim) or
@@ -70,13 +67,21 @@ while(<>){
 	@rptCounts = sort {$a <=> $b} (@rptCounts);
 	my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
 	my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
-	my $numRepeats = scalar(@repeatedKmers);
-        printf("%8d %0.3f %5d %5d %5d %5d %s\n",
+        my $rangeCount = 0;
+        if($medianCount){
+          for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
+              $gP++){
+            $rangeCount += $gapCounts{$gP} if($gapCounts{$gP});
+          }
+        }
+        my $numRepeats = scalar(@repeatedKmers);
+        printf("%8d %0.3f %5d %5d %5d %5d %5d %s\n",
                $len, $kmerRatio, scalar(@repeatedKmers),
-	       $countTotal,
-	       $medianCount,
-	       $medianGap,
-	       $seqID);
+               $countTotal,
+               $medianCount,
+               $rangeCount,
+               $medianGap,
+               $seqID);
         push(@rlengths, $medianGap) if $medianGap;
       }
       $seq = "";
@@ -139,11 +144,18 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
   #print(join(" ", @gaps),"\n") if (@gaps);
   my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
   my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
+  my $rangeCount = 0;
+  if($medianCount){
+    for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99)); $gP++){
+      $rangeCount += $gapCounts{$gP} if($gapCounts{$gP});
+    }
+  }
   my $numRepeats = scalar(@repeatedKmers);
-  printf("%8d %0.3f %5d %5d %5d %5d %s\n",
+  printf("%8d %0.3f %5d %5d %5d %5d %5d %s\n",
 	 $len, $kmerRatio, scalar(@repeatedKmers),
 	 $countTotal,
 	 $medianCount,
+	 $rangeCount,
 	 $medianGap,
 	 $seqID);
   push(@rlengths, $medianGap) if $medianGap;
