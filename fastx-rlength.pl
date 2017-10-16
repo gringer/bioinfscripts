@@ -67,20 +67,33 @@ while(<>){
 	@rptCounts = sort {$a <=> $b} (@rptCounts);
 	my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
 	my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
-        my $rangeCount = 0;
+        my $modalGap = 0;
+        my $modalCount = 0;
+        my $rangeCountMed = 0;
+        my $rangeCountMod = 0;
         if($medianCount){
+          my @modalSort = sort {$gapCounts{$b} <=> $gapCounts{$a}} (@gaps);
+          $modalGap = $modalSort[0];
+          $modalCount = $gapCounts{$modalGap};
           for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
               $gP++){
-            $rangeCount += $gapCounts{$gP} if($gapCounts{$gP});
+            $rangeCountMed += $gapCounts{$gP} if($gapCounts{$gP});
+          }
+          for(my $gP = int($modalGap * 0.99); ($gP <= ($modalGap / 0.99));
+              $gP++){
+            $rangeCountMod += $gapCounts{$gP} if($gapCounts{$gP});
           }
         }
         my $numRepeats = scalar(@repeatedKmers);
-        printf("%8d %0.3f %5d %5d %5d %5d %5d %s\n",
+        printf("%8d %0.3f %5d %6d %5d %5d %5d %5d %5d %5d %s\n",
                $len, $kmerRatio, scalar(@repeatedKmers),
                $countTotal,
                $medianCount,
-               $rangeCount,
+               $rangeCountMed,
                $medianGap,
+               $modalCount,
+               $rangeCountMod,
+               $modalGap,
                $seqID);
         push(@rlengths, $medianGap) if $medianGap;
       }
@@ -141,23 +154,36 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
   }
   @gaps = sort {$a <=> $b} (@gaps);
   @rptCounts = sort {$a <=> $b} (@rptCounts);
-  #print(join(" ", @gaps),"\n") if (@gaps);
   my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
   my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
-  my $rangeCount = 0;
-  if($medianCount){
-    for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99)); $gP++){
-      $rangeCount += $gapCounts{$gP} if($gapCounts{$gP});
+  my $modalGap = 0;
+  my $modalCount = 0;
+  my $rangeCountMed = 0;
+  my $rangeCountMod = 0;
+  if ($medianCount) {
+    my @modalSort = sort {$gapCounts{$b} <=> $gapCounts{$a}} (@gaps);
+    $modalGap = $modalSort[0];
+    $modalCount = $gapCounts{$modalGap};
+    for (my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
+         $gP++) {
+      $rangeCountMed += $gapCounts{$gP} if($gapCounts{$gP});
+    }
+    for (my $gP = int($modalGap * 0.99); ($gP <= ($modalGap / 0.99));
+         $gP++) {
+      $rangeCountMod += $gapCounts{$gP} if($gapCounts{$gP});
     }
   }
   my $numRepeats = scalar(@repeatedKmers);
-  printf("%8d %0.3f %5d %5d %5d %5d %5d %s\n",
-	 $len, $kmerRatio, scalar(@repeatedKmers),
-	 $countTotal,
-	 $medianCount,
-	 $rangeCount,
-	 $medianGap,
-	 $seqID);
+  printf("%8d %0.3f %5d %6d %5d %5d %5d %5d %5d %5d %s\n",
+         $len, $kmerRatio, scalar(@repeatedKmers),
+         $countTotal,
+         $medianCount,
+         $rangeCountMed,
+         $medianGap,
+         $modalCount,
+         $rangeCountMod,
+         $modalGap,
+         $seqID);
   push(@rlengths, $medianGap) if $medianGap;
 }
 
