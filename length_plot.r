@@ -5,6 +5,8 @@
 
 scriptArgs <- commandArgs(TRUE);
 
+fileNames <- "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_C_132040_albacore_1.1.0.txt.gz";
+
 plotVals <- TRUE;
 plotHoriz <- TRUE;
 plotCombined <- FALSE;
@@ -139,7 +141,50 @@ plain.hist <- function(lengths, horiz=TRUE, barValues=TRUE, invert = TRUE, main 
     }
 }
 
+## generate fibonacci bins for logarithmic data storage
 sampled.lengths <- NULL;
+fib.divs <- round(10^(seq(0,1-1/5,length.out=5)) * 2) * 0.5; ## splits log decades into 5
+histBreaks <- unique(c(0,round(rep(10^(0:16),each=5) * fib.divs)));
+histCentres <- 10^((log10(head(histBreaks,-1)) + log10(tail(histBreaks,-1)))/2);
+## fetch data and store in a table, binned as above
+countData <- data.frame(row.names=tail(histBreaks, -1));
+baseData <- data.frame(row.names=tail(histBreaks, -1));
+dens.mat <- sapply(fileNames, function(x){
+    cat(x,"...");
+    file.data <- scan(x, comment.char=" ", quiet=TRUE);
+    file.data <- file.data[file.data>0];
+    cat(" done\n");
+    cat("Number of sequences:",length(file.data),"\n");
+    cat("Length quantiles:\n");
+    print(quantile(file.data, probs=seq(0,1,by=0.1)));
+    lengthRange <- range(file.data);
+    seqd.bases <- tapply(file.data, cut(file.data, breaks=histBreaks), sum);
+    seqd.counts <- tapply(file.data, cut(file.data, breaks=histBreaks), length);
+    seqd.bases[is.na(seqd.bases)] <- 0;
+    seqd.counts[is.na(seqd.counts)] <- 0;
+    names(seqd.bases) <- valToSci(tail(histBreaks,-1));
+    names(seqd.counts) <- valToSci(tail(histBreaks,-1));
+    baseData[[basename(x)]] <<- seqd.bases;
+    countData[[basename(x)]] <<- seqd.counts;
+});
+
+baseRange <- c(min(which(rowSums(countData) > 1)),
+               max(which(rowSums(countData) > 1)));
+
+smoothed.data <- spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),y=countData[baseRange[1]:baseRange[2],],
+                        n=10*length(histBreaks));
+smoothed.data$x <- 10^smoothed.data$x;
+plot(smoothed.data, type="l", log="x", xaxt="n");
+points(x=histCentres, y=countData[,1]);
+drMax <- max(log10(smoothed.data$x));
+axis(1, at= (10^(0:drMax)), las=2, lwd=3, cex.axis=1.5,
+     labels=valToSci(10^(0:drMax)));
+axis(1, at= (rep(1:9, each=drMax+1) * 10^(0:drMax)), labels=FALSE);
+
+print(countData);
+print(baseData);
+
+quit(save="n");
 
 ## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
@@ -153,7 +198,17 @@ dens.mat <- sapply(fileNames, function(x){
     cat("Number of sequences:",length(data),"\n");
     cat("Length quantiles:\n");
     print(quantile(data, probs=seq(0,1,by=0.1)));
-    res <- density(log10(data), bw=0.1);
+
+    fib.divs <- round(10^(seq(0,1-1/5,length.out=5)) * 2) * 0.5; ## splits log decades into 5
+    histBreaks <- unique(c(0,round(rep(10^(0:15),each=5) * fib.divs)));
+    seqd.bases <- seqd.na.bases <- tapply(lengths,cut(lengths, breaks=histBreaks), sum);
+    seqd.counts <- seqd.na.counts <- tapply(lengths,cut(lengths, breaks=histBreaks), length);
+    seqd.bases[is.na(seqd.bases)] <- 0;
+    names(seqd.bases) <- tail(histBreaks,-1);
+    seqd.counts[is.na(seqd.counts)] <- 0;
+    names(seqd.counts) <- tail(histBreaks,-1);
+
+    res.out <- density(log10(data), bw=0.1);
     res.out <- res$y;
     names(res.out) <- round(res$x,3);
     subName <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1", x);
