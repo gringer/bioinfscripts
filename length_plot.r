@@ -5,7 +5,11 @@
 
 scriptArgs <- commandArgs(TRUE);
 
-fileNames <- "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_C_132040_albacore_1.1.0.txt.gz";
+fileNames <- c("/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_A_132394_albacore_1.1.0.txt.gz",
+               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_C_132040_albacore_1.1.0.txt.gz",
+               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_D_132397_albacore_1.1.0.txt.gz",
+               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_E_132036_albacore_1.1.0.txt.gz",
+               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_F_132396_albacore_1.1.0.txt.gz");
 
 plotVals <- TRUE;
 plotHoriz <- TRUE;
@@ -164,27 +168,105 @@ dens.mat <- sapply(fileNames, function(x){
     seqd.counts[is.na(seqd.counts)] <- 0;
     names(seqd.bases) <- valToSci(tail(histBreaks,-1));
     names(seqd.counts) <- valToSci(tail(histBreaks,-1));
-    baseData[[basename(x)]] <<- seqd.bases;
-    countData[[basename(x)]] <<- seqd.counts;
+    seqd.label <- sub(".txt(.gz)?$","",
+                      sub("^lengths_(called_)?","",basename(x)));
+    baseData[[seqd.label]] <<- seqd.bases;
+    countData[[seqd.label]] <<- seqd.counts;
 });
 
 baseRange <- c(min(which(rowSums(countData) > 1)),
                max(which(rowSums(countData) > 1)));
 
-smoothed.data <- spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),y=countData[baseRange[1]:baseRange[2],],
-                        n=10*length(histBreaks));
-smoothed.data$x <- 10^smoothed.data$x;
-plot(smoothed.data, type="l", log="x", xaxt="n");
-points(x=histCentres, y=countData[,1]);
-drMax <- max(log10(smoothed.data$x));
-axis(1, at= (10^(0:drMax)), las=2, lwd=3, cex.axis=1.5,
-     labels=valToSci(10^(0:drMax)));
+pdf("Sequence_curves.pdf", width=16, height=8);
+#### Create density plots ####
+## read counts
+par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5);
+plot(NA, type="l", log="x", xaxt="n", yaxt="n",
+     xlim=c(histCentres[baseRange[1]], histCentres[baseRange[2]]),
+     ylim=c(0,max(countData)*1.1),
+     ylab="Sequenced Reads", xlab = "");
+drMax <- max(log10(histCentres[baseRange[2]]));
+axis(1, at= (10^(0:(drMax+1))), lwd=3, cex.axis=1.5,
+     labels=valToSci(10^(0:(drMax+1))));
 axis(1, at= (rep(1:9, each=drMax+1) * 10^(0:drMax)), labels=FALSE);
+axis(2, at= pretty(unlist(countData)),
+     labels=valToSci(pretty(unlist(countData))), cex.axis = 1.5 );
+mtext("Read Length", side=1, line=3, cex=1.5);
+library(RColorBrewer);
+for(pcol in 1:ncol(countData)){
+    smoothed.data <- spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),
+                            y=countData[baseRange[1]:baseRange[2],pcol],
+                            n=10*length(histBreaks));
+    smoothed.data$x <- 10^smoothed.data$x;
+    points(smoothed.data, type="l", lwd=3,
+           col=brewer.pal(ncol(countData), "Set2")[pcol]);
+}
+legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
+       legend=colnames(baseData), inset=c(0.025,0.05), cex=1.5,
+       bg="#FFFFFFD0");
+#### Create density plots ####
+## sequenced lengths
+par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5);
+plot(NA, type="l", log="x", xaxt="n", yaxt="n",
+     xlim=c(histCentres[baseRange[1]], histCentres[baseRange[2]]),
+     ylim=c(0,max(baseData)*1.1),
+     ylab="Sequenced Bases", xlab = "");
+drMax <- max(log10(histCentres[baseRange[2]]));
+axis(1, at= (10^(0:(drMax+1))), lwd=3, cex.axis=1.5,
+     labels=valToSci(10^(0:(drMax+1))));
+axis(1, at= (rep(1:9, each=drMax+1) * 10^(0:drMax)), labels=FALSE);
+axis(2, at= pretty(unlist(baseData)),
+     labels=valToSci(pretty(unlist(baseData))), cex.axis = 1.5 );
+mtext("Read Length", side=1, line=3, cex=1.5);
+for(pcol in 1:ncol(baseData)){
+    smoothed.data <- spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),
+                            y=baseData[baseRange[1]:baseRange[2],pcol],
+                            n=10*length(histBreaks));
+    smoothed.data$x <- 10^smoothed.data$x;
+    points(smoothed.data, type="l", lwd=3,
+           col=brewer.pal(ncol(baseData), "Set2")[pcol]);
+}
+legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
+       legend=colnames(baseData), inset=c(0.025,0.05), cex=1.5,
+       bg="#FFFFFFD0");
+## sequenced base proportion
+par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5);
+plot(NA, type="l", log="x", xaxt="n", yaxt="n",
+     xlim=c(histCentres[baseRange[1]], histCentres[baseRange[2]]),
+     ylim=c(0,100),
+     ylab="Cumulative Sequenced Bases (%)", xlab = "");
+drMax <- max(log10(histCentres[baseRange[2]]));
+axis(1, at= (10^(0:(drMax+1))), lwd=3, cex.axis=1.5,
+     labels=valToSci(10^(0:(drMax+1))));
+axis(1, at= (rep(1:9, each=drMax+1) * 10^(0:drMax)), labels=FALSE);
+axis(2, at= (0:10 * 10), cex.axis = 1.5 );
+mtext("Read Length", side=1, line=3, cex=1.5);
+for(pcol in 1:ncol(baseData)){
+    smoothed.data <-
+        spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),
+               y=100 - cumsum(baseData[baseRange[1]:baseRange[2],pcol]) /
+                   sum(baseData[baseRange[1]:baseRange[2],pcol]) * 100,
+                            n=10*length(histBreaks));
+    smoothed.data$x <- 10^smoothed.data$x;
+    points(smoothed.data, type="l", lwd=3,
+           col=brewer.pal(ncol(baseData), "Set2")[pcol]);
+    points(c(rep(smoothed.data$x[order(abs((smoothed.data$y) - 90))[1]],2),
+             rep(smoothed.data$x[order(abs((smoothed.data$y) - 50))[1]],2),
+             rep(smoothed.data$x[order(abs((smoothed.data$y) - 10))[1]],2)),
+           c(90,0,50,0,10,0), col=brewer.pal(ncol(baseData), "Set2")[pcol]);
+    segments(x0=c(rep(smoothed.data$x[order(abs((smoothed.data$y) - 90))[1]]),
+                  rep(smoothed.data$x[order(abs((smoothed.data$y) - 50))[1]]),
+                  rep(smoothed.data$x[order(abs((smoothed.data$y) - 10))[1]])),
+             y0=c(90,50,10), y1=c(0,0,0), lty=c("dotted","dashed"),
+             col=brewer.pal(ncol(baseData), "Set2")[pcol]);
+}
+abline(h=c(10,50,90), lty="dashed", col="#80808080", lwd=2);
+legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
+       legend=colnames(baseData), inset=c(0.025,0.05), cex=1.5,
+       bg="#FFFFFFD0");
+invisible(dev.off());
 
-print(countData);
-print(baseData);
-
-quit(save="n");
+quit("n");
 
 ## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
@@ -259,6 +341,8 @@ dens.mat <- sapply(fileNames, function(x){
 });
 dummy <- dev.off();
 colnames(dens.mat) <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1",colnames(dens.mat));
+
+quit(save="n");
 
 bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
 
