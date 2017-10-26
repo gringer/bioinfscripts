@@ -19,6 +19,10 @@ my $qualID = "";
 my $seq = "";
 my $qual = "";
 my $buffer = "";
+printf("%8s %5s %6s %6s %5s %5s %6s %5s %5s %6s %s\n",
+       "length", "kRat", "cntRep", "cntTot",
+       "medCt", "RCMed", "medGap",  "modCt", "RCMod",
+       "modGap", "SeqID");
 while(<>){
   chomp;
   chomp;
@@ -85,7 +89,7 @@ while(<>){
           }
         }
         my $numRepeats = scalar(@repeatedKmers);
-        printf("%8d %0.3f %5d %6d %5d %5d %5d %5d %5d %5d %s\n",
+        printf("%8d %0.3f %6d %6d %5d %5d %6d %5d %5d %6d %s\n",
                $len, $kmerRatio, scalar(@repeatedKmers),
                $countTotal,
                $medianCount,
@@ -174,16 +178,16 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
     }
   }
   my $numRepeats = scalar(@repeatedKmers);
-  printf("%8d %0.3f %5d %6d %5d %5d %5d %5d %5d %5d %s\n",
-         $len, $kmerRatio, scalar(@repeatedKmers),
-         $countTotal,
-         $medianCount,
-         $rangeCountMed,
-         $medianGap,
-         $modalCount,
-         $rangeCountMod,
-         $modalGap,
-         $seqID);
+  printf("%8d %0.3f %6d %6d %5d %5d %6d %5d %5d %6d %s\n",
+	 $len, $kmerRatio, scalar(@repeatedKmers),
+	 $countTotal,
+	 $medianCount,
+	 $rangeCountMed,
+	 $medianGap,
+	 $modalCount,
+	 $rangeCountMod,
+	 $modalGap,
+	 $seqID);
   push(@rlengths, $medianGap) if $medianGap;
 }
 
