@@ -11,6 +11,8 @@ my $bestQual = "";
 my $bestLine = "";
 my $seenCount = 0;
 
+my $addSeq = 40; # amount of sequence to add to the start and end
+
 my $output = "fa"; # can be "fa"
 
 sub printFQ {
@@ -45,15 +47,17 @@ while(<>){
     my $subLen = $1;
     my $op = $2;
     if($op eq "S"){
-      $seq = substr($seq, $subLen);
-      $qual = substr($seq, $subLen);
+      if($subLen > $addSeq){
+        $seq = substr($seq, $subLen - $addSeq);
+        $qual = substr($qual, $subLen - $addSeq);
+      }
     }
     if($op =~ /[M=XI]/){
       $matchLen += $subLen;
     }
   }
-  $seq = substr($seq, 0, $matchLen);
-  $qual = substr($qual, 0, $matchLen);
+  $seq = substr($seq, 0, $matchLen + $addSeq);
+  $qual = substr($qual, 0, $matchLen + $addSeq);
   if($seq){
     printFA($F[0], $seq, $qual);
   }
