@@ -7,6 +7,8 @@ usage <- function(){
   cat("\nOther Options:\n");
   cat("-help               : Only display this help message\n");
   cat("-type (png/pdf)     : Image type (default 'png')\n");
+  cat("-ps <factor>        : Magnification factor for points\n");
+  cat("-solid              : Make colours solid (not translucent)\n");
   cat("-size <x>x<y>       : Image size (default 1200x1200 for png, 12x12 for PDF)\n");
   cat("-col (ef|cb)     : Colour palette (electrophoresis [default], colour-blind)\n");
  cat("\n");
@@ -18,6 +20,8 @@ type <- "png";
 sizeX <- -1;
 sizeY <- -1;
 colType <- "ef";
+pointFactor <- 1;
+solid <- FALSE;
 
 seqRange <- FALSE;
 
@@ -37,10 +41,16 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         argLoc <- argLoc + 1;
         sizeX <- as.numeric(arg[1]);
         sizeY <- as.numeric(arg[2]);
+    } else if(arg == "-ps"){
+        arg <- commandArgs(TRUE)[argLoc];
+        pointFactor <- as.numeric(arg);
+        argLoc <- argLoc + 1;
     } else if(arg == "-type"){
         arg <- commandArgs(TRUE)[argLoc];
         argLoc <- argLoc + 1;
         type <- arg;
+    } else if(arg == "-solid"){
+        solid <- TRUE;
     } else if(arg == "-col"){
         arg <- commandArgs(TRUE)[argLoc];
         argLoc <- argLoc + 1;
@@ -194,8 +204,8 @@ ds <- c(s[2],diff(s)); ## distance difference at each pos
 
 ## draw the spiral
 points(rev(r) * cos(rev(theta)), rev(r) * sin(rev(theta)),
-       col=paste0(colPal[rev(subSeq)],"A0"),
-       pch=20, cex=rev(sqrt(r)) * (13/log(numLoops)));
+       col=paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")), lwd=2,
+       pch=20, cex=rev(sqrt(r)) * (13/log(numLoops)) * pointFactor);
 legend("center", legend=c("A","C","G","T"), inset=0.2,
        fill=colPal[1:4], cex=1);
 invisible(dev.off());
