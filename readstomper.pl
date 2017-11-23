@@ -32,6 +32,7 @@ my $consThresholdCov = 5;
 my $insThresholdCov = 5;
 my $deletionSens = 0.15;
 my $insertionSens = 0.15;
+my $minInsert = 3;
 my $edit = 1;
 
 GetOptions("mincoverage=i" => \$minCoverage,
@@ -198,15 +199,15 @@ while(<>){
         printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
         printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
                $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
-        if($insOp){
-          printf(STDERR ",%s;%0.2f,", $maxInsertSeq, $maxInserts / $ic);
+        if($insOp && ($maxInserts >= $minInsert)){
+          printf(STDERR ",%s;%0.2f,", $maxInsertSeq, $maxInserts);
         } else {
           printf(STDERR ",,");
         }
         if($consAllele ne $refAllele) {
           printf(STDERR "[%s -> %s]", $refAllele, $consAllele);
         }
-        if($insOp){
+        if($insOp && ($maxInserts >= $minInsert)){
           printf(STDERR "[Insert %s]", $maxInsertSeq);
         }
         print(STDERR "\n");
@@ -225,14 +226,14 @@ while(<>){
     if($writeCounts){
       printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
              $rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
-      if($maxInsertSeq){
+      if($maxInsertSeq && ($maxInserts >= $minInsert)){
         printf(",%s;%d", $maxInsertSeq, $maxInserts);
       }
     } else {
       printf("%0.2f,%0.2f,%0.4f,%0.4f,%0.4f,%0.4f,%0.2f,%0.2f",
                $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
-      if($maxInsertSeq){
-        printf(",%s;%0.2f", $maxInsertSeq, $maxInserts / $ic);
+      if($maxInsertSeq && ($maxInserts >= $minInsert)){
+        printf(",%s;%0.2f", $maxInsertSeq, $maxInserts);
       }
     }
     print("\n");
