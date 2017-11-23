@@ -24,6 +24,7 @@ sequence.hist <- function(lengths, lengthRange=NULL){
     if(is.null(lengthRange)){
         lengthRange <- range(lengths);
     }
+    lengthRange <- c(1000,2500000);
     ## filter on actual data range
     histBreaks <- histBreaks[(which.min(histBreaks < lengthRange[1])-1):
                              which.max(histBreaks > lengthRange[2])];
@@ -40,19 +41,20 @@ sequence.hist <- function(lengths, lengthRange=NULL){
     seqd.bases;
 }
 
-wtsi.lengths <- read.table("~/db/fasta/nippo/lengths_Nb_WTSI.txt",
-#wtsi.lengths <- read.table("lengths_Nb_WTSI.txt",
+##setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
+setwd("/bioinf/MIMR-2017-Jul-01-GBIS/GLG/paper");
+##wtsi.lengths <- read.table("~/db/fasta/nippo/lengths_Nb_WTSI.txt",
+wtsi.lengths <- read.table("lengths_Nb_WTSI.txt",
                            col.names=c("length","contig"));
-ghost.data[["WTSI"]] <- sequence.hist(wtsi.lengths$length,
-                                      lengthRange=myXRange);
+ghost.data[["WTSI"]] <- sequence.hist(wtsi.lengths$length);
 
-setwd("/mnt/gg_nanopore/gringer/ONT_Jan17/GFA_stats");
-#setwd("/bioinf/MIMR-2017-Jul-01-GBIS/GLG/paper");
 
-gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
-#gfaName <- "NbL5_ONTA.contigs.gfa";
-#gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
-#gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
+##gfaName <- "Nb_ONTCFED_65bpTrim_t1.contigs.gfa";
+gfaName <- "Nb_minKNOW_CFED_AO_t1.contigs.gfa";
+
+##gfaName <- "NbL5_ONTA.contigs.gfa";
+##gfaName <- "Nb_ONTA_65bpTrim_t3.contigs.gfa";
+##gfaName <- "NbL5_ONTDECAF_t1.contigs.flipped.gfa";
 data.lines <- readLines(gfaName);
 
 data.lengths <- sapply(strsplit(grep("^S", data.lines, value=TRUE),"\t"),
