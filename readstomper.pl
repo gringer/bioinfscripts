@@ -69,7 +69,7 @@ if(!$writeConsensus){
 
 my %refSeqs = ();
 if($writeConsensus){
-  if(!(-f $writeConsensus)){
+  if(!(-e $writeConsensus)){
     die("ERROR: Reference fasta sequence '${writeConsensus}' does not exist");
   }
   open(my $refFile, "<", $writeConsensus);
@@ -94,6 +94,9 @@ my $highCovStart = 0;
 
 while(<>){
   chomp;
+  if(!$_){
+    next;
+  }
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
   my $observedDiff = 0; # false
   if($cov < $minCoverage){
@@ -240,7 +243,9 @@ while(<>){
 }
 
 if($writeConsensus){
-  if($oldRefName){
+  if($oldRefName && (length($refSeqs{$oldRefName}) < $lastBase)){
     print(substr($refSeqs{$oldRefName}, ($lastBase+1))."\n");
+  } elsif($oldRefName){
+    print("\n");
   }
 }
