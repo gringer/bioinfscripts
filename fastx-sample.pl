@@ -8,12 +8,10 @@ use File::Temp qw(:seekable);
 use Encode qw(encode_utf8);
 
 my $idFileName = "";
-my $readLength = 100; # 1 Tbp
 my $maxCount = 0;
 my $trim = 0;
 
-GetOptions("readLength|l=i" => \$readLength,
-           "count=i" => \$maxCount, ) or
+GetOptions("count=i" => \$maxCount, ) or
   die("Error in command line arguments");
 
 if(!$maxCount){
@@ -24,19 +22,9 @@ if(!$maxCount){
 }
 
 sub processReads{
-  my ($seq, $qual, $readLength, $maxCount, $readsRead, $readsProcessed, $tempFile) = @_;
-  if(length($seq) < $readLength){
-    return $readsProcessed;
-  }
-  if(length($seq) > $readLength){
-    $seq = substr($seq, 0, $readLength);
-    $qual = substr($qual, 0, $readLength) if $qual;
-  }
+  my ($seq, $qual, $maxCount, $readsRead, $readsProcessed, $readStore) = @_;
   $readsProcessed++;
-  my $swapPos = $readsProcessed-1;
-  if($readsProcessed > $maxCount){
-    $swapPos = int(rand($readsProcessed));
-  }
+  my $swapPos = ($readsProcessed <= $maxCount) ? ($readsProcessed-1) : int(rand($readsProcessed));
   if($swapPos < $maxCount){
     my $outLines = "";
     if($qual){
@@ -44,10 +32,7 @@ sub processReads{
     } else {
       $outLines = sprintf(">%012d\n%s\n", $readsRead, $seq);
     }
-    if($readsProcessed > $maxCount){
-      seek($tempFile, $swapPos * length(encode_utf8($outLines)), 0);
-    }
-    print($tempFile $outLines);
+    ${$readStore}{$swapPos} = $outLines;
   }
   return $readsProcessed;
 }
@@ -60,7 +45,7 @@ my $qual = "";
 my $readsRead = 0;
 my $readsProcessed = 0;
 my $dotsPrinted = 0;
-my $tempFile = File::Temp->new();
+my %readStore = ();
 
 while(<>){
   chomp;
@@ -81,7 +66,7 @@ while(<>){
           $dotsPrinted++;
         }
         $readsProcessed =
-          processReads($seq, $qual, $readLength, $maxCount, ++$readsRead, $readsProcessed, $tempFile);
+          processReads($seq, $qual, $maxCount, ++$readsRead, $readsProcessed, \%readStore);
       }
       $seq = "";
       $qual = "";
@@ -102,13 +87,12 @@ while(<>){
 
 if($seqID){
   $readsProcessed =
-          processReads($seq, $qual, $readLength, $maxCount, ++$readsRead, $readsProcessed, $tempFile);
+          processReads($seq, $qual, $maxCount, ++$readsRead, $readsProcessed, \%readStore);
 }
 
-printf(STDERR "\ndone (%d reads processed of length >= %d from %d total reads)\n",
-       $readsProcessed, $readLength, $readsRead);
+printf(STDERR "\ndone (%d reads processed from %d total reads)\n",
+       $readsProcessed, $readsRead);
 
-seek($tempFile, 0, SEEK_SET);
-while(<$tempFile>){
-  print;
+foreach my $id (keys(%readStore)){
+  print $readStore{$id};
 }
