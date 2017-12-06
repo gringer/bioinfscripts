@@ -5,7 +5,7 @@ use strict;
 use Getopt::Long qw(:config auto_help pass_through);
 
 my $quiet = 0;
-my $searchPattern = "(^.*\$)";
+my $searchPattern = ""; ## "(^.*\$)";
 my $numeric = 0;
 my $length = 0;
 
@@ -17,7 +17,7 @@ GetOptions("pattern=s" => \$searchPattern, "quiet!" => \$quiet,
 my @files = ();
 while(@ARGV){
   my $arg = shift(@ARGV);
-  if(-f $arg){
+  if(-e $arg){
     push(@files, $arg);
   } else {
     die("Unknown argument: $arg");
@@ -26,7 +26,7 @@ while(@ARGV){
 @ARGV = @files;
 
 my %fastXStrs = ();
-my %fastXLengths = ();
+my %fastXVals = ();
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -40,8 +40,9 @@ while(<>){
     if(/^(>|@)(.*)$/){
       my $newSeqID = $2;
       if($seqID){
-        if($seqID =~ /$searchPattern/){
-          $fastXLengths{$seqID} = length($seq);
+        if(!$searchPattern || ($seqID =~ /($searchPattern)/)){
+          my $matchPattern = $1;
+          $fastXVals{$seqID} = (!$searchPattern) ? length($seq) : $matchPattern;
           if(!$qual){
             $seq =~ s/(.{100})/$1\n/g;
             $seq =~ s/\n$//;
@@ -70,23 +71,28 @@ while(<>){
   }
 }
 
-if($seqID){
-  if(!$qual){
-    $seq =~ s/(.{100})/$1\n/g;
-    $seq =~ s/\n$//;
-  }
-  if($seqID =~ /$searchPattern/){
+if ($seqID) {
+  if (!$searchPattern || ($seqID =~ /($searchPattern)/)) {
+    my $matchPattern = $1;
+    $fastXVals{$seqID} = (!$searchPattern) ? length($seq) : $matchPattern;
+    if (!$qual) {
+      $seq =~ s/(.{100})/$1\n/g;
+      $seq =~ s/\n$//;
+    }
     $fastXStrs{$seqID} = ($qual) ?
       sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
       sprintf(">%s\n%s\n", $seqID, $seq);
-    $fastXLengths{$seqID} = length($seq);
   } else {
     printf(STDERR "Warning: No match for pattern '$searchPattern' for sequence '$seqID'\n");
   }
 }
 
-if($length){
-  foreach my $pat (sort {$fastXLengths{$b} <=> $fastXLengths{$a}} (keys(%fastXStrs))){
+if($searchPattern){
+  foreach my $pat (sort {$fastXVals{$a} cmp $fastXVals{$b}} (keys(%fastXStrs))){
+    print($fastXStrs{$pat});
+  }
+} elsif($length){
+  foreach my $pat (sort {$fastXVals{$b} <=> $fastXVals{$a}} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }
 } elsif($numeric){
