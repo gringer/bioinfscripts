@@ -45,8 +45,7 @@ foreach my $file (@ARGV) {
   my $z = new IO::Uncompress::Gunzip($file, "transparent", 1)
     or die "gunzip failed: $GunzipError\n";
   while(<$z>){
-    chomp;
-    chomp;
+    chomp;chomp;chomp;
     if (!$inQual) {
       if (/^(>|@)((.+?)( .*?\s*)?)$/) {
         my $newSeqID = $2;
@@ -110,12 +109,19 @@ while($cumLengths[$L90LengthNum] < ($sum * 0.9)){
   $L90LengthNum++;
 }
 
+my $L10LengthNum = 0;
+while($cumLengths[$L10LengthNum] < ($sum * 0.1)){
+  $L10LengthNum++;
+}
+
 printf(STDERR "Total sequences: %d\n", scalar(@lengths));
 printf(STDERR "Total length: %sb\n", SIConvert($sum));
 printf(STDERR "Longest sequence: %sb\n", SIConvert($lengths[0]));
 printf(STDERR "Shortest sequence: %sb\n", SIConvert($lengths[$#lengths]));
 printf(STDERR "Mean Length: %sb\n", SIConvert(sprintf("%d", ($sum) / scalar(@lengths))));
 printf(STDERR "Median Length: %sb\n", SIConvert($lengths[$#lengths / 2]));
+printf(STDERR "N10: %d sequences; L10: %sb\n",
+     ($L10LengthNum+1), SIConvert($lengths[$L10LengthNum]));
 printf(STDERR "N50: %d sequences; L50: %sb\n",
      ($L50LengthNum+1), SIConvert($lengths[$L50LengthNum]));
 printf(STDERR "N90: %d sequences; L90: %sb\n",
