@@ -41,7 +41,7 @@ while(<>){
       my $newSeqID = $2;
       if($seqID){
         if(!$searchPattern || ($seqID =~ /($searchPattern)/)){
-          my $matchPattern = $1;
+          my $matchPattern = ($2) ? $2 : $1;
           $fastXVals{$seqID} = (!$searchPattern) ? length($seq) : $matchPattern;
           if(!$qual){
             $seq =~ s/(.{100})/$1\n/g;
@@ -73,7 +73,7 @@ while(<>){
 
 if ($seqID) {
   if (!$searchPattern || ($seqID =~ /($searchPattern)/)) {
-    my $matchPattern = $1;
+    my $matchPattern = ($2) ? $2 : $1;
     $fastXVals{$seqID} = (!$searchPattern) ? length($seq) : $matchPattern;
     if (!$qual) {
       $seq =~ s/(.{100})/$1\n/g;
@@ -88,8 +88,14 @@ if ($seqID) {
 }
 
 if($searchPattern){
-  foreach my $pat (sort {$fastXVals{$a} cmp $fastXVals{$b}} (keys(%fastXStrs))){
-    print($fastXStrs{$pat});
+  if($numeric){
+    foreach my $pat (sort {$fastXVals{$a} <=> $fastXVals{$b}} (keys(%fastXStrs))){
+      print($fastXStrs{$pat});
+    }
+  } else {
+    foreach my $pat (sort {$fastXVals{$a} cmp $fastXVals{$b}} (keys(%fastXStrs))){
+      print($fastXStrs{$pat});
+    }
   }
 } elsif($length){
   foreach my $pat (sort {$fastXVals{$b} <=> $fastXVals{$a}} (keys(%fastXStrs))){
