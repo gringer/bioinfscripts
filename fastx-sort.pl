@@ -15,6 +15,14 @@ GetOptions("reverse|r!" => \$r, "pattern=s" => \$searchPattern,
            "numeric|n!" => \$numeric, "length!" => \$length) or
   die("Error in command line arguments");
 
+if($length){
+  $numeric = 1;
+  print(STDERR "Numeric sort based on sequence length\n");
+} elsif($numeric){
+  $numeric = 1;
+  print(STDERR "Numeric sort\n");
+}
+
 if($r){
   print(STDERR "Reversing sort direction\n");
 }
@@ -32,7 +40,6 @@ while(@ARGV){
 @ARGV = @files;
 
 my %fastXStrs = ();
-my %fastXVals = ();
 
 my $inQual = 0; # false
 my $seqID = "";
@@ -48,12 +55,13 @@ while(<>){
       if($seqID){
         if(!$searchPattern || ($seqID =~ /($searchPattern)/)){
           my $matchPattern = ($2) ? $2 : $1;
-          $fastXVals{$seqID} = (!$searchPattern) ? length($seq) : $matchPattern;
+          my $key = (!$searchPattern) ?
+            ($length ? length($seq) : $seqID) : $matchPattern;
           if(!$qual){
             $seq =~ s/(.{100})/$1\n/g;
             $seq =~ s/\n$//;
           }
-          $fastXStrs{$seqID} .= ($qual) ?
+          $fastXStrs{$key} .= ($qual) ?
             sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
             sprintf(">%s\n%s\n", $seqID, $seq);
         } else {
@@ -80,12 +88,13 @@ while(<>){
 if ($seqID) {
   if (!$searchPattern || ($seqID =~ /($searchPattern)/)) {
     my $matchPattern = ($2) ? $2 : $1;
-    $fastXVals{$seqID} = (!$searchPattern) ? length($seq) : $matchPattern;
+    my $key = (!$searchPattern) ?
+      ($length ? length($seq) : $seqID) : $matchPattern;
     if (!$qual) {
       $seq =~ s/(.{100})/$1\n/g;
       $seq =~ s/\n$//;
     }
-    $fastXStrs{$seqID} .= ($qual) ?
+    $fastXStrs{$key} .= ($qual) ?
       sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
       sprintf(">%s\n%s\n", $seqID, $seq);
   } else {
@@ -93,26 +102,14 @@ if ($seqID) {
   }
 }
 
-if($searchPattern){
-  if($numeric){
-    foreach my $pat (sort {$fastXVals{$r?$b:$a} <=> $fastXVals{$r?$a:$b}} (keys(%fastXStrs))){
-      print($fastXStrs{$pat});
-    }
-  } else {
-    foreach my $pat (sort {$fastXVals{$r?$b:$a} cmp $fastXVals{$r?$a:$b}} (keys(%fastXStrs))){
-      print($fastXStrs{$pat});
-    }
-  }
-} elsif($length){
-  foreach my $pat (sort {$fastXVals{$r?$a:$b} <=> $fastXVals{$r?$b:$a}} (keys(%fastXStrs))){
-    print($fastXStrs{$pat});
-  }
-} elsif($numeric){
-  foreach my $pat (sort {$r?$b:$a <=> $r?$a:$b} (keys(%fastXStrs))){
+printf(STDERR "Seen %d keys\n", scalar(keys(%fastXStrs)));
+
+if($numeric){
+  foreach my $pat (sort {($r?$b:$a) <=> ($r?$a:$b)} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }
 } else {
-  foreach my $pat (sort {$r?$b:$a cmp $r?$a:$b} (keys(%fastXStrs))){
+  foreach my $pat (sort {($r?$b:$a) cmp ($r?$a:$b)} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }
 }
