@@ -8,10 +8,16 @@ my $quiet = 0;
 my $searchPattern = ""; ## "(^.*\$)";
 my $numeric = 0;
 my $length = 0;
+my $r = 0;
 
-GetOptions("pattern=s" => \$searchPattern, "quiet!" => \$quiet,
-           "numeric!" => \$numeric, "length!" => \$length) or
+GetOptions("reverse|r!" => \$r, "pattern=s" => \$searchPattern,
+           "quiet!" => \$quiet,
+           "numeric|n!" => \$numeric, "length!" => \$length) or
   die("Error in command line arguments");
+
+if($r){
+  print(STDERR "Reversing sort direction\n");
+}
 
 # Complain about non-file command line argument
 my @files = ();
@@ -89,24 +95,24 @@ if ($seqID) {
 
 if($searchPattern){
   if($numeric){
-    foreach my $pat (sort {$fastXVals{$a} <=> $fastXVals{$b}} (keys(%fastXStrs))){
+    foreach my $pat (sort {$fastXVals{$r?$b:$a} <=> $fastXVals{$r?$a:$b}} (keys(%fastXStrs))){
       print($fastXStrs{$pat});
     }
   } else {
-    foreach my $pat (sort {$fastXVals{$a} cmp $fastXVals{$b}} (keys(%fastXStrs))){
+    foreach my $pat (sort {$fastXVals{$r?$b:$a} cmp $fastXVals{$r?$a:$b}} (keys(%fastXStrs))){
       print($fastXStrs{$pat});
     }
   }
 } elsif($length){
-  foreach my $pat (sort {$fastXVals{$b} <=> $fastXVals{$a}} (keys(%fastXStrs))){
+  foreach my $pat (sort {$fastXVals{$r?$a:$b} <=> $fastXVals{$r?$b:$a}} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }
 } elsif($numeric){
-  foreach my $pat (sort {$a <=> $b} (keys(%fastXStrs))){
+  foreach my $pat (sort {$r?$b:$a <=> $r?$a:$b} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }
 } else {
-  foreach my $pat (sort(keys(%fastXStrs))){
+  foreach my $pat (sort {$r?$b:$a cmp $r?$a:$b} (keys(%fastXStrs))){
     print($fastXStrs{$pat});
   }
 }
