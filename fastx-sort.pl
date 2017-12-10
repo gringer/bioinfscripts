@@ -53,7 +53,7 @@ while(<>){
             $seq =~ s/(.{100})/$1\n/g;
             $seq =~ s/\n$//;
           }
-          $fastXStrs{$seqID} = ($qual) ?
+          $fastXStrs{$seqID} .= ($qual) ?
             sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
             sprintf(">%s\n%s\n", $seqID, $seq);
         } else {
@@ -85,7 +85,7 @@ if ($seqID) {
       $seq =~ s/(.{100})/$1\n/g;
       $seq =~ s/\n$//;
     }
-    $fastXStrs{$seqID} = ($qual) ?
+    $fastXStrs{$seqID} .= ($qual) ?
       sprintf("@%s\n%s\n+\n%s\n", $seqID, $seq, $qual) :
       sprintf(">%s\n%s\n", $seqID, $seq);
   } else {
