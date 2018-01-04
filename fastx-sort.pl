@@ -56,7 +56,7 @@ while(<>){
         if(!$searchPattern || ($seqID =~ /($searchPattern)/)){
           my $matchPattern = ($2) ? $2 : $1;
           my $key = (!$searchPattern) ?
-            ($length ? length($seq) : $seqID) : $matchPattern;
+            ($length ? (-length($seq)) : $seqID) : $matchPattern;
           if(!$qual){
             $seq =~ s/(.{100})/$1\n/g;
             $seq =~ s/\n$//;
@@ -89,7 +89,7 @@ if ($seqID) {
   if (!$searchPattern || ($seqID =~ /($searchPattern)/)) {
     my $matchPattern = ($2) ? $2 : $1;
     my $key = (!$searchPattern) ?
-      ($length ? length($seq) : $seqID) : $matchPattern;
+      ($length ? (-length($seq)) : $seqID) : $matchPattern;
     if (!$qual) {
       $seq =~ s/(.{100})/$1\n/g;
       $seq =~ s/\n$//;
