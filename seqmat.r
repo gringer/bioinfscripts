@@ -195,6 +195,8 @@ r <- seq(sqrt(startRadius), sqrt(endRadius),
          length.out=length(subSeq))^2; ## path radius
 s <- pi * (r^2 - startRadius^2); ## traversed distance at each pos
 ds <- c(s[2],diff(s)); ## distance difference at each pos
+print(cbind(seq(1,length(r),by=rptSize),r[seq(1,length(r),by=rptSize)]));
+cr <- 2*pi*r / numLoops; ## circumference of one loop
 
 ## par(mfrow=c(4,1));
 ## plot(s, main="s");
@@ -202,10 +204,13 @@ ds <- c(s[2],diff(s)); ## distance difference at each pos
 ## plot(deg, main="deg");
 ## plot(theta, main="theta");
 
-## draw the spiral
-points(rev(r) * cos(rev(theta)), rev(r) * sin(rev(theta)),
-       col=paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")), lwd=2,
-       pch=20, cex=rev(sqrt(r)) * (13/log(numLoops)) * pointFactor);
+segments(x0=(rev(r)+0.05*sqrt(rev(cr))) * cos(rev(theta)),
+         y0=(rev(r)+0.05*sqrt(rev(cr))) * sin(rev(theta)),
+         x1=(rev(r)-0.05*sqrt(rev(cr))) * cos(rev(theta)),
+         y1=(rev(r)-0.05*sqrt(rev(cr))) * sin(rev(theta)),
+         lwd = 20 * rev(sqrt(r)), lend=(ifelse(numLoops>20,1,0)),
+         col=paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
+         pch=15, cex=rev(sqrt(r)) * (13/log(numLoops)) * pointFactor);
 legend("center", legend=c("A","C","G","T"), inset=0.2,
        fill=colPal[1:4], cex=1);
 invisible(dev.off());
