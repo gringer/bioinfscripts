@@ -1,5 +1,10 @@
 #!/usr/bin/perl
 
+## kmer dotplot -- creates a self-vs-self dotplot of a sequence using
+## kmer sequences, outputs a PNG file to standard out
+## example usage: ~/scripts/fastx-kdotplot.pl -s 300 -k 13 out_sseq.fa | \
+##                convert png:- -resize 1000x1000 - > repeat_region.png
+
 use warnings;
 use strict;
 
