@@ -195,7 +195,7 @@ r <- seq(sqrt(startRadius), sqrt(endRadius),
          length.out=length(subSeq))^2; ## path radius
 s <- pi * (r^2 - startRadius^2); ## traversed distance at each pos
 ds <- c(s[2],diff(s)); ## distance difference at each pos
-print(cbind(seq(1,length(r),by=rptSize),r[seq(1,length(r),by=rptSize)]));
+##print(cbind(seq(1,length(r),by=rptSize),r[seq(1,length(r),by=rptSize)]));
 cr <- 2*pi*r / numLoops; ## circumference of one loop
 
 ## par(mfrow=c(4,1));
