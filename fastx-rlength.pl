@@ -7,7 +7,7 @@ use Getopt::Long qw(:config auto_help pass_through);
 #use IO::File;
 
 my $trim = 0;
-my $kmerLength = 13; ## number of bases in hash keys
+my $kmerLength = 17; ## number of bases in hash keys
 
 GetOptions("trim=s" => \$trim) or
     die("Error in command line arguments");
@@ -31,6 +31,7 @@ while(<>){
       my $newSeqID = $2;
       my $newShortID = $3;
       my $len = length($seq);
+      my $sseq = "";
       if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
         my $countTotal = 0;
         my $countMax = 0;
@@ -39,8 +40,11 @@ while(<>){
 	my %rptHash = ();
         my %gapCounts = ();
 	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-	  push(@{$rptHash{substr($seq, $p, $kmerLength)}}, $p);
-	}
+          $sseq = substr($seq, $p, $kmerLength);
+          if($sseq !~ /^([ACGT][ACGT])\1{6,}$/){
+            push(@{$rptHash{$sseq}}, $p);
+          }
+        }
 	my $numKmers = scalar(keys(%rptHash));
 	my $kmerRatio = $numKmers/($len - $kmerLength + 1);
 	my @repeatedKmers = grep {scalar(@{$rptHash{$_}}) > 1} keys(%rptHash);
