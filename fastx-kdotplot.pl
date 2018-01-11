@@ -25,10 +25,18 @@ sub rev {
 }
 
 my $size = 1024;
+my $subseq = "";
+my @region = ();
 my $kmerLength = 17; ## number of bases in hash keys
 
-GetOptions("kmer=i" => \$kmerLength, "size=i" => \$size) or
+GetOptions("kmer=i" => \$kmerLength, "size=i" => \$size,
+           "region=s" => \$subseq ) or
     die("Error in command line arguments");
+
+if($subseq){
+  @region = split(/\-/, $subseq);
+  print(STDERR $region[0], " - ", $region[1], "\n");
+}
 
 my @rlengths = ();
 my $inQual = 0; # false
@@ -59,6 +67,11 @@ while(<>){
       my $ppb = ($size > $len) ? 1 : $size / $len;
       my $sseq = "";
       if($seqID && (length($seq) > $kmerLength)){
+        if($subseq){
+          $seq = substr($seq, $region[0], ($region[1]-$region[0]));
+          $len = length($seq);
+          $ppb = ($size > $len) ? 1 : $size / $len;
+        }
         my $countTotal = 0;
         my $countMax = 0;
         my $maxKmer = "";
@@ -104,6 +117,11 @@ while(<>){
 my $len = length($seq);
 my $ppb = ($size > $len) ? 1 : $size / $len;
 if ($seqID && (length($seq) > $kmerLength)) {
+  if($subseq){
+    $seq = substr($seq, $region[0], ($region[1]-$region[0]));
+    $len = length($seq);
+    $ppb = ($size > $len) ? 1 : $size / $len;
+  }
   my $countTotal = 0;
   my $countMax = 0;
   my $maxKmer = "";
