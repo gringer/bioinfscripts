@@ -9,6 +9,8 @@ usage <- function(){
   cat("-type (png/pdf)     : Image type (default 'png')\n");
   cat("-ps <factor>        : Magnification factor for points\n");
   cat("-solid              : Make colours solid (not translucent)\n");
+  cat("-min                : Set minimum circle radius\n");
+  cat("-max                : Set maximum circle radius\n");
   cat("-nokey              : Remove key\n");
   cat("-size <x>x<y>       : Image size (default 1200x1200 for png, 12x12 for PDF)\n");
   cat("-col (ef|cb)     : Colour palette (electrophoresis [default], colour-blind)\n");
@@ -24,6 +26,8 @@ colType <- "ef";
 pointFactor <- 1;
 useKey <- TRUE;
 solid <- FALSE;
+minRad <- 0.3;
+maxRad <- 1.0;
 
 seqRange <- FALSE;
 
@@ -46,6 +50,14 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     } else if(arg == "-ps"){
         arg <- commandArgs(TRUE)[argLoc];
         pointFactor <- as.numeric(arg);
+        argLoc <- argLoc + 1;
+    } else if(arg == "-min"){
+        arg <- commandArgs(TRUE)[argLoc];
+        minRad <- as.numeric(arg);
+        argLoc <- argLoc + 1;
+    } else if(arg == "-max"){
+        arg <- commandArgs(TRUE)[argLoc];
+        maxRad <- as.numeric(arg);
         argLoc <- argLoc + 1;
     } else if(arg == "-type"){
         arg <- commandArgs(TRUE)[argLoc];
@@ -172,8 +184,8 @@ dummy <- dev.off();
 numLoops <- (length(subSeq) / rptSize);
 ##startCount <- rptSize / 1.2;
 startCount <- rptSize;
-startRadius <- 0.2;
-endRadius <- 1.0;
+startRadius <- minRad;
+endRadius <- maxRad;
 ##loopIncrement <- ((rptSize * 1.2) - (rptSize / 1.2)) / numLoops;
 cat(" done\n");
 
