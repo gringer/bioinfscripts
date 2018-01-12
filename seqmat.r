@@ -9,6 +9,7 @@ usage <- function(){
   cat("-type (png/pdf)     : Image type (default 'png')\n");
   cat("-ps <factor>        : Magnification factor for points\n");
   cat("-solid              : Make colours solid (not translucent)\n");
+  cat("-nokey              : Remove key\n");
   cat("-size <x>x<y>       : Image size (default 1200x1200 for png, 12x12 for PDF)\n");
   cat("-col (ef|cb)     : Colour palette (electrophoresis [default], colour-blind)\n");
  cat("\n");
@@ -21,6 +22,7 @@ sizeX <- -1;
 sizeY <- -1;
 colType <- "ef";
 pointFactor <- 1;
+useKey <- TRUE;
 solid <- FALSE;
 
 seqRange <- FALSE;
@@ -51,6 +53,8 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         type <- arg;
     } else if(arg == "-solid"){
         solid <- TRUE;
+    } else if(arg == "-nokey"){
+        useKey <- FALSE;
     } else if(arg == "-col"){
         arg <- commandArgs(TRUE)[argLoc];
         argLoc <- argLoc + 1;
@@ -168,7 +172,7 @@ dummy <- dev.off();
 numLoops <- (length(subSeq) / rptSize);
 ##startCount <- rptSize / 1.2;
 startCount <- rptSize;
-startRadius <- 0.3;
+startRadius <- 0.2;
 endRadius <- 1.0;
 ##loopIncrement <- ((rptSize * 1.2) - (rptSize / 1.2)) / numLoops;
 cat(" done\n");
@@ -189,10 +193,11 @@ mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
 ## integrate(2*pi*r,r=startRadius..endRadius)
 ## => pi((endRadius)²-(startRadius)²)
 dTot <- pi*(endRadius^2 - startRadius^2); ## total "distance" travelled
-theta <- seq(0, (numLoops) * 2*pi, length.out=length(subSeq)); ## traversed angle
+theta <- seq(0, (numLoops+1+2/rptSize) * 2*pi,
+             length.out=(length(subSeq)+rptSize+2)); ## traversed angle
 deg <- (theta / (2*pi)) * 360;
 r <- seq(sqrt(startRadius), sqrt(endRadius),
-         length.out=length(subSeq))^2; ## path radius
+         length.out=length(subSeq)+rptSize+2)^2; ## path radius
 s <- pi * (r^2 - startRadius^2); ## traversed distance at each pos
 ds <- c(s[2],diff(s)); ## distance difference at each pos
 ##print(cbind(seq(1,length(r),by=rptSize),r[seq(1,length(r),by=rptSize)]));
@@ -204,14 +209,27 @@ cr <- 2*pi*r / numLoops; ## circumference of one loop
 ## plot(deg, main="deg");
 ## plot(theta, main="theta");
 
-segments(x0=(rev(r)+0.05*sqrt(rev(cr))) * cos(rev(theta)),
-         y0=(rev(r)+0.05*sqrt(rev(cr))) * sin(rev(theta)),
-         x1=(rev(r)-0.05*sqrt(rev(cr))) * cos(rev(theta)),
-         y1=(rev(r)-0.05*sqrt(rev(cr))) * sin(rev(theta)),
-         lwd = 20 * rev(sqrt(r)), lend=(ifelse(numLoops>20,1,0)),
-         col=paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
-         pch=15, cex=rev(sqrt(r)) * (13/log(numLoops)) * pointFactor);
-legend("center", legend=c("A","C","G","T"), inset=0.2,
-       fill=colPal[1:4], cex=1);
+ss <- rev(seq_along(subSeq))+1;
+d <- rptSize;
+
+polygon(x=c(rbind(
+            r[ss-1+0] * cos(theta[ss-1+0]),
+            r[ss+0+0] * cos(theta[ss+0+0]),
+            r[ss+0+d] * cos(theta[ss+0+d]),
+            r[ss-1+d] * cos(theta[ss-1+d]), NA)),
+        y=c(rbind(
+            r[ss-1+0] * sin(theta[ss-1+0]),
+            r[ss+0+0] * sin(theta[ss+0+0]),
+            r[ss+0+d] * sin(theta[ss+0+d]),
+            r[ss-1+d] * sin(theta[ss-1+d]), NA)),
+        ##lwd = 5 * sqrt(r)[ss], lend=(ifelse(numLoops>20,1,0)),
+        ##border="#00000040",
+        border = paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
+        col = paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
+        pch=15, cex=sqrt(r)[ss] * (13/log(numLoops)) * pointFactor);
+if(useKey){
+    legend("center", legend=c("A","C","G","T"), inset=0.2,
+           fill=colPal[1:4], cex=1);
+}
 invisible(dev.off());
 cat(" done\n");
