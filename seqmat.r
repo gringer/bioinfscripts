@@ -148,9 +148,11 @@ colPal <-
 
 cat("Creating matrix plot...");
 if(type == "png"){
-    png("sequence_matrix.png", width=sizeX, height=sizeY, pointsize=24);
+    png("sequence_matrix.png", width=sizeX, height=sizeY,
+        pointsize=24 * sizeX/1000);
 } else if(type == "pdf"){
-    pdf("sequence_matrix.pdf", width=sizeX, height=sizeY, pointsize=16);
+    pdf("sequence_matrix.pdf", width=sizeX, height=sizeY,
+        pointsize=16 * sizeX/1000);
 }
 lis <- length(inSeq);
 numLines <- floor(lis/rptSize + 1);
@@ -172,23 +174,26 @@ dummy <- dev.off();
 numLoops <- (length(subSeq) / rptSize);
 ##startCount <- rptSize / 1.2;
 startCount <- rptSize;
-startRadius <- 0.2;
+startRadius <- 0.3;
 endRadius <- 1.0;
 ##loopIncrement <- ((rptSize * 1.2) - (rptSize / 1.2)) / numLoops;
 cat(" done\n");
 
 cat("Creating spiral plot...");
 if(type == "png"){
-    png("sequence_circle.png", width=max(sizeX,sizeY), height=max(sizeX,sizeY), pointsize=24);
+    png("sequence_circle.png", width=max(sizeX,sizeY),
+        height=max(sizeX,sizeY), pointsize=24 * max(sizeX,sizeY)/1000);
 } else if(type == "pdf"){
-    pdf("sequence_circle.pdf", width=max(sizeX,sizeY), height=max(sizeX,sizeY), pointsize=16);
+    pdf("sequence_circle.pdf", width=max(sizeX,sizeY),
+        height=max(sizeX,sizeY),
+        pointsize=16 * max(sizeX,sizeY)/1000);
 }
 par(mar=c(2.5,1.5,0.5,1.5));
 plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
 mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
               ifelse(seqRange[1] == FALSE,"",
                      paste0(":",seqRange[1],"-",seqRange[2])),
-              lis/1000, rptSize), side=1, cex=1, line=1);
+              lis/1000, rptSize), side=1, cex=1, line=0);
 ## Pre-population plot variables
 ## integrate(2*pi*r,r=startRadius..endRadius)
 ## => pi((endRadius)²-(startRadius)²)
