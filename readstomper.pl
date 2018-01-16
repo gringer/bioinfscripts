@@ -157,8 +157,6 @@ while(<>){
 	  $deletions{$pos+$i}++;
       }
   }
-  ## remove stray insertions and deletions (which shouldn't exist...)
-  s/(\+|-)[0-9]+[ACGTNacgtn]+//g;
   my $rc = tr/,.//;
   my $dc = $deletions{$pos}?$deletions{$pos}:0;
   delete($deletions{$pos});
