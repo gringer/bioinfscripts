@@ -56,15 +56,15 @@ if(!$writeConsensus){
   if($sampleName){
     printf("%s,", "Sample");
   }
-  printf("%s,%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "ref", "cR",
+  printf("%s,%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "skip", "cR",
          "pR,A,C,G,T,d,i,InsMode");
 } else {
   if($sampleName){
     printf(STDERR "%s,", "Sample");
   }
-  printf(STDERR "%s,%s,%s,%s,%s,%s\n",
-         "Assembly", "Position", "Coverage", "ref", "cR",
+  printf(STDERR "%s,%s,%s,%s,%s,%s,%s\n",
+         "Assembly", "Position", "Coverage", "ref", "skip", "cR",
          "pR,A,C,G,T,d,i,InsMode,Variant");
 }
 
@@ -99,6 +99,7 @@ while(<>){
     next;
   }
   my ($refName, $pos, $refAllele, $cov, $bases, $rest) = split(/\t/, $_, 6);
+  my $skips = ();
   my $observedDiff = 0; # false
   if($cov < $minCoverage){
     next;
@@ -161,6 +162,7 @@ while(<>){
   my $rc = tr/,.//;
   my $dc = $deletions{$pos}?$deletions{$pos}:0;
   delete($deletions{$pos});
+  my $sc = tr/<>//;
   my $ac = tr/aA//;
   my $cc = tr/cC//;
   my $gc = tr/gG//;
@@ -200,8 +202,8 @@ while(<>){
           printf(STDERR "%s,", $sampleName);
         }
         printf(STDERR "%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
-        printf(STDERR "%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
-               $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+        printf(STDERR "%d,%d,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f,%0.2f",
+               $sc, $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
         if($insOp && ($maxInserts >= $minInsert)){
           printf(STDERR ",%s;%0.2f,", $maxInsertSeq, $maxInserts);
         } else {
@@ -227,14 +229,14 @@ while(<>){
     }
     printf("%s,%d,%d,%s,", $refName, $pos, $cov, $refAllele);
     if($writeCounts){
-      printf("%d,%0.2f,%d,%d,%d,%d,%d,%d",
-             $rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
+      printf("%d,%d,%0.2f,%d,%d,%d,%d,%d,%d",
+             $sc,$rc, $pr, $ac, $cc, $gc, $tc, $dc, $ic);
       if($maxInsertSeq && ($maxInserts >= $minInsert)){
         printf(",%s;%d", $maxInsertSeq, $maxInserts);
       }
     } else {
-      printf("%0.2f,%0.2f,%0.4f,%0.4f,%0.4f,%0.4f,%0.2f,%0.2f",
-               $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
+      printf("%d,%d,%0.2f,%0.4f,%0.4f,%0.4f,%0.4f,%0.2f,%0.2f",
+               $sc, $rc, $pr, $pa, $pc, $pg, $pt, $pd, $pi);
       if($maxInsertSeq && ($maxInserts >= $minInsert)){
         printf(",%s;%0.2f", $maxInsertSeq, $maxInserts);
       }
