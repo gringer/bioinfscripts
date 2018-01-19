@@ -205,7 +205,7 @@ plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
 mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
               ifelse(seqRange[1] == FALSE,"",
                      paste0(":",seqRange[1],"-",seqRange[2])),
-              lis/1000, rptSize), side=1, cex=1, line=0);
+              lis/1000, rptSize), side=1, cex=1, line=1);
 ## Pre-population plot variables
 ## integrate(2*pi*r,r=startRadius..endRadius)
 ## => pi((endRadius)²-(startRadius)²)
