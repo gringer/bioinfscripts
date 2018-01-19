@@ -14,10 +14,11 @@ my $printedHeader = 0; # false
 my $accuracyDP = 0;
 my $DCOnly = 0; # false
 my $threshold = 0; # Log2 threshold to report DC (otherwise DC is set to 0)
+my $header = 1; # true
 
 my $compare = "";
 
-GetOptions("adjustment=i" => $covAdjust,
+GetOptions("adjustment=i" => $covAdjust, "header!" => $header,
 	   "compare=s" => \$compare, "dpaccuracy=i" => \$accuracyDP,
 	   "threshold=f" => \$threshold, "onlydc!" => \$DCOnly ) or
     die("Error in command line arguments");
@@ -33,11 +34,11 @@ while(<>){
   }
   my ($refName, $pos, $refAllele, $cov, $bases, $qual, $rest) =
       split(/\t/, $_, 7);
-  my $skip = ($qual =~ tr/<>//);
+  my $skip = ($bases =~ tr/<>//);
   my @adjCovs = ($cov - $skip);
   while($rest){
     ($cov, $bases, $qual, $rest) = split(/\t/, $rest, 4);
-    $skip = ($qual =~ tr/<>//);
+    $skip = ($bases =~ tr/<>//);
     push(@adjCovs, $cov - $skip);
   }
   if(!$printedHeader){
@@ -57,11 +58,13 @@ while(<>){
 	push(@comps, "${1}vs${2}");
       }
     }
-    if($DCOnly){
-      print(join("\t", "##Ref", "Start", "End", @comps)."\n");
-    } else {
-      print(join("\t", "##Ref", "Start", "End", 
-		 (1..($#adjCovs+1)), @comps)."\n");
+    if($header){
+      if($DCOnly){
+        print(join("\t", "##Ref", "Start", "End", @comps)."\n");
+      } else {
+        print(join("\t", "##Ref", "Start", "End",
+                   (1..($#adjCovs+1)), @comps)."\n");
+      }
     }
     $printedHeader = 1; # true
   }
@@ -69,12 +72,12 @@ while(<>){
   for(my $i = 0; $i <= $#comp1; $i++){
     my $x = $comp1[$i]-1;
     my $y = $comp2[$i]-1;
-    my $val = (log($adjCovs[$x]+$covAdjust) - 
+    my $val = (log($adjCovs[$x]+$covAdjust) -
 	       log($adjCovs[$y]+$covAdjust)) / log(2);
     push(@DCov, sprintf("%0.${accuracyDP}f",
 			abs($val) < $threshold ? 0 : $val));
   }
-  my $descLine = ($DCOnly) ? 
+  my $descLine = ($DCOnly) ?
       join("\t", @DCov) :
       join("\t", @adjCovs, @DCov);
   $descLine =~ s/-0/0/g;
