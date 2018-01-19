@@ -211,7 +211,7 @@ mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
 ## => pi((endRadius)²-(startRadius)²)
 dTot <- pi*(endRadius^2 - startRadius^2); ## total "distance" travelled
 theta <- seq(0, (numLoops+1+2/rptSize) * 2*pi,
-             length.out=(length(subSeq)+rptSize+2)); ## traversed angle
+             length.out=(length(subSeq)+rptSize+3)); ## traversed angle
 deg <- (theta / (2*pi)) * 360;
 r <- seq(sqrt(startRadius), sqrt(endRadius),
          length.out=length(subSeq)+rptSize+2)^2; ## path radius
