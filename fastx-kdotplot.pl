@@ -84,15 +84,15 @@ while(<>){
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
           foreach my $x (@posList){
-            foreach my $y (@posList){
-              $im->setPixel($x * $ppb, $y * $ppb, $red);
-            }
-            foreach my $y (@{rc($kmer)}){
-              $im->setPixel($x * $ppb, $y * $ppb, $blue);
-            }
-            foreach my $y (@{rev($kmer)}){
-              $im->setPixel($x * $ppb, $y * $ppb, $green);
-            }
+	    foreach my $y (@posList){
+	      $im->setPixel($x * $ppb, $y * $ppb, $red);
+	    }
+	    foreach my $y (grep {$_ < $x} (@{$posHash{rc($kmer)}})){
+	      $im->setPixel($x * $ppb, $y * $ppb, $blue);
+	    }
+	    foreach my $y (grep {$_ > $x} (@{$posHash{rev($kmer)}})){
+	      $im->setPixel($x * $ppb, $y * $ppb, $green);
+	    }
           }
 	}
       }
@@ -133,15 +133,15 @@ if ($seqID && (length($seq) > $kmerLength)) {
   }
   foreach my $kmer (keys(%posHash)) {
     my @posList = @{$posHash{$kmer}};
-    foreach my $x (@posList) {
-      foreach my $y (@posList) {
-        $im->setPixel($x * $ppb, $y * $ppb, $red);
+    foreach my $x (@posList){
+      foreach my $y (@posList){
+	$im->setPixel($x * $ppb, $y * $ppb, $red);
       }
-      foreach my $y (@{$posHash{rc($kmer)}}) {
-        $im->setPixel($x * $ppb, $y * $ppb, $blue);
+      foreach my $y (grep {$_ < $x} (@{$posHash{rc($kmer)}})){
+	$im->setPixel($x * $ppb, $y * $ppb, $blue);
       }
-      foreach my $y (@{$posHash{rev($kmer)}}) {
-        $im->setPixel($x * $ppb, $y * $ppb, $green);
+      foreach my $y (grep {$_ > $x} (@{$posHash{rev($kmer)}})){
+	$im->setPixel($x * $ppb, $y * $ppb, $green);
       }
     }
   }
