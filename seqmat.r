@@ -9,6 +9,7 @@ usage <- function(){
   cat("-type (png/pdf)     : Image type (default 'png')\n");
   cat("-ps <factor>        : Magnification factor for points\n");
   cat("-solid              : Make colours solid (not translucent)\n");
+  cat("-spiral             : Add a white spiral to the plot\n");
   cat("-min                : Set minimum circle radius\n");
   cat("-max                : Set maximum circle radius\n");
   cat("-nokey              : Remove key\n");
@@ -28,6 +29,7 @@ useKey <- TRUE;
 solid <- FALSE;
 minRad <- 0.3;
 maxRad <- 1.0;
+spiral <- FALSE;
 
 seqRange <- FALSE;
 
@@ -65,6 +67,8 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         type <- arg;
     } else if(arg == "-solid"){
         solid <- TRUE;
+    } else if(arg == "-spiral"){
+        spiral <- TRUE;
     } else if(arg == "-nokey"){
         useKey <- FALSE;
     } else if(arg == "-col"){
@@ -244,6 +248,11 @@ polygon(x=c(rbind(
         border = paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
         col = paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
         pch=15, cex=sqrt(r)[ss] * (13/log(numLoops)) * pointFactor);
+if(spiral){
+    sps <- rev(seq(1,length(subSeq)+d))+1;
+    points(x=r[sps] * cos(theta[sps]), y=r[sps] * sin(theta[sps]),
+           type="l", col="white", lwd=3);
+}
 if(useKey){
     legend("center", legend=c("A","C","G","T"), inset=0.2,
            fill=colPal[1:4], cex=1);
