@@ -8,6 +8,7 @@ usage <- function(){
   cat("-help               : Only display this help message\n");
   cat("-type (png/pdf)     : Image type (default 'png')\n");
   cat("-ps <factor>        : Magnification factor for points\n");
+  cat("-title <string>     : Title for image\n");
   cat("-solid              : Make colours solid (not translucent)\n");
   cat("-spiral             : Add a white spiral to the plot\n");
   cat("-min                : Set minimum circle radius\n");
@@ -30,6 +31,7 @@ solid <- FALSE;
 minRad <- 0.3;
 maxRad <- 1.0;
 spiral <- FALSE;
+plotTitle <- "";
 
 seqRange <- FALSE;
 
@@ -52,6 +54,10 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     } else if(arg == "-ps"){
         arg <- commandArgs(TRUE)[argLoc];
         pointFactor <- as.numeric(arg);
+        argLoc <- argLoc + 1;
+    } else if(arg == "-title"){
+        arg <- commandArgs(TRUE)[argLoc];
+        plotTitle <- arg;
         argLoc <- argLoc + 1;
     } else if(arg == "-min"){
         arg <- commandArgs(TRUE)[argLoc];
@@ -204,12 +210,17 @@ if(type == "png"){
         height=max(sizeX,sizeY),
         pointsize=16 * max(sizeX,sizeY)/1000);
 }
-par(mar=c(2.5,1.5,0.5,1.5));
+if(nchar(plotTitle) > 0){
+    par(mar=c(2.5,2.5,2.5,2.5));
+} else {
+    par(mar=c(2.5,1.5,0.5,1.5));
+}
 plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
 mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
               ifelse(seqRange[1] == FALSE,"",
                      paste0(":",seqRange[1],"-",seqRange[2])),
               lis/1000, rptSize), side=1, cex=1, line=1);
+mtext(plotTitle, side=3, cex=2, line=1);
 ## Pre-population plot variables
 ## integrate(2*pi*r,r=startRadius..endRadius)
 ## => pi((endRadius)²-(startRadius)²)
@@ -249,7 +260,7 @@ polygon(x=c(rbind(
         col = paste0(colPal[rev(subSeq)],ifelse(solid,"FF","A0")),
         pch=15, cex=sqrt(r)[ss] * (13/log(numLoops)) * pointFactor);
 if(spiral){
-    sps <- rev(seq(1,length(subSeq)+d))+1;
+    sps <- rev(seq(0,length(subSeq)+d))+1;
     points(x=r[sps] * cos(theta[sps]), y=r[sps] * sin(theta[sps]),
            type="l", col="white", lwd=3);
 }
