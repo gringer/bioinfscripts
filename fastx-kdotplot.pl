@@ -87,6 +87,12 @@ while(<>){
 	    foreach my $y (@posList){
 	      $im->setPixel($x * $ppb, $y * $ppb, $red);
 	    }
+          }
+	}
+	## make sure reverse and reverse complement explicityl overwrite
+	foreach my $kmer (keys(%posHash)){
+	  my @posList = @{$posHash{$kmer}};
+          foreach my $x (@posList){
 	    foreach my $y (grep {$_ < $x} (@{$posHash{rc($kmer)}})){
 	      $im->setPixel($x * $ppb, $y * $ppb, $blue);
 	    }
@@ -131,12 +137,18 @@ if ($seqID && (length($seq) > $kmerLength)) {
   for (my $p = 0; ($p + $kmerLength) <= $len; $p++) {
     push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
   }
-  foreach my $kmer (keys(%posHash)) {
+  foreach my $kmer (keys(%posHash)){
     my @posList = @{$posHash{$kmer}};
     foreach my $x (@posList){
       foreach my $y (@posList){
 	$im->setPixel($x * $ppb, $y * $ppb, $red);
       }
+    }
+  }
+  ## make sure reverse and reverse complement explicityl overwrite
+  foreach my $kmer (keys(%posHash)){
+    my @posList = @{$posHash{$kmer}};
+    foreach my $x (@posList){
       foreach my $y (grep {$_ < $x} (@{$posHash{rc($kmer)}})){
 	$im->setPixel($x * $ppb, $y * $ppb, $blue);
       }
