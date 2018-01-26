@@ -46,16 +46,16 @@ while(<>){
     if(!$compare){
       for(my $x = 0; $x < $#adjCovs; $x++){
 	for(my $y = $x+1; $y <= $#adjCovs; $y++){
-	  push(@comp1, $x);
-	  push(@comp2, $y);
-	  push(@comps, "$x,$y");
+	  push(@comp1, $x+1);
+	  push(@comp2, $y+1);
+	  push(@comps, sprintf("%d,%d", $x+1, $y+1));
 	}
       }
     } else {
       while($compare =~ s/([0-9]+?)[-,]([0-9]+?)[;,\s]?//){
 	push(@comp1, $1);
 	push(@comp2, $2);
-	push(@comps, "${1}vs${2}");
+	push(@comps, "${1},${2}");
       }
     }
     if($header){
@@ -84,7 +84,7 @@ while(<>){
   if(($refName ne $startName) || ($descLine ne $lastDesc)){
     # print sequence (if any)
     if($startName){
-      print(join("\t", $startName, $startPos, $lastPos, $lastDesc)."\n");
+      print(join("\t", $startName, $startPos-1, $lastPos, $lastDesc)."\n");
     }
     $startName = $refName;
     $startPos = $pos;
@@ -94,5 +94,5 @@ while(<>){
 }
 
 if($startName){
-  print(join("\t", $startName, $startPos, $lastPos, $lastDesc)."\n");
+  print(join("\t", $startName, $startPos-1, $lastPos, $lastDesc)."\n");
 }
