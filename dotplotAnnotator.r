@@ -2,8 +2,8 @@
 
 library(png);
 
-fname <- "0013560_tig00022845.png";
-img <- readPNG(paste0("rippleplots/",fname));
+fname <- commandArgs(TRUE);
+img <- readPNG(fname);
 
 valToSci <- function(val, unit = ""){
     sci.prefixes <- c("", "k", "M", "G", "T", "P", "E", "Z", "Y");
@@ -27,10 +27,10 @@ png(sprintf("featurePlot_%s.png", seqName),
 par(mar=c(5,6,3,1.5), cex.axis=1.5, cex.lab=1.5, cex.main=2);
 plot(NA, main=sprintf("Feature profile (%s)", seqName),
      xlab="Sequence Location (kbp)",
-     ylab="", log="y", xlim=c(0,77263)/1000,
-     ylim=c(1,77263), yaxt="n");
-rasterImage(img, xleft=1, xright=77263/1000,
-            ybottom=1, ytop=77263);
+     ylab="", log="y", xlim=c(0,seqLen)/1000,
+     ylim=c(1,seqLen), yaxt="n");
+rasterImage(img, xleft=1, xright=seqLen/1000,
+            ybottom=1, ytop=seqLen);
 drMax <- ceiling(log10(seqLen));
 axis(2, at= 10^(0:drMax), las=2, lwd=3, cex.axis=1.5, labels=valToSci(10^(0:drMax)));
 axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
