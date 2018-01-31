@@ -4,7 +4,6 @@ use strict;
 
 use Getopt::Long qw(:config auto_help pass_through);
 use IO::Uncompress::Gunzip qw(gunzip $GunzipError);
-use Digest::MD5 qw(md5_hex);
 
 sub SIConvert{
   my ($val) = @_;
@@ -24,7 +23,11 @@ my $showMD5 = 0; # false
 my $showFName = 0; # false
 
 GetOptions("md5!" => \$showMD5, "fname!" => \$showFName, ) or
-  die("Error in command line arguments");
+    die("Error in command line arguments");
+
+if($showMD5){
+  use Digest::MD5 qw(md5_hex); ## only attempt to load if md5 is requested
+}
 
 # use stdin if no files supplied
 if(!@ARGV){
