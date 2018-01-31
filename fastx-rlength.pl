@@ -52,6 +52,7 @@ while(<>){
 	my @rptCounts = ();
 	my %rptHash = ();
         my %gapCounts = ();
+        my %minGaps = ();
 	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
           $sseq = substr($seq, $p, $kmerLength);
           if($sseq !~ /^([ACGT][ACGT])\1{6,}$/){
@@ -73,7 +74,6 @@ while(<>){
 	  }
 	  if(@posList){
 	    push(@rptCounts, scalar(@posList));
-	    #print(join(" ",@posList)."\n");
 	    my $lastPos = $posList[0];
 	    for(my $p = 0; $p <= $#posList; $p++){
 	      my $nextPos = $posList[$p];
@@ -81,12 +81,16 @@ while(<>){
               if($gap > 0){
                 push(@gaps, $gap);
                 $gapCounts{$gap}++;
+                if(!exists($minGaps{$kmer}) || ($minGaps{$kmer} < $gap)){
+                  $minGaps{$kmer} = $gap;
+                }
               }
 	      $lastPos = $nextPos;
 	    }
 	  }
 	}
-	@gaps = sort {$a <=> $b} (@gaps);
+        ##  @gaps = sort {$a <=> $b} (@gaps);
+        @gaps = sort {$a <=> $b} (values(%minGaps));
 	@rptCounts = sort {$a <=> $b} (@rptCounts);
 	my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
 	my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
@@ -148,6 +152,7 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
   my @rptCounts = ();
   my %rptHash = ();
   my %gapCounts = ();
+  my %minGaps = ();
   for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
     $sseq = substr($seq, $p, $kmerLength);
     if($sseq !~ /^([ACGT][ACGT])\1{6,}$/){
@@ -177,12 +182,16 @@ if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
         if ($gap > 0) {
           push(@gaps, $gap);
           $gapCounts{$gap}++;
+          if(!exists($minGaps{$kmer}) || ($minGaps{$kmer} < $gap)){
+            $minGaps{$kmer} = $gap;
+          }
         }
         $lastPos = $nextPos;
       }
     }
   }
-  @gaps = sort {$a <=> $b} (@gaps);
+  ##  @gaps = sort {$a <=> $b} (@gaps);
+  @gaps = sort {$a <=> $b} (values(%minGaps));
   @rptCounts = sort {$a <=> $b} (@rptCounts);
   my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
   my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
