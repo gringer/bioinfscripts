@@ -180,7 +180,7 @@ baseRange <- c(min(which(rowSums(countData) > 1)),
 pdf("Sequence_curves.pdf", width=16, height=8);
 #### Create density plots ####
 ## read counts
-par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5);
+par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5, bg="white");
 plot(NA, type="l", log="x", xaxt="n", yaxt="n",
      xlim=c(histCentres[baseRange[1]], histCentres[baseRange[2]]),
      ylim=c(0,max(countData)*1.1),
@@ -266,7 +266,7 @@ legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
        bg="#FFFFFFD0");
 invisible(dev.off());
 
-quit("n");
+quit("no");
 
 ## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
