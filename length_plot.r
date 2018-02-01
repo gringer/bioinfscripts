@@ -5,11 +5,24 @@
 
 scriptArgs <- commandArgs(TRUE);
 
-fileNames <- c("/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_A_132394_albacore_1.1.0.txt.gz",
-               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_C_132040_albacore_1.1.0.txt.gz",
-               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_D_132397_albacore_1.1.0.txt.gz",
-               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_E_132036_albacore_1.1.0.txt.gz",
-               "/mnt/gg_nanopore/gringer/ONT_Jan17/lengths_called_F_132396_albacore_1.1.0.txt.gz");
+fileNames <-
+    c("/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_1_C_BC01.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_2_Gy_BC09.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_3_TMZ_BC03.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_4_Dox_BC05.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_5_H2O2_BC06.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_6_UV_BC07.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_8_+ve_BC08.txt",
+      "/mnt/gg_nanopore/gringer/reads_LC_LN18_2017-Oct-31/called_LC_LN18_20h/workspace/lengths_unclassified.txt");
+
+
+
+
+
+
+
+
+
 
 plotVals <- TRUE;
 plotHoriz <- TRUE;
@@ -177,10 +190,12 @@ dens.mat <- sapply(fileNames, function(x){
 baseRange <- c(min(which(rowSums(countData) > 1)),
                max(which(rowSums(countData) > 1)));
 
+library(RColorBrewer);
+
 pdf("Sequence_curves.pdf", width=16, height=8);
 #### Create density plots ####
 ## read counts
-par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5);
+par(mar=c(4.5, 6.5, 1, 1), las=1, mgp=c(5,1,0), cex.lab=1.5, bg="white");
 plot(NA, type="l", log="x", xaxt="n", yaxt="n",
      xlim=c(histCentres[baseRange[1]], histCentres[baseRange[2]]),
      ylim=c(0,max(countData)*1.1),
@@ -192,15 +207,17 @@ axis(1, at= (rep(1:9, each=drMax+1) * 10^(0:drMax)), labels=FALSE);
 axis(2, at= pretty(unlist(countData)),
      labels=valToSci(pretty(unlist(countData))), cex.axis = 1.5 );
 mtext("Read Length", side=1, line=3, cex=1.5);
-library(RColorBrewer);
-for(pcol in 1:ncol(countData)){
+smoothed.count.mat <- sapply(1:ncol(countData), function(pcol){
     smoothed.data <- spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),
                             y=countData[baseRange[1]:baseRange[2],pcol],
                             n=10*length(histBreaks));
     smoothed.data$x <- 10^smoothed.data$x;
     points(smoothed.data, type="l", lwd=3,
            col=brewer.pal(ncol(countData), "Set2")[pcol]);
-}
+    res <- smoothed.data$y;
+    names(res) <- signif(smoothed.data$x,4);
+    res;
+});
 legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
        legend=colnames(baseData), inset=c(0.025,0.05), cex=1.5,
        bg="#FFFFFFD0");
@@ -218,14 +235,17 @@ axis(1, at= (rep(1:9, each=drMax+1) * 10^(0:drMax)), labels=FALSE);
 axis(2, at= pretty(unlist(baseData)),
      labels=valToSci(pretty(unlist(baseData))), cex.axis = 1.5 );
 mtext("Read Length", side=1, line=3, cex=1.5);
-for(pcol in 1:ncol(baseData)){
+smoothed.base.mat <- sapply(1:ncol(baseData), function(pcol){
     smoothed.data <- spline(x=log10(histCentres[baseRange[1]:baseRange[2]]),
                             y=baseData[baseRange[1]:baseRange[2],pcol],
                             n=10*length(histBreaks));
     smoothed.data$x <- 10^smoothed.data$x;
     points(smoothed.data, type="l", lwd=3,
            col=brewer.pal(ncol(baseData), "Set2")[pcol]);
-}
+    res <- smoothed.data$y;
+    names(res) <- signif(smoothed.data$x,4);
+    res;
+});
 legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
        legend=colnames(baseData), inset=c(0.025,0.05), cex=1.5,
        bg="#FFFFFFD0");
@@ -266,7 +286,11 @@ legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
        bg="#FFFFFFD0");
 invisible(dev.off());
 
-quit("n");
+
+colnames(smoothed.base.mat) <- colnames(baseData);
+smoothed.baseNorm.mat <- apply(smoothed.base.mat,2,function(x){x/sum(x)});
+
+quit("no");
 
 ## Create density matrix and histogram plots
 pdf("MinION_Reads_SequenceHist.pdf", paper="a4r",
@@ -342,42 +366,24 @@ dens.mat <- sapply(fileNames, function(x){
 dummy <- dev.off();
 colnames(dens.mat) <- sub("lengths_(.*)\\.txt(\\.gz)?","\\1",colnames(dens.mat));
 
+
 quit(save="n");
 
 bpdens.mat <- dens.mat * 10^as.numeric(rownames(dens.mat));
 
 {
-    png("MinION_Bases_DigElec_white.png", pointsize=24,
-        width=240*ncol(bpdens.mat), height=960);
-    par(mar=c(3,5,0.5,0.5), mgp=c(4,1,0));
-    image(x=seq_len(ncol(bpdens.mat)), ann=TRUE, axes=FALSE,
-          y=as.numeric(rownames(bpdens.mat)),
-          z=t(bpdens.mat), col=colorRampPalette(hsv(h=27/360,s=0,v=seq(1,0,by=-0.001)), bias=1)(100),
-          ylab = "Read Length");
-    abline(v=seq_len(ncol(bpdens.mat)+1)-0.5);
+    png("DigElec_Bases_white.png", pointsize=24,
+        width=80*ncol(smoothed.baseNorm.mat), height=960);
+    par(mar=c(6,5,0.5,0.5), mgp=c(4,1,0));
+    image(x=seq_len(ncol(smoothed.baseNorm.mat)), ann=TRUE, axes=FALSE,
+          y=log10(as.numeric(rownames(smoothed.baseNorm.mat))),
+          z=t(smoothed.baseNorm.mat), col=colorRampPalette(hsv(h=27/360,s=0,v=seq(1,0,by=-0.001)), bias=1)(100),
+          ylab = "Read Length", xlab="");
+    abline(v=seq_len(ncol(smoothed.baseNorm.mat)+1)-0.5, lwd=5, col="white");
     abline(h=log10(c(1,2,5)) + rep(0:5, each=3),
            lty="dashed", col="#00000020");
-    axis(1,at=seq_len(length(fileNames)), labels=colnames(bpdens.mat),
-         lwd=0);
-    axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
-         labels=valToSci(as.numeric(paste0(c(1,2,5),
-             rep(substring("00000",first=0,last=0:5),each=3)))));
-    dummy <- dev.off();
-}
-
-{
-    png("MinION_Reads_DigElec_white.png", pointsize=24,
-        width=240*ncol(dens.mat), height=960);
-    par(mar=c(3,5,0.5,0.5), mgp=c(4,1,0));
-    image(x=seq_len(ncol(dens.mat)), ann=TRUE, axes=FALSE,
-          y=as.numeric(rownames(dens.mat)),
-          z=t(dens.mat), col=colorRampPalette(hsv(h=27/360,s=0,v=seq(1,0,by=-0.001)), bias=1)(100),
-          ylab = "Read Length");
-    abline(v=seq_len(ncol(dens.mat)+1)-0.5);
-    abline(h=log10(c(1,2,5)) + rep(0:5, each=3),
-           lty="dashed", col="#00000020");
-    axis(1,at=seq_len(length(fileNames)),
-         labels=colnames(dens.mat), lwd=0);
+    axis(1,at=seq_len(length(fileNames)), labels=colnames(smoothed.baseNorm.mat),
+         lwd=0, las=2, cex.axis=0.75);
     axis(2,at=log10(c(1,2,5)) + rep(0:5, each=3), las=2,
          labels=valToSci(as.numeric(paste0(c(1,2,5),
              rep(substring("00000",first=0,last=0:5),each=3)))));
