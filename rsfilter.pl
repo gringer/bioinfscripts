@@ -39,7 +39,7 @@ my $filesFinished = 0; # false
 
 while(@ARGV){
     my $arg = shift(@ARGV);
-    if(!$filesFinished && (-f $arg)){
+    if(!$filesFinished && (-e $arg)){
         if(!keys(%markers)){
             print(STDERR "Retrieving marker names from $arg...");
             my $markFile = 0;
