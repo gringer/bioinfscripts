@@ -25,14 +25,23 @@ sub rev {
 }
 
 my $size = 1024;
+my ($sizeX, $sizeY) = (0,0);
 my $subseq = "";
 my @region = ();
 my $kmerLength = 17; ## number of bases in hash keys
 my $blockPicture = 0; ## false
 
-GetOptions("kmer=i" => \$kmerLength, "size=i" => \$size,
+GetOptions("kmer=i" => \$kmerLength, "size=s" => \$size,
            "region=s" => \$subseq, "altview!" => \$blockPicture ) or
-    die("Error in command line arguments");
+  die("Error in command line arguments");
+
+if($size =~ /^([0-9]+)x([0-9]+)$/){
+  $sizeX = $1;
+  $sizeY = $2;
+} else {
+  $sizeX = $size;
+  $sizeY = $size;
+}
 
 if($subseq){
   @region = split(/\-/, $subseq);
@@ -47,7 +56,7 @@ my $seq = "";
 my $qual = "";
 my $buffer = "";
 
-my $im = new GD::Image($size,$size);
+my $im = new GD::Image($sizeX,$sizeY);
 my $white = $im->colorAllocate(255,255,255);
 my $black = $im->colorAllocate(0,0,0);
 my $red = $im->colorAllocate(0x8b,0,0);
@@ -69,16 +78,16 @@ while(<>){
       my $newShortID = $3;
       my $len = length($seq);
       my $logLen = ($len == 0) ? 1 : log($len);
-      my $ppb = ($size > $len) ? 1 : $size / $len; # pixels per base
-      my $ppl = $size / $logLen; # pixels per log
+      my $ppb = ($sizeX > $len) ? 1 : $sizeX / $len; # pixels per base
+      my $ppl = $sizeY / $logLen; # pixels per log
       my $sseq = "";
       if($seqID && (length($seq) > $kmerLength)){
         if($subseq){
           $seq = substr($seq, $region[0], ($region[1]-$region[0]));
           $len = length($seq);
 	  $logLen = ($len == 0) ? 0 : log($len);
-	  $ppb = ($size > $len) ? 1 : $size / $len;
-	  $ppl = $size / $logLen;
+          $ppb = ($sizeX > $len) ? 1 : $sizeX / $len;
+          $ppl = $sizeY / $logLen;
         }
         my $countTotal = 0;
         my $countMax = 0;
@@ -97,8 +106,8 @@ while(<>){
 	      if($blockPicture){
 		if($x != $y){
 		  $dist = log(abs($x - $y));
-		  $im->setPixel($x * $ppb, $size - $dist * $ppl, $red);
-		  $im->setPixel($y * $ppb, $size - $dist * $ppl, $magenta);
+		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $red);
+		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $magenta);
 		}
 	      } else {
 		$im->setPixel($x * $ppb, $y * $ppb, $red);
@@ -114,8 +123,8 @@ while(<>){
 	      if($blockPicture){
 		if($x != $y){
 		  $dist = log(abs($x - $y));
-		  $im->setPixel($x * $ppb, $size - $dist * $ppl, $blue);
-		  $im->setPixel($y * $ppb, $size - $dist * $ppl, $cyan);
+		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $blue);
+		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $cyan);
 		}
 	      } else {
 		$im->setPixel($x * $ppb, $y * $ppb, $blue);
@@ -125,8 +134,8 @@ while(<>){
 	      if($blockPicture){
 		if($x != $y){
 		  $dist = log(abs($x - $y));
-		  $im->setPixel($x * $ppb, $size - $dist * $ppl, $green);
-		  $im->setPixel($y * $ppb, $size - $dist * $ppl, $yellow);
+		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
+		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
 		}
 	      } else {
 		$im->setPixel($x * $ppb, $y * $ppb, $green);
@@ -155,16 +164,16 @@ while(<>){
 
 my $len = length($seq);
 my $logLen = ($len == 0) ? 1 : log($len);
-my $ppb = ($size > $len) ? 1 : $size / $len; # pixels per base
-my $ppl = $size / $logLen; # pixels per log
+my $ppb = ($sizeX > $len) ? 1 : $sizeX / $len;
+my $ppl = $sizeY / $logLen;
 my $sseq = "";
 if($seqID && (length($seq) > $kmerLength)){
   if($subseq){
     $seq = substr($seq, $region[0], ($region[1]-$region[0]));
     $len = length($seq);
     $logLen = ($len == 0) ? 0 : log($len);
-    $ppb = ($size > $len) ? 1 : $size / $len;
-    $ppl = $size / $logLen;
+    $ppb = ($sizeX > $len) ? 1 : $sizeX / $len;
+    $ppl = $sizeY / $logLen;
   }
   my $countTotal = 0;
   my $countMax = 0;
@@ -183,8 +192,8 @@ if($seqID && (length($seq) > $kmerLength)){
 	if($blockPicture){
 	  if($x != $y){
 	    $dist = log(abs($x - $y));
-	    $im->setPixel($x * $ppb, $size - $dist * $ppl, $red);
-	    $im->setPixel($y * $ppb, $size - $dist * $ppl, $magenta);
+	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $red);
+	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $magenta);
 	  }
 	} else {
 	  $im->setPixel($x * $ppb, $y * $ppb, $red);
@@ -200,8 +209,8 @@ if($seqID && (length($seq) > $kmerLength)){
 	if($blockPicture){
 	  if($x != $y){
 	    $dist = log(abs($x - $y));
-	    $im->setPixel($x * $ppb, $size - $dist * $ppl, $blue);
-	    $im->setPixel($y * $ppb, $size - $dist * $ppl, $cyan);
+	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $blue);
+	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $cyan);
 	  }
 	} else {
 	  $im->setPixel($x * $ppb, $y * $ppb, $blue);
@@ -211,8 +220,8 @@ if($seqID && (length($seq) > $kmerLength)){
 	if($blockPicture){
 	  if($x != $y){
 	    $dist = log(abs($x - $y));
-	    $im->setPixel($x * $ppb, $size - $dist * $ppl, $green);
-	    $im->setPixel($y * $ppb, $size - $dist * $ppl, $yellow);
+	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
+	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
 	  }
 	} else {
 	  $im->setPixel($x * $ppb, $y * $ppb, $green);
