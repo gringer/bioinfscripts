@@ -19,7 +19,7 @@ valToSci <- function(val, unit = ""){
 
 fib.divs <- round(10^((0:4)/5) * 2) * 0.5; ## splits log decades into 5
 
-seqName <- sub("^.*_(.*?).png","\\1",fname);
+seqName <- sub("^.*?_(.*).png","\\1",fname);
 seqLen <- as.numeric(sub("_.*$","",fname));
 
 png(sprintf("featurePlot_%s.png", seqName),
