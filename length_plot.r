@@ -286,7 +286,6 @@ legend("topright", fill=brewer.pal(ncol(baseData), "Set2")[1:ncol(baseData)],
        bg="#FFFFFFD0");
 invisible(dev.off());
 
-
 colnames(smoothed.base.mat) <- colnames(baseData);
 smoothed.baseNorm.mat <- apply(smoothed.base.mat,2,function(x){x/sum(x)});
 
