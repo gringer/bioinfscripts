@@ -70,17 +70,17 @@ sub printStats {
       foreach my $gap (@gaps){
 	$gapCounts{$gap}++;
       }
-      $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
-      my @modalSort = sort {$gapCounts{$b} <=> $gapCounts{$a}} (@gaps);
+      $medianCount = ${allGapCounts{$medianGap}};
+      my @modalSort = sort {$allGapCounts{$b} <=> $allGapCounts{$a}} (@gaps);
       $modalGap = $modalSort[0];
-      $modalCount = $gapCounts{$modalGap};
+      $modalCount = $allGapCounts{$modalGap};
       for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
 	  $gP++){
-	$rangeCountMed += $gapCounts{$gP} if($gapCounts{$gP});
+	$rangeCountMed += $allGapCounts{$gP} if($allGapCounts{$gP});
       }
       for(my $gP = int($modalGap * 0.99); ($gP <= ($modalGap / 0.99));
 	  $gP++){
-	$rangeCountMod += $gapCounts{$gP} if($gapCounts{$gP});
+	$rangeCountMod += $allGapCounts{$gP} if($allGapCounts{$gP});
       }
     }
     printf("%8d %0.3f %6d %6d %5d %5d %6d %5d %5d %6d %6d %6d %s\n",
