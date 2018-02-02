@@ -30,8 +30,10 @@ my $subseq = "";
 my @region = ();
 my $kmerLength = 17; ## number of bases in hash keys
 my $blockPicture = 0; ## false
+my $hLines = ""; ## horizontal lines
 
 GetOptions("kmer=i" => \$kmerLength, "size=s" => \$size,
+	   "hlines=s" => \$hLines,
            "region=s" => \$subseq, "altview!" => \$blockPicture ) or
   die("Error in command line arguments");
 
@@ -57,6 +59,7 @@ my $qual = "";
 my $buffer = "";
 
 my $im = new GD::Image($sizeX,$sizeY);
+
 my $white = $im->colorAllocate(255,255,255);
 my $black = $im->colorAllocate(0,0,0);
 my $red = $im->colorAllocate(0x8b,0,0);
@@ -68,6 +71,9 @@ my $darkBlue = $im->colorAllocate(0,0,0xa0);
 my $yellow = $im->colorAllocate(0xa0,0x90,0);
 my $magenta = $im->colorAllocate(0x90,0,0xa0);
 my $cyan = $im->colorAllocate(0,0xa0,0x90);
+my $grey = $im->colorAllocate(0x70,0x70,0x70);
+
+$im->setThickness(3);
 
 while(<>){
   chomp;
@@ -89,6 +95,15 @@ while(<>){
           $ppb = ($sizeX > $len) ? 1 : $sizeX / $len;
           $ppl = $sizeY / $logLen;
         }
+	if($hLines){
+	  my @poss = split(/[,; ]/, $hLines);
+	  foreach my $pos (@poss){
+	    if($blockPicture){
+	      $im->line(0, $sizeY - log($pos) * $ppl, 
+			$sizeX, $sizeY - log($pos) * $ppl, $grey);
+	    }
+	  }
+	}
         my $countTotal = 0;
         my $countMax = 0;
 	my $dist = 0;
@@ -174,6 +189,15 @@ if($seqID && (length($seq) > $kmerLength)){
     $logLen = ($len == 0) ? 0 : log($len);
     $ppb = ($sizeX > $len) ? 1 : $sizeX / $len;
     $ppl = $sizeY / $logLen;
+  }
+  if($hLines){
+    my @poss = split(/[,; ]/, $hLines);
+    foreach my $pos (@poss){
+      if($blockPicture){
+	$im->line(0, $sizeY - log($pos) * $ppl, 
+		  $sizeX, $sizeY - log($pos) * $ppl, $grey);
+      }
+    }
   }
   my $countTotal = 0;
   my $countMax = 0;
