@@ -92,9 +92,11 @@ sub processFastaSeq{
       $subSeq = substr($seq, $ls - $lf);
     }
     my $subID = $id;
+    my $mor = sprintf("%0.2f", $mo);
+    $mor =~ s/\.00$//;
     $subID =~ s/^(.*?)(\s|$)/$1#$i$2/;
     if($i == 0){
-      $subID =~ s/^(.*?)(\s|$)/$1 \[$ls bp, $nf fragments, $mo overlap\]$2/;
+      $subID =~ s/^(.*?)(\s|$)/$1 \[$ls bp, $nf fragments, $mor overlap\]$2/;
     } else {
       $subID =~ s/^(.*?)(\s|$)/$1 \[$ss..$se\]$2/;
     }
