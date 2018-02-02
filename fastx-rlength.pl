@@ -19,18 +19,96 @@ sub rev {
   return(scalar(reverse($seq)));
 }
 
+sub printStats {
+  my ($seq, $seqID, $trim, $kmerLength) = @_;
+  my $len = length($seq);
+  my $sseq = "";
+  if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
+    my $countTotal = 0;
+    my $countMax = 0;
+    my $maxKmer = "";
+    my %rptPos = ();
+    my %allGapCounts = ();
+    my %minGaps = ();
+    my $revCount = 1;
+    my $rcCount = 1;
+    for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
+      $sseq = substr($seq, $p, $kmerLength);
+      if(exists($rptPos{$sseq})){
+	my $gap = $p - $rptPos{$sseq};
+	$allGapCounts{$gap}++;
+	if(!exists($minGaps{$sseq}) || ($minGaps{$sseq} > $gap)){
+	  $minGaps{$sseq} = $gap;
+	}
+      }
+      if(exists($rptPos{rev($sseq)})){
+	$revCount++;
+      }
+      if(exists($rptPos{rc($sseq)})){
+	$rcCount++;
+      }
+      $rptPos{$sseq} = $p;
+    }
+    if($revCount == 1){
+      $revCount = 0;
+    }
+    if($rcCount == 1){
+      $rcCount = 0;
+    }
+    my $numKmers = scalar(keys(%rptPos));
+    my $kmerRatio = $numKmers/($len - $kmerLength + 1);
+    my $numRepeats = scalar(keys(%minGaps));
+    my @gaps = sort {$a <=> $b} (values(%minGaps));
+    my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
+    my $medianCount = 0;
+    my $modalGap = 0;
+    my $modalCount = 0;
+    my $rangeCountMed = 0;
+    my $rangeCountMod = 0;
+    if($medianGap){
+      my %gapCounts = ();
+      foreach my $gap (@gaps){
+	$gapCounts{$gap}++;
+      }
+      $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
+      my @modalSort = sort {$gapCounts{$b} <=> $gapCounts{$a}} (@gaps);
+      $modalGap = $modalSort[0];
+      $modalCount = $gapCounts{$modalGap};
+      for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
+	  $gP++){
+	$rangeCountMed += $gapCounts{$gP} if($gapCounts{$gP});
+      }
+      for(my $gP = int($modalGap * 0.99); ($gP <= ($modalGap / 0.99));
+	  $gP++){
+	$rangeCountMod += $gapCounts{$gP} if($gapCounts{$gP});
+      }
+    }
+    printf("%8d %0.3f %6d %6d %5d %5d %6d %5d %5d %6d %6d %6d %s\n",
+	   $len, $kmerRatio, 
+	   $numRepeats,
+	   $countTotal,
+	   $medianCount,
+	   $rangeCountMed,
+	   $medianGap,
+	   $modalCount,
+	   $rangeCountMod,
+	   $modalGap,
+	   $revCount,
+	   $rcCount,
+	   $seqID);
+  }
+}
+
 my $trim = 0;
 my $kmerLength = 17; ## number of bases in hash keys
 
 GetOptions("trim=s" => \$trim) or
     die("Error in command line arguments");
 
-my @rlengths = ();
 my $inQual = 0; # false
 my $seqID = "";
 my $qualID = "";
 my $seq = "";
-my $sseq = "";
 my $qual = "";
 my $buffer = "";
 printf("%8s %5s %6s %6s %5s %5s %6s %5s %5s %6s %6s %6s %s\n",
@@ -44,88 +122,7 @@ while(<>){
     if(/^(>|@)((.+?)( .*?\s*)?)$/){
       my $newSeqID = $2;
       my $newShortID = $3;
-      my $len = length($seq);
-      if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
-        my $countTotal = 0;
-        my $countMax = 0;
-        my $maxKmer = "";
-	my @rptCounts = ();
-	my %rptHash = ();
-        my %gapCounts = ();
-        my %minGaps = ();
-	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-          $sseq = substr($seq, $p, $kmerLength);
-          if($sseq !~ /^([ACGT][ACGT])\1{6,}$/){
-            push(@{$rptHash{$sseq}}, $p);
-          }
-        }
-	my $numKmers = scalar(keys(%rptHash));
-	my $kmerRatio = $numKmers/($len - $kmerLength + 1);
-	my @repeatedKmers = grep {scalar(@{$rptHash{$_}}) > 1} keys(%rptHash);
-        my @revKmers = grep {defined $rptHash{rev($_)}} keys(%rptHash);
-        my @rcKmers = grep {defined $rptHash{rc($_)}} keys(%rptHash);
-	my @gaps = ();
-	foreach my $kmer (@repeatedKmers){
-	  my @posList = @{$rptHash{$kmer}};
-	  my $posCount = scalar(@posList);
-	  $countTotal += $posCount;
-	  if($posCount > $countMax){
-	    $countMax = $posCount;
-	  }
-	  if(@posList){
-	    push(@rptCounts, scalar(@posList));
-	    my $lastPos = $posList[0];
-	    for(my $p = 0; $p <= $#posList; $p++){
-	      my $nextPos = $posList[$p];
-              my $gap = $nextPos - $lastPos;
-              if($gap > 0){
-                push(@gaps, $gap);
-                $gapCounts{$gap}++;
-                if(!exists($minGaps{$kmer}) || ($minGaps{$kmer} < $gap)){
-                  $minGaps{$kmer} = $gap;
-                }
-              }
-	      $lastPos = $nextPos;
-	    }
-	  }
-	}
-        ##  @gaps = sort {$a <=> $b} (@gaps);
-        @gaps = sort {$a <=> $b} (values(%minGaps));
-	@rptCounts = sort {$a <=> $b} (@rptCounts);
-	my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
-	my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
-        my $modalGap = 0;
-        my $modalCount = 0;
-        my $rangeCountMed = 0;
-        my $rangeCountMod = 0;
-        if($medianCount){
-          my @modalSort = sort {$gapCounts{$b} <=> $gapCounts{$a}} (@gaps);
-          $modalGap = $modalSort[0];
-          $modalCount = $gapCounts{$modalGap};
-          for(my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
-              $gP++){
-            $rangeCountMed += $gapCounts{$gP} if($gapCounts{$gP});
-          }
-          for(my $gP = int($modalGap * 0.99); ($gP <= ($modalGap / 0.99));
-              $gP++){
-            $rangeCountMod += $gapCounts{$gP} if($gapCounts{$gP});
-          }
-        }
-        my $numRepeats = scalar(@repeatedKmers);
-        printf("%8d %0.3f %6d %6d %5d %5d %6d %5d %5d %6d %6d %6d %s\n",
-               $len, $kmerRatio, scalar(@repeatedKmers),
-               $countTotal,
-               $medianCount,
-               $rangeCountMed,
-               $medianGap,
-               $modalCount,
-               $rangeCountMod,
-               $modalGap,
-               scalar(@revKmers),
-               scalar(@rcKmers),
-               $seqID);
-        push(@rlengths, $medianGap) if $medianGap;
-      }
+      printStats($seq, $seqID, $trim, $kmerLength);
       $seq = "";
       $qual = "";
       $buffer = "";
@@ -144,97 +141,4 @@ while(<>){
   }
 }
 
-my $len = length($seq);
-if($seqID && (length($seq) > $trim) && (length($seq) > $kmerLength)){
-  my $countTotal = 0;
-  my $countMax = 0;
-  my $maxKmer = "";
-  my @rptCounts = ();
-  my %rptHash = ();
-  my %gapCounts = ();
-  my %minGaps = ();
-  for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-    $sseq = substr($seq, $p, $kmerLength);
-    if($sseq !~ /^([ACGT][ACGT])\1{6,}$/){
-      push(@{$rptHash{$sseq}}, $p);
-    }
-  }
-  my $numKmers = scalar(keys(%rptHash));
-  my $kmerRatio = $numKmers/($len - $kmerLength + 1);
-  my @repeatedKmers = grep {scalar(@{$rptHash{$_}}) > 1} keys(%rptHash);
-  my @revKmers = grep {defined $rptHash{rev($_)}} keys(%rptHash);
-  my @rcKmers = grep {defined $rptHash{rc($_)}} keys(%rptHash);
-  my @gaps = ();
-  foreach my $kmer (@repeatedKmers) {
-    my @posList = @{$rptHash{$kmer}};
-    my $posCount = scalar(@posList);
-    $countTotal += $posCount;
-    if ($posCount > $countMax) {
-      $countMax = $posCount;
-    }
-    if (@posList) {
-      push(@rptCounts, scalar(@posList));
-      #print(join(" ",@posList)."\n");
-      my $lastPos = $posList[0];
-      for (my $p = 0; $p <= $#posList; $p++) {
-        my $nextPos = $posList[$p];
-        my $gap = $nextPos - $lastPos;
-        if ($gap > 0) {
-          push(@gaps, $gap);
-          $gapCounts{$gap}++;
-          if(!exists($minGaps{$kmer}) || ($minGaps{$kmer} < $gap)){
-            $minGaps{$kmer} = $gap;
-          }
-        }
-        $lastPos = $nextPos;
-      }
-    }
-  }
-  ##  @gaps = sort {$a <=> $b} (@gaps);
-  @gaps = sort {$a <=> $b} (values(%minGaps));
-  @rptCounts = sort {$a <=> $b} (@rptCounts);
-  my $medianGap = (@gaps) ? $gaps[$#gaps / 2] : 0;
-  my $medianCount = $medianGap ? ${gapCounts{$medianGap}} : 0;
-  my $modalGap = 0;
-  my $modalCount = 0;
-  my $rangeCountMed = 0;
-  my $rangeCountMod = 0;
-  if ($medianCount) {
-    my @modalSort = sort {$gapCounts{$b} <=> $gapCounts{$a}} (@gaps);
-    $modalGap = $modalSort[0];
-    $modalCount = $gapCounts{$modalGap};
-    for (my $gP = int($medianGap * 0.99); ($gP <= ($medianGap / 0.99));
-         $gP++) {
-      $rangeCountMed += $gapCounts{$gP} if($gapCounts{$gP});
-    }
-    for (my $gP = int($modalGap * 0.99); ($gP <= ($modalGap / 0.99));
-         $gP++) {
-      $rangeCountMod += $gapCounts{$gP} if($gapCounts{$gP});
-    }
-  }
-  my $numRepeats = scalar(@repeatedKmers);
-  printf("%8d %0.3f %6d %6d %5d %5d %6d %5d %5d %6d %6d %6d %s\n",
-         $len, $kmerRatio, scalar(@repeatedKmers),
-         $countTotal,
-         $medianCount,
-         $rangeCountMed,
-         $medianGap,
-         $modalCount,
-         $rangeCountMod,
-         $modalGap,
-         scalar(@revKmers),
-         scalar(@rcKmers),
-         $seqID);
-  push(@rlengths, $medianGap) if $medianGap;
-}
-
-## calculate statistics
-@rlengths = sort {$b <=> $a} (@rlengths);
-my $sum = 0;
-my @cumLengths = map {$sum += $_} (@rlengths);
-
-printf(STDERR "Total sequences: %d\n", scalar(@rlengths));
-printf(STDERR "Longest repeat: %0.3f\n", $rlengths[0]);
-printf(STDERR "Shortest repeat: %0.3f\n", $rlengths[$#rlengths]);
-printf(STDERR "Mean repeat length: %0.3f\n", $sum / scalar(@rlengths));
-printf(STDERR "Median repeat length: %0.3f\n", $rlengths[$#rlengths / 2]);
+printStats($seq, $seqID, $trim, $kmerLength);
