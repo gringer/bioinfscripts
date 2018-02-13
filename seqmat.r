@@ -213,14 +213,14 @@ if(type == "png"){
 if(nchar(plotTitle) > 0){
     par(mar=c(2.5,2.5,2.5,2.5));
 } else {
-    par(mar=c(2.5,1.5,0.5,1.5));
+    par(mar=c(0.5,1.5,2.5,1.5));
 }
 plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
 mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
               ifelse(seqRange[1] == FALSE,"",
                      paste0(":",seqRange[1],"-",seqRange[2])),
-              lis/1000, rptSize), side=1, cex=1, line=1);
-mtext(plotTitle, side=3, cex=2, line=1);
+              lis/1000, rptSize), side=3, cex=1, line=0);
+mtext(plotTitle, side=1, cex=2, line=0);
 ## Pre-population plot variables
 ## integrate(2*pi*r,r=startRadius..endRadius)
 ## => pi((endRadius)²-(startRadius)²)
@@ -265,8 +265,8 @@ if(spiral){
            type="l", col="white", lwd=3);
 }
 if(useKey){
-    legend("center", legend=c("A","C","G","T"), inset=0.2,
-           fill=colPal[1:4], cex=1);
+    legend("bottomright", legend=c("A","C","G","T"), inset=0.05,
+           fill=colPal[1:4], cex=0.71, ncol=2);
 }
 invisible(dev.off());
 cat(" done\n");
