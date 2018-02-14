@@ -20,22 +20,35 @@ valToSci <- function(val, unit = ""){
 fib.divs <- round(10^((0:4)/5) * 2) * 0.5; ## splits log decades into 5
 
 seqName <- sub("^.*?_(.*).png","\\1",fname);
-seqLen <- as.numeric(sub("_.*$","",fname));
+seqLen <- sub("_.*$","",fname);
+seqStart <- 0;
+seqEnd <- 0;
+if(grepl("-", seqLen)){
+    seqStart <- as.numeric(sub("-.*$","",seqLen));
+    seqEnd <- as.numeric(sub("^.*?-","",seqLen));
+    seqLen <- seqEnd - seqStart + 1;
+} else {
+    seqLen <- as.numeric(seqLen);
+    seqStart <- 1;
+    seqEnd <- seqLen;
+}
 
-png(sprintf("featurePlot_%s.png", seqName),
-    width=1280, height=720, pointsize=16);
+print(c(seqName, seqLen, seqStart, seqEnd));
+
+svg(sprintf("featurePlot_%s.svg", seqName),
+    width=12.8, height=7.2, pointsize=12);
 par(mar=c(5,6,3,1.5), cex.axis=1.5, cex.lab=1.5, cex.main=2);
 plot(NA, main=sprintf("Feature profile (%s)", seqName),
      xlab="Sequence Location (kbp)",
-     ylab="", log="y", xlim=c(0,seqLen)/1000,
+     ylab="", log="y", xlim=c(seqStart,seqEnd)/1000,
      ylim=c(1,seqLen), yaxt="n");
-rasterImage(img, xleft=1, xright=seqLen/1000,
+rasterImage(img, xleft=seqStart/1000, xright=seqEnd/1000,
             ybottom=1, ytop=seqLen);
 drMax <- ceiling(log10(seqLen));
 axis(2, at= 10^(0:drMax), las=2, lwd=3, cex.axis=1.5, labels=valToSci(10^(0:drMax)));
 axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
 abline(h=10^(0:drMax), col="#80808050", lwd = 3);
-mtext("Feature distance (bp)", 2, line=4, cex=1.5);
+mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
 legend(x = "bottom",
     fill=c("#9000a0","#8b0000","#00a090","#0000FF","#a09000","#00A000"),
     legend=c("Repeat (L)",  "Repeat (R)",
