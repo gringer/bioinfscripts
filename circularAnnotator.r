@@ -180,7 +180,7 @@ for(i in 1:nrow(data.features.df)){
     if(nchar(plotName) > 1){
         arctext(plotName,
                 middle=-data.features.df[i,"mid"]*2*pi/chrom.length+pi/2,
-                radius=ifelse(nchar(plotName) == 1, 10, 14.5)
+                radius=ifelse(nchar(plotName) == 1, 10, 16.5)
                 + 1*data.features.df[i,"plotPos"],
                 cex=0.9,
                 col=ifelse(nchar(plotName)<3, "darkgreen","black"));
