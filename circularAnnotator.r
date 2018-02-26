@@ -174,6 +174,9 @@ for(i in 1:nrow(data.features.df)){
                angle2=-data.features.df[i,"end"]*2*pi/chrom.length+pi/2,
                col=ifelse(nchar(plotName)==0,"grey",
                    ifelse(nchar(plotName)==1,"cornflowerblue","cornsilk")));
+}
+for(i in 1:nrow(data.features.df)){
+    plotName <- data.features.df[i,"plotName"];
     if(nchar(plotName) > 1){
         arctext(plotName,
                 middle=-data.features.df[i,"mid"]*2*pi/chrom.length+pi/2,
