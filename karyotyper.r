@@ -1,13 +1,13 @@
 #!/usr/bin/Rscript
 genome <- "mm10";
 
-features.chrLoc <- read.delim("/home/gringer/bioinf/MIMR-2014-Aug-01-GBIS/rnaseq/karyotype/hits_TN.tsv", header=TRUE, stringsAsFactors=FALSE, col.names=c("geneID", "locus"));
+features.meta <- read.csv("chrM_copies.csv");
+features.meta$l2fc <- log(features.meta$qPct + 1);
+features.meta$loc <- (features.meta$tS + features.meta$tE) / 2;
 
-features.meta <- read.delim("/home/gringer/bioinf/MIMR-2014-Aug-01-GBIS/rnaseq/karyotype/Report_Nb PBS_DEGs.tsv");
-if(!all(features.meta$geneID %in% features.chrLoc$geneID)){
-    warning("Not all genes have location information");
-}
-features.meta <- merge(features.meta,features.chrLoc, by="geneID");
+features.meta <- read.delim("geneAggregated_differential_coverage_4T1_WTvsp0.tsv");
+features.meta$l2fc <- apply(features.meta[,c("fwd","rev")],1,function(x){head(max(abs(x)) * sign(x[abs(x) == max(abs(x))]),1)});
+features.meta$loc <- (features.meta$Start + features.meta$End) / 2;
 
 cytoURL <- paste(sprintf("http://genome.ucsc.edu/cgi-bin/hgTables?db=%s",
                          genome),
@@ -64,19 +64,19 @@ cyto.df$yt <- (chrEnds[as.character(cyto.df$chrNum)]-cyto.df$chromEnd) +
     bp.per.line * ((nl-1) - floor(cyto.df$chrNum / chrs.per.line));
 
 ## Generate feature matrix with start/end locations of features
-features.df <-
-    data.frame(stringsAsFactors=FALSE, row.names = features.meta$geneID,
-               chr = sub(":.*$","",features.meta$locus),
-               loc = sub("^.*?:","",sub("\\.\\.","-",features.meta$locus)),
-               l2fc = features.meta$log2FoldChange);
-features.df$start <- as.numeric(sub("-.*$","",features.df$loc));
-features.df$end <- as.numeric(sub("^.*?-","",features.df$loc));
+features.df <- features.meta;
+#features.df$chr <- sub("^chr","",features.df$target);
+features.df$chr <- sub("^chr","",features.df$Chr);
+#features.df$start <- features.df$tS;
+#features.df$end <- features.df$tE;
+features.df$start <- features.df$Start;
+features.df$end <- features.df$End;
 features.df$col <- hsv(c(1/3,1/2,0)[sign(features.df$l2fc)+2],
                        alpha=abs(features.df$l2fc)/
                            max(abs(range(features.df$l2fc))));
 
 ## Create ideogram plot
-png("~/bioinf/MIMR-2014-Aug-01-GBIS/rnaseq/karyotype/karyotype_mm10.png",width=1920,height=1080);
+png("karyotype_mm10_Differential_Coverage.png",width=1920,height=1080);
 par(mar=c(0.1,0.1,0.1,0.1), cex = 2);
 ## set up plot extents
 plot(NA, xlim = c(0,chrs.per.line),
@@ -123,7 +123,6 @@ for(l in 1:dim(features.df)[1]){
             y=c(y1-bp.per.line*0.02,y1,y2,y2+bp.per.line*0.02,NA,
                 y1-bp.per.line*0.02,y1,y2,y2+bp.per.line*0.02));
 }
-## Generate legend for features
-legend("topright", legend=c("Nb > PBS","Nb < PBS"),
+legend("topright", legend=c("WT > ρ0", "ρ0 > WT"),
        fill = c("red","green"), inset=0.025);
 graphics.off();
