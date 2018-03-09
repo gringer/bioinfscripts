@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "1.98";
+our $VERSION = "1.99";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -1192,7 +1192,7 @@ $projOpts->{"maxY"} = $projOpts->{"minY"} + $projOpts->{"svgHeight"}
 
 my $svg = SVG->new('height' => $projOpts->{"svgHeight"} + $projOpts->{"padding"} * 2 + 3,
                    'width' => $projOpts->{"svgWidth"} + $projOpts->{"padding"} * 2 + 3,
-                   -indent => "  ",
+                   -indent => "  ", -standalone => 'no',
                   -nocredits => 1); # multi-line credits make Inkscape editing harder
 $svg->comment("Created using David Eccles' (gringer) perlshaper.pl script, ".
               "version $VERSION, ".
