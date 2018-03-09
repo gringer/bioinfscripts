@@ -17,7 +17,10 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "1.97";
+our $VERSION = "1.98";
+
+## Write out version name to standard error
+printf(STDERR "Perlshaper version %s\n", ${VERSION});
 
 =head1 NAME
 
@@ -116,6 +119,10 @@ Zoom to projected extents, typically with I<X> = longitude, I<Y> = latitude
 =item B<-nokey>
 
 Don't display heatmap key (if heatmap is used)
+
+=item B<-nohighlights>
+
+Don't display circular highlights for small areas
 
 =item B<-[no]lines>
 
@@ -749,11 +756,12 @@ my $projOpts =
    "xScale" => "",  # Scale factor of points (for zoom box)
    "yScale" => "",  # Scale factor of points (for zoom box)
     "padding" => "", # amount of padding to add (for zoom box)
+   "highlights" => 1, # highlight small enclosed subject areas
    "lines" => 1, # draw lines of latitude / longitude
    "key" => 1, # print a key for the heatmap
   };
 
-GetOptions($projOpts, 'lines!', 'key!', 'pointSize|psize=f', 'roundDP|round=i',
+GetOptions($projOpts, 'lines!', 'key!', 'highlights!', 'pointSize|psize=f', 'roundDP|round=i',
            'centre|center=s',
            'projection=s',
            'zoomed|zoom=s@',
@@ -764,9 +772,9 @@ GetOptions($projOpts, 'lines!', 'key!', 'pointSize|psize=f', 'roundDP|round=i',
            'seacol=s' => \$seaColour,
            'bordcol=s' => \$borderColour,
            'subjects|sub=s' => sub { my ($opt,$val) = @_;
-				     $subjectNames{$val} = 1},
+				     grep {$subjectNames{$_} = 1} split(/,/, $val)},
            'politicals|pol=s' => sub { my ($opt,$val) = @_;
-				       $politicalNames{$val} = 1},
+				     grep {$politicalNames{$_} = 1} split(/,/, $val)},
            'only=s' => sub { my ($opt,$val) = @_;
 			     $onlyNames{$val} = 1},
            'data=s@' => \@dataFiles,
@@ -816,6 +824,11 @@ if(keys(%onlyNames)){
   print(STDERR "  ".join("\n  ",keys(%onlyNames))."\n");
 }
 
+if(!$projOpts->{"highlights"}){
+  warn("Small points and areas will NOT be highlighted\n");
+}
+
+
 if(@dataFiles){
   warn("Will extract numerical data (assuming <ISO 3A-code>,<float>) from the following files:\n");
   foreach my $fName (@dataFiles){
@@ -836,8 +849,8 @@ if($projOpts->{"zoomed"}){
              $projOpts->{"minX"},$projOpts->{"minY"},
              $projOpts->{"maxX"},$projOpts->{"maxY"});
     } else {
-      $zoomNames{$newArg} = 1;
       print(STDERR "Zooming map to include '$newArg'\n");
+      grep {$zoomNames{$_} = 1} split(/,/, $newArg);
     }
   }
 }
@@ -852,7 +865,7 @@ if($mapType !~ /^(location|locator|area|world|orthographic)$/){
 
 if($projOpts->{"centre"}){
   my $newArg = $projOpts->{"centre"};
-  if ($newArg =~ /,/) {
+  if ($newArg =~ /^[0-9\.,]$/) {
     my @centre = split(/,/,$newArg,2);
     $projOpts->{"centreLn"} = $centre[0];
     $projOpts->{"centreLt"} = $centre[1];
@@ -1588,7 +1601,7 @@ foreach my $shpFileBase (@shpFileBases) {
                          ($partBoundBox[1] + $partBoundBox[3]) / 2,1];
             my $pointID = sprintf("pointF%dS%dP%d", $fileNum,
                                   $shapeNum, $partNum);
-            if($partClass =~ /(subject|political)/) {
+            if(($partClass =~ /(subject|political)/) && $projOpts->{"highlights"}) {
               # subject/political points get a highlight ring placed around them
               my $highlightID = sprintf("pthglF%dS%dP%d", $fileNum,
                                         $shapeNum, $partNum);
@@ -1667,7 +1680,7 @@ foreach my $shpFileBase (@shpFileBases) {
               $strkCol = $intBordColour;
               $partClass .= ' subject';
             }
-            if ($partClass =~ /(subject|political)/) {
+            if (($partClass =~ /(subject|political)/) && $projOpts->{"highlights"}) {
               # subject points get a highlight ring placed around them
               my $highlightID = sprintf("pthglF%dS%dP%d", $fileNum,
                                         $shapeNum, $pointNum);
@@ -1835,25 +1848,25 @@ __END__
 
 =head1 AUTHOR
 
-David Eccles (gringer) 2010-2014 <programming@gringer.org>
+David Eccles (gringer) 2010-2018 <bioinformatics@gringene.org>
 
 =head1 LICENSE
 
-Copyright (c) 2010-2014 David Eccles (gringer) <programming@gringer.org>
+Copyright (c) 2010-2018 David Eccles (gringer) <bioinformatics@gringene.org>
 
 Permission to use, copy, modify, and/or distribute this software for
 any purpose with or without fee is hereby granted, provided that the
 above copyright notice and this permission notice appear in all
 copies.
 
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
-WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE
-AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL
-DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR
-PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
-TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
+The software is provided "as is" and the author disclaims all
+warranties with regard to this software including all implied
+warranties of merchantability and fitness. in no event shall the
+author be liable for any special, direct, indirect, or consequential
+damages or any damages whatsoever resulting from loss of use, data or
+profits, whether in an action of contract, negligence or other
+tortious action, arising out of or in connection with the use or
+performance of this software.
 
 =head1 AVAILABILITY
 
