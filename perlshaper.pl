@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "1.99";
+our $VERSION = "2.00";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -44,9 +44,9 @@ Only display this help message
 
 Type of map (location|locator|area|world|orthographic)
 
-=item B<-round> I<int>
+=item B<-res> I<float>
 
-Round values (in SVG file) to given number of decimal places
+Resolution of map in SVG file (in pixels)
 
 =item B<-centre> I<long>,I<lat>
 
@@ -398,17 +398,16 @@ then they are removed.
 
 sub simplify {
   my ($options, $pointHash, $pointRef) = @_;
-  if($options->{"roundDP"} == -1){
+  if($options->{"resolution"} == -1){
     return @{$pointRef};
   }
-  my $formatString = "%0.".$options->{"roundDP"}."f";
-  my $dps = 10**$options->{"roundDP"};
+  my $res = $options->{"resolution"};
   my $last = undef;
   my ($lastXRounded, $lastYRounded, $xRounded, $yRounded);
   my @input = map {
     if($_){
-      $xRounded = int($_->[0] * $dps);
-      $yRounded = int($_->[1] * $dps);
+      $xRounded = int($_->[0] / $res);
+      $yRounded = int($_->[1] / $res);
       if(!defined($last) || $pointHash->{($xRounded, $yRounded)}){
         $pointHash->{($xRounded,$yRounded)} = 1;
         $last = $_;
@@ -603,11 +602,11 @@ is used to reduce the SVG output file size.
 
 sub makeRelative {
   my ($options, $pointRef) = @_;
-  my $round = ($options->{"roundDP"} != -1);
-  my $dps = $round ? 10**$options->{"roundDP"} : 1;
-  my $xAdj = $round ? int($options->{"xAdj"} * $dps) : $options->{"xAdj"};
-  my $yAdj = $round ? int($options->{"yAdj"} * $dps) : $options->{"yAdj"};
-  my @points = map{$_->[0] *= $dps; $_->[1] *= $dps; $_} @{$pointRef};
+  my $round = ($options->{"resolution"} != -1);
+  my $res = $options->{"resolution"};
+  my $xAdj = $round ? int($options->{"xAdj"} / $res + 0.5) : $options->{"xAdj"};
+  my $yAdj = $round ? int($options->{"yAdj"} / $res + 0.5) : $options->{"yAdj"};
+  my @points = map{$_->[0] /= $res; $_->[1] /= $res; $_} @{$pointRef};
   my $lastX = 0;
   my $lastY = 0;
   foreach my $point (@points) {
@@ -618,7 +617,7 @@ sub makeRelative {
     $lastX = $nextX;
     $lastY = $nextY;
   }
-  map{$_->[0] /= $dps; $_->[1] /= $dps} @points;
+  map{$_->[0] *= $res; $_->[1] *= $res} @points;
 }
 
 =head2 chopPoly(optionRef, pointRef, joinEnds)
@@ -683,6 +682,10 @@ sub chopPoly {
   # note: %f rounds to decimal places, %g rounds to significant figures
   #my $printfString = ($dp > -1) ? ("%.".$dp."f,%.".$dp."f") : ("%f,%f");
   my $printfString = ("%s,%s");
+  if($options->{"resolution"} != -1){
+    my $dp = int(-log($options->{"resolution"})/log(10))+2;
+    $printfString = ("%0.".$dp."f,%0.".$dp."f");
+  }
 
   my @subPaths = ();
   foreach (@contigLists) {
@@ -693,7 +696,7 @@ sub chopPoly {
         sprintf($printfString, ($_->[0]), ($_->[1]));
       } @currentList;
       my $subPath = "M".join("l",@pointStrs).($joinEnds?"Z":"");
-      $subPath =~ s/l0,0(?=[^\.])//g; # remove 'no change' relative movements
+      $subPath =~ s/l0(\.0+)?,0(\.0+)?(?=[^\.])//g; # remove 'no change' relative movements
       push(@subPaths, $subPath);
     }
   }
@@ -746,6 +749,7 @@ my @commandLine = @ARGV;
 my $projOpts =
   {
    "roundDP" => -1,
+   "res" => -1,
    "projection" => "", # map projection (equirectangular / orthographic)
    "centreLn" => "",  # projection centre X / longitude
    "centreLt" => "",  # projection centre Y / latitude
@@ -761,7 +765,7 @@ my $projOpts =
    "key" => 1, # print a key for the heatmap
   };
 
-GetOptions($projOpts, 'lines!', 'key!', 'highlights!', 'pointSize|psize=f', 'roundDP|round=i',
+GetOptions($projOpts, 'lines!', 'key!', 'highlights!', 'pointSize|psize=f', 'roundDP|round=i', 'resolution|res=f',
            'centre|center=s',
            'projection=s',
            'zoomed|zoom=s@',
@@ -797,6 +801,10 @@ while (@ARGV) {
     pod2usage({-exitVal => 3, -message => "Error: Unknown command-line option or non-existent file, ".
             "'$argument'\n", -verbose => 0});
   }
+}
+
+if(($projOpts->{"resolution"} == -1) && ($projOpts->{"roundDP"} != -1)){
+  $projOpts->{"resolution"} = 10**(-$projOpts->{"roundDP"});
 }
 
 if($debugLevel > 0){
@@ -1467,11 +1475,10 @@ if ($projOpts->{"zoomed"}) {
 }
 
 
-my $worldGroup = $svg->group('id' => "gCountries", 'class' => 'countries');
+my $globalGroup = $svg->group('id' => "gCountries", 'class' => 'countries');
 
 my $fileNum = 0;
 foreach my $shpFileBase (@shpFileBases) {
-  $worldGroup->comment("Using data from ${shpFileBase}.shp");
   if (-f ($shpFileBase.".prj")) {
     open(PROJFILE, "< $shpFileBase".".prj")
       or die("Unable to load $shpFileBase.prj");
@@ -1481,6 +1488,8 @@ foreach my $shpFileBase (@shpFileBases) {
     }
   }
   $fileNum++;
+  my $worldGroup = $globalGroup->group('id' => sprintf("gFile_%d",$fileNum));
+  $worldGroup->comment("Using data from ${shpFileBase}.shp");
   # The ShapeFile 'new' procedure doesn't seem to have good error
   # checking (i.e. it will happily load a random file of a
   # sufficiently large size), so 'die' may not be useful here.
