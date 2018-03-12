@@ -51,7 +51,7 @@ while (<>) {
     $lastY = undef;
     $minZ = undef;
     $maxZ = undef;
-    if (($nz) < 0.1) {
+    if (($nz) < 0.01) {
       $cull = 1;                # true
     } else {
       $cull = 0;
@@ -168,7 +168,7 @@ foreach my $zPos (sort {$a <=> $b} (keys(%polys))) {
     $colour = "#$colour$colour$colour";
     $fx += $ox;
     $fy += $oy;
-    printf("  <path d=\"m%g,%g %s z\" fill=\"%s\" stroke=\"%s\"/>\n",
+    printf("  <path d=\"m%0.4f,%0.4f %s z\" fill=\"%s\" stroke=\"%s\"/>\n",
            $fx, $fy, $rest, $colour, $colour);
   }
 }
