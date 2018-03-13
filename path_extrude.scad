@@ -218,6 +218,11 @@ module path_extrude(exPath = myPath, exShape = myPoints, exRots = [0], merge=fal
     }
 }
 
-path_extrude(exRots = [$t*360], merge=false);
-
-color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunk, merge=false);
+translate([-20,0]) {
+    path_extrude(exRots = [$t*360], merge=false);
+    color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunk, merge=false);
+}
+translate([20,0]) {
+    path_extrude(exRots = [$t*360], merge=true);
+    color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunk, merge=true);
+}
