@@ -123,21 +123,17 @@ my $options =
    "hue" => 0,
   };
 
-my @fileHues = ();
+my %fileHues = ();
 
 GetOptions($options,
            'hue=s',
            'debug!' => \$DEBUG,
           ) or pod2usage(1);
 
-grep {if(s/(:([0-9]+))$//){push(@fileHues, $2)}} @ARGV;
+grep {if(s/^(.*?)(:([0-9]+))$/$1/){$fileHues{$1} = $3}} @ARGV;
 
 #### Approximate hue angles
 ## Red: 30; Green: 140; Blue: 250; Yellow: 90; Magenta: 330; Cyan: 200
-
-my $fileHue = 0;
-$fileHue = shift(@fileHues) if (@fileHues);
-my @colour = HL2RGB($fileHue, 0);
 
 ## For debugging purposes: testing out different lighting values
 # for(my $i = 0; $i < 360; $i++){
@@ -157,6 +153,7 @@ my @colour = HL2RGB($fileHue, 0);
 # }
 
 while (<>) {
+  my $fileHue = ($fileHues{$ARGV}) if (exists($fileHues{$ARGV}));
   chomp;
   s/^\s+//;
   if (/^facet normal (([0-9.\-e]+) ([0-9.\-e]+) ([0-9.\-e]+))/) {
