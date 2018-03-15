@@ -81,5 +81,11 @@ for(myPath in svg.paths){
     path.df[,c("absX","absY")] <- absPoss;
     path.df$absX <- (path.df$absX - svgVB[1]) / (svgVB[3] - svgVB[1]);
     path.df$absY <- 1 - (path.df$absY - svgVB[2]) / (svgVB[4] - svgVB[2]);
-    grid.polygon(x=path.df$absX, y=path.df$absY);
+    pathStyle <- myPath$style;
+    pathFill <- sub("^fill:(.*)[;$]","\\1",
+                    regmatches(pathStyle,gregexpr("fill:.*?[;$]",pathStyle)));
+    pathStroke <- sub("^stroke:(.*)[;$]","\\1",
+                    regmatches(pathStyle,gregexpr("stroke:.*?[;$]",pathStyle)));
+    grid.polygon(x=path.df$absX, y=path.df$absY,
+                 gp=gpar(col=pathStroke,fill=pathFill));
 }
