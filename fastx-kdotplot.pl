@@ -99,7 +99,7 @@ while(<>){
 	  my @poss = split(/[,; ]/, $hLines);
 	  foreach my $pos (@poss){
 	    if($blockPicture){
-	      $im->line(0, $sizeY - log($pos) * $ppl, 
+	      $im->line(0, $sizeY - log($pos) * $ppl,
 			$sizeX, $sizeY - log($pos) * $ppl, $grey);
 	    }
 	  }
@@ -111,8 +111,12 @@ while(<>){
 	my @rptCounts = ();
 	my %posHash = ();
         my %gapCounts = ();
+        $seq =~ tr/acgt/ACGT/;
 	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-          push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
+          my $sseq = substr($seq, $p, $kmerLength);
+          if($sseq =~ /^[ACGT]+$/){
+            push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
+          }
         }
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
@@ -194,7 +198,7 @@ if($seqID && (length($seq) > $kmerLength)){
     my @poss = split(/[,; ]/, $hLines);
     foreach my $pos (@poss){
       if($blockPicture){
-	$im->line(0, $sizeY - log($pos) * $ppl, 
+	$im->line(0, $sizeY - log($pos) * $ppl,
 		  $sizeX, $sizeY - log($pos) * $ppl, $grey);
       }
     }
@@ -206,8 +210,12 @@ if($seqID && (length($seq) > $kmerLength)){
   my @rptCounts = ();
   my %posHash = ();
   my %gapCounts = ();
+  $seq =~ tr/acgt/ACGT/;
   for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-    push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
+    my $sseq = substr($seq, $p, $kmerLength);
+    if($sseq =~ /^[ACGT]+$/){
+      push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
+    }
   }
   foreach my $kmer (keys(%posHash)){
     my @posList = @{$posHash{$kmer}};
