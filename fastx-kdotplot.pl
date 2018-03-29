@@ -4,6 +4,15 @@
 ## kmer sequences, outputs a PNG file to standard out
 ## example usage: ~/scripts/fastx-kdotplot.pl -s 300 -k 13 out_sseq.fa | \
 ##                convert png:- -resize 1000x1000 - > repeat_region.png
+## Detected patterns:
+##  * Forward copies (repeats)
+##  * Reverse copies
+##  * Reverse-complement copies
+## Sequencing types (-t <type>):
+##  * ACGT - no change
+##  * KM - modify base sequence to K/M binary classification
+##  * SW - modify base sequence to S/W binary classification
+##  * RY - modify base sequence to R/Y binary classification
 
 use warnings;
 use strict;
@@ -13,9 +22,8 @@ use Getopt::Long qw(:config auto_help pass_through);
 
 sub rc {
   my ($seq) = @_;
+  # assume input is upper-case
   $seq =~ tr/ACGTUYRSWMKDVHBXN-/TGCAARYSWKMHBDVXN-/;
-  # work on masked sequences as well
-  $seq =~ tr/acgtuyrswmkdvhbxn/tgcaaryswkmhbdvxn/;
   return(scalar(reverse($seq)));
 }
 
@@ -28,12 +36,14 @@ my $size = 1024;
 my ($sizeX, $sizeY) = (0,0);
 my $subseq = "";
 my @region = ();
-my $kmerLength = 17; ## number of bases in hash keys
+my $defaultKmerLength = 17;
+my $kmerLength = -1; ## number of bases in hash keys
 my $blockPicture = 0; ## false
 my $hLines = ""; ## horizontal lines
+my $type = "ACGT"; ## search type
 
 GetOptions("kmer=i" => \$kmerLength, "size=s" => \$size,
-	   "hlines=s" => \$hLines,
+	   "hlines=s" => \$hLines, "type=s" => \$type,
            "region=s" => \$subseq, "altview!" => \$blockPicture ) or
   die("Error in command line arguments");
 
@@ -44,6 +54,14 @@ if($size =~ /^([0-9]+)x([0-9]+)$/){
   $sizeX = $size;
   $sizeY = $size;
 }
+
+if($kmerLength == -1){ ## Default length
+  $kmerLength = ($type eq "ACGT") ? $defaultKmerLength : ($defaultKmerLength+3);
+}
+
+## simplify search-type logic searches later on
+$type =~ s/([YMW])([RKS])/$2$1/;
+$type =~ s/[ACGT]{4}/ACGT/;
 
 if($subseq){
   @region = split(/\-/, $subseq);
@@ -111,12 +129,23 @@ while(<>){
 	my @rptCounts = ();
 	my %posHash = ();
         my %gapCounts = ();
-        $seq =~ tr/acgt/ACGT/;
+        $seq =~ tr/a-z/A-Z/;
 	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-          my $sseq = substr($seq, $p, $kmerLength);
-          if($sseq =~ /^[ACGT]+$/){
-            push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
-          }
+	  my $sseq = substr($seq, $p, $kmerLength);
+	  if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
+	    if($type eq "ACGT"){
+	      push(@{$posHash{$sseq}}, $p);
+	    } elsif($type eq "RY") {
+	      my $yrSeq = ($sseq =~ tr/ACGT/RYRY/r);
+	      push(@{$posHash{$yrSeq}}, $p);
+	    } elsif($type eq "KM") {
+	      my $mkSeq = ($sseq =~ tr/ACGT/MMKK/r);
+	      push(@{$posHash{$mkSeq}}, $p);
+	    } elsif($type eq "SW") {
+	      my $swSeq = ($sseq =~ tr/ACGT/WSSW/r);
+	      push(@{$posHash{$swSeq}}, $p);
+	    }
+	  }
         }
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
@@ -149,15 +178,17 @@ while(<>){
 		$im->setPixel($x * $ppb, $y * $ppb, $blue);
 	      }
 	    }
-	    foreach my $y (grep {$_ > $x} (@{$posHash{rev($kmer)}})){
-	      if($blockPicture){
-		if($x != $y){
-		  $dist = log(abs($x - $y));
-		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
-		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
+	    if($type ne "SW"){
+	      foreach my $y (grep {$_ > $x} (@{$posHash{rev($kmer)}})){
+		if($blockPicture){
+		  if($x != $y){
+		    $dist = log(abs($x - $y));
+		    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
+		    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
+		  }
+		} else {
+		  $im->setPixel($x * $ppb, $y * $ppb, $green);
 		}
-	      } else {
-		$im->setPixel($x * $ppb, $y * $ppb, $green);
 	      }
 	    }
           }
@@ -213,8 +244,19 @@ if($seqID && (length($seq) > $kmerLength)){
   $seq =~ tr/acgt/ACGT/;
   for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
     my $sseq = substr($seq, $p, $kmerLength);
-    if($sseq =~ /^[ACGT]+$/){
-      push(@{$posHash{substr($seq, $p, $kmerLength)}}, $p);
+    if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
+      if($type eq "ACGT"){
+	push(@{$posHash{$sseq}}, $p);
+      } elsif($type eq "RY") {
+	my $yrSeq = ($sseq =~ tr/ACGT/RYRY/r);
+	push(@{$posHash{$yrSeq}}, $p);
+      } elsif($type eq "KM") {
+	my $mkSeq = ($sseq =~ tr/ACGT/MMKK/r);
+	push(@{$posHash{$mkSeq}}, $p);
+      } elsif($type eq "SW") {
+	my $swSeq = ($sseq =~ tr/ACGT/WSSW/r);
+	push(@{$posHash{$swSeq}}, $p);
+      }
     }
   }
   foreach my $kmer (keys(%posHash)){
@@ -248,15 +290,17 @@ if($seqID && (length($seq) > $kmerLength)){
 	  $im->setPixel($x * $ppb, $y * $ppb, $blue);
 	}
       }
-      foreach my $y (grep {$_ > $x} (@{$posHash{rev($kmer)}})){
-	if($blockPicture){
-	  if($x != $y){
-	    $dist = log(abs($x - $y));
-	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
-	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
+      if($type ne "SW"){
+	foreach my $y (grep {$_ > $x} (@{$posHash{rev($kmer)}})){
+	  if($blockPicture){
+	    if($x != $y){
+	      $dist = log(abs($x - $y));
+	      $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
+	      $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
+	    }
+	  } else {
+	    $im->setPixel($x * $ppb, $y * $ppb, $green);
 	  }
-	} else {
-	  $im->setPixel($x * $ppb, $y * $ppb, $green);
 	}
       }
     }
