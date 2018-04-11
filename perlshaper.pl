@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.00";
+our $VERSION = "2.01";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -873,7 +873,7 @@ if($mapType !~ /^(location|locator|area|world|orthographic)$/){
 
 if($projOpts->{"centre"}){
   my $newArg = $projOpts->{"centre"};
-  if ($newArg =~ /^[0-9\.,]$/) {
+  if ($newArg =~ /^[0-9\.\-,]+$/) {
     my @centre = split(/,/,$newArg,2);
     $projOpts->{"centreLn"} = $centre[0];
     $projOpts->{"centreLt"} = $centre[1];
@@ -1500,6 +1500,7 @@ foreach my $shpFileBase (@shpFileBases) {
   print(STDERR " done ($shapeCount shapes loaded).\n") if ($debugLevel> 0);
   # iterate through shapes in shapefile
   print(STDERR "Reprojecting and simplifying shapes...") if ($debugLevel> 0);
+  my $lastShapeDots = 3;
   for my $shapeNum (1 .. ($shapeCount)) { # 1-based indexing
     my $shape = $shp->get_shp_record($shapeNum);
     my %data = $shp->get_dbf_record($shapeNum);
@@ -1523,7 +1524,14 @@ foreach my $shpFileBase (@shpFileBases) {
       next;
     }
     if ($shapeNum > 3) {
-      print(STDERR ".") if ($debugLevel> 0);
+      my $shapeDots = ($shapeNum / $shapeCount) * 50;
+      if((($shapeDots - $lastShapeDots) > 1) || ($shapeNum == $shapeCount)){
+        print(STDERR "." x ($shapeDots - $lastShapeDots)) if ($debugLevel> 0);
+        if($shapeNum == $shapeCount){ # make sure last one always gets a dot
+          print(STDERR ".") if ($debugLevel> 0);
+        }
+        $lastShapeDots = $shapeDots;
+      }
     }
     # replace spaces if necessary so group IDs aren't messed up too much
     $sovName =~ s/ /_/g;
