@@ -37,24 +37,30 @@ svg.paths <- xpathApply(svg.data, '//svg:path', fun=function(x){
 grid.newpage();
 
 for(myPath in svg.paths){
+    ## see https://stackoverflow.com/questions/4246077/matching-numbers-with-regular-expressions-only-digits-and-commas/4247184
+    numRE <- "(([+-]?)(?=\\d|\\.\\d)\\d*(\\.\\d*)?([Ee]([+-]?\\d+))?)";
     pathChunks <-
         unlist(regmatches(myPath$d,
-                          gregexpr(paste0("([MmLl]?\\s*[0-9\\.]+",
-                                          "[,\\s][0-9\\.]+|[zZ])"),
-                                             myPath$d)));
+                          gregexpr(paste0("([MmLl]?\\s*",numRE,
+                                          "[,\\s]",numRE,"|[zZ])"), perl=TRUE,
+                                   myPath$d)));
     ## not yet implemented:
     ## # HhVv - Horiz / vert lines     # CcSs - Curve (cubic bezier)
     ## # QqTt - Curve (quadratic)      # Aa   - Elliptical arc 
     blankLineChunks <- grep("^[^MmLlHhVvCcSsQqTtAaZz]", pathChunks);
     pathChunks[blankLineChunks] <- paste0("#",pathChunks[blankLineChunks]);
-    pathChunks <- sub("^(.)\\s+([0-9\\.]+)","\\1\\2", pathChunks);
+     ## remove filler whitespace (if any)
+    pathChunks <- sub(paste0("^(.)\\s+",numRE),"\\1\\2", pathChunks, perl=TRUE);
     path.df <- data.frame(chunk = pathChunks, stringsAsFactors=FALSE);
     path.df$command <- substr(path.df$chunk,1,1);
     path.df$remainder <- sub("^.","",path.df$chunk);
-    path.df$posX <- as.numeric(sub("^([\\s0-9\\.]+)(.*)$","\\1",
-                                   path.df$remainder));
-    path.df$posY <- as.numeric(sub("^([\\s0-9\\.]+)(,|\\s+)","",
-                                   path.df$remainder));
+    path.df$posX <- as.numeric(sub(paste0("^",numRE,"(.*)$"),"\\1",
+                                   path.df$remainder, perl=TRUE));
+    path.df$posY <- as.numeric(sub(paste0("^",numRE,"(,|\\s+)"),"",
+                                   path.df$remainder, perl=TRUE));
+    #if(grepl("e",myPath$d)){
+    #    break;
+    #}
     command.rle <- rle(path.df$command);
     anonPoss <- which(command.rle$values == "#");
     ## [8.3.2] "If a moveto is followed by multiple pairs of coordinates, the
@@ -63,6 +69,9 @@ for(myPath in svg.paths){
         ifelse(command.rle$values[anonPoss-1] == "M", "L",
         ifelse(command.rle$values[anonPoss-1] == "m", "l", "#"));
     path.df$command <- inverse.rle(command.rle);
+    #if(path.df$command[1] == "M"){
+    #    next;
+    #}
     penX <- 0;  penY <- 0;  startX <- 0;  startY <- 0;
     absPoss <- matrix(NA,nrow=nrow(path.df), ncol=2);
     for(li in seq_along(path.df$command)){
@@ -72,7 +81,7 @@ for(myPath in svg.paths){
             startX <- px; startY <- py;
         } else if(cmd == "l"){
             px <- px + penX; py <- py + penY;
-        } else if(cmd == "z"){
+        } else if((cmd == "z") || (cmd == "Z")){
             px <- startX; py <- startY;
         }
         absPoss[li,] <- c(px, py);
@@ -85,7 +94,12 @@ for(myPath in svg.paths){
     pathFill <- sub("^fill:(.*)[;$]","\\1",
                     regmatches(pathStyle,gregexpr("fill:.*?[;$]",pathStyle)));
     pathStroke <- sub("^stroke:(.*)[;$]","\\1",
-                    regmatches(pathStyle,gregexpr("stroke:.*?[;$]",pathStyle)));
-    grid.polygon(x=path.df$absX, y=path.df$absY,
-                 gp=gpar(col=pathStroke,fill=pathFill));
+                      regmatches(pathStyle,gregexpr("stroke:.*?[;$]",pathStyle)));
+    if((tail(path.df$command,1) == "z") || (tail(path.df$command,1) == "Z")){
+        grid.polygon(x=head(path.df$absX,-1), y=head(path.df$absY,-1),
+                     gp=gpar(col=pathStroke,fill=pathFill));
+    } else {
+        grid.lines(x=path.df$absX, y=path.df$absY,
+                     gp=gpar(col=pathStroke,fill=pathFill));
+    }
 }
