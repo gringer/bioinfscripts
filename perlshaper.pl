@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.05";
+our $VERSION = "2.06";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -1413,6 +1413,14 @@ circle.highlight{
    stroke-width: $riverWidth;
 }
 
+/* Lakes */
+
+.lake{
+   fill: $seaColour;
+   stroke: $coastColour;
+   stroke-width: $riverWidth;
+}
+
 /* Sea and decoration */
 .seabase{
    fill: $seaColour;
@@ -1561,6 +1569,8 @@ foreach my $shpFileBase (@shpFileBases) {
     }
   }
   $fileNum++;
+  my $lakeMode = ($shpFileBase =~ m/lake/);
+  my $baseClass = ($lakeMode) ? "lake" : "region";
   my $worldGroup = $globalGroup->group('id' => sprintf("gFile_%d",$fileNum));
   $worldGroup->comment("Using data from ${shpFileBase}.shp");
   # The ShapeFile 'new' procedure doesn't seem to have good error
@@ -1717,12 +1727,12 @@ foreach my $shpFileBase (@shpFileBases) {
                                   'cy' => (($point->[1]) + $projOpts->{"yAdj"}),
                                   'r' => $projOpts->{"pointSize"},
                                   'id' => $pointID,
-                                  'class' => 'region'.$partClass);
+                                  'class' => $baseClass.$partClass);
             }
           }
           if ($pointString && ($pointString ne "Z")) {
             $shapeGroup->path('d' => $pointString, 'id' => $polyID,
-                              'class' => 'region'.$partClass);
+                              'class' => $baseClass.$partClass);
           }
         }
       } elsif ($type eq "PolyLine") {
@@ -1795,7 +1805,7 @@ foreach my $shpFileBase (@shpFileBases) {
                                 'cy' => (($point->[1]) + $projOpts->{"yAdj"}),
                                 'r' => $projOpts->{"pointSize"},
                                 'id' => $pointID,
-                                'class' => 'region'.$partClass);
+                                'class' => $baseClass.$partClass);
           }
         }
       }
