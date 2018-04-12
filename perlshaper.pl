@@ -176,6 +176,7 @@ coordinates.
 
 sub transform {
   my ($options, $inPoint) = @_;
+  my $pi180 = pi / 180;
   my $oldLong = $inPoint->[0];
   my $oldLat = $inPoint->[1];
   my $projection = $options->{"projection"};
@@ -186,15 +187,15 @@ sub transform {
   my ($x, $y);
   if ($projection eq "equirectangular") {
     # see http://en.wikipedia.org/wiki/Equirectangular_projection
-    $x = ($lambda * cos($phi1 * pi / 180)) / 360;
+    $x = ($lambda * cos($phi1 * $pi180)) / 360;
     $y = ($phi / 180);
   } elsif ($projection eq "orthographic") {
     # see http://en.wikipedia.org/wiki/Orthographic_projection_(cartography)
-    $phi = $phi * pi / 180;
-    $phi1 = $phi1 * pi / 180;
-    $lambda = $lambda * pi / 180;
+    $phi = $phi * $pi180;
+    $phi1 = $phi1 * $pi180;
+    $lambda = $lambda * $pi180;
     $x = cos($phi) * sin($lambda);
-    $y = cos($phi1) * sin($phi) - sin($phi1) * cos($phi) * cos($lambda);
+    $y = sin($phi) * cos($phi1) - sin($phi1) * cos($phi) * cos($lambda);
     my $theta = atan2($y,$x);
     my $cosc = sin($phi1) * sin($phi) +
       cos($phi1) * cos($phi) * cos($lambda);
@@ -206,7 +207,7 @@ sub transform {
     if ($options->{"rotation"}) {
       # there may be a quicker way to do this above...
       my $r = sqrt($x*$x + $y*$y);
-      $theta += $options->{"rotation"} * pi / 180;
+      $theta += $options->{"rotation"} * $pi180;
       $x = $r * cos($theta);
       $y = $r * sin($theta);
     }
@@ -214,9 +215,9 @@ sub transform {
     $x *= 0.5;
     $y *= 0.5;
   } elsif ($projection eq "wintri") {
-    $phi = $phi * pi / 180;
+    $phi = $phi * $pi180;
     my $cphi1 = (2 / pi);
-    $lambda = $lambda * pi / 180;
+    $lambda = $lambda * $pi180;
     # see http://en.wikipedia.org/wiki/Winkel_Tripel
     my $alpha = acos_real(cos($phi) * cos($lambda / 2));
     my $sincalpha = ($alpha == 0) ? 1 : (sin($alpha) / $alpha);
@@ -268,7 +269,7 @@ sub project {
   foreach my $inPoint (@input) {
     my $newLong = 0;
     my $newLat = 0;
-    if ((ref($inPoint) eq "Geo::ShapeFile::Point") || 
+    if ((ref($inPoint) eq "Geo::ShapeFile::Point") ||
 	(ref($inPoint) eq "HASH")) {
       $newLong = $inPoint->X;
       $newLat = $inPoint->Y;
@@ -278,16 +279,13 @@ sub project {
     } else {
 	my $ptRefType = ref($inPoint);
 	die("Error: expecting a reference to an array or a hash [actual reference type: $ptRefType]");
-    }
+      }
+    # convert point to fit into -0.5..0.5,-0.5..0.5
+    # Note that this happens before scaling and centering
     my $pt = transform($options, [$newLong, $newLat]);
     my $px = ($pt -> [0]) * $xScale * $projWidth;
     # Y inverted because SVG file is inverted
-    my $py = ($pt -> [1]) * $yScale * -$projHeight;
-    # transformed points should fit in the box (0,0)-(width,height) after adjustment
-    if(($px + $xAdj < $minX) || ($px + $xAdj > $maxX) ||
-       ($py + $yAdj < $minY) || ($py + $yAdj > $maxY)){
-      # $pt->[2] = 0;
-    }
+    my $py = -($pt -> [1]) * $yScale * $projHeight;
     $oldX = $px if !defined($oldX);
     $oldY = $py if !defined($oldY);
     $oldLat = $newLat if !defined($oldLat);
@@ -538,6 +536,39 @@ sub boundBox {
   }
   return(($minX, $minY, $maxX, $maxY));
 }
+
+=head2 boundBoxPre(pointList)
+
+Determines pre-projection rectangular bounding box for a polygon
+(e.g. for identifying shape boundaries for zoom, etc)
+
+=cut
+
+sub boundBoxPre {
+  my @input = @_;
+  @input = grep($_, @input);
+  my $minX = 0;
+  my $minY = 0;
+  my $maxX = 0;
+  my $maxY = 0;
+  if (@input) {
+    my $minPoint = $input[0];
+    $minX = $minPoint -> X;
+    $minY = $minPoint -> Y;
+    $maxX = $minPoint -> X;
+    $maxY = $minPoint -> Y;
+    foreach my $point (@input) {
+      my $px = $point -> X;
+      my $py = $point -> Y;
+      $minX = $px if ($px < $minX);
+      $minY = $py if ($py < $minY);
+      $maxX = $px if ($px > $maxX);
+      $maxY = $py if ($py > $maxY);
+    }
+  }
+  return(($minX, $minY, $maxX, $maxY));
+}
+
 
 =head2 shapeNames(shapeData)
 
@@ -1144,17 +1175,39 @@ $projOpts->{"pointSize"} = 1 unless $projOpts->{"pointSize"};
 
 # adjust SVG dimensions to fit in with zoom extents
 if ($projOpts->{"zoomed"}) {
+  my @tmpPoints = ();
   if($projOpts->{"manualZoom"}){
     warn("Detected a manual zoom\n") if $debugLevel > 0;
-    my @tmpPoints = ([$projOpts->{"minX"},$projOpts->{"minY"}],
-                     [$projOpts->{"maxX"},$projOpts->{"maxY"}]);
+    if($projOpts->{"minY"} < $projOpts->{"maxY"}){
+      ($projOpts->{"minY"}, $projOpts->{"maxY"})  = ($projOpts->{"maxY"}, $projOpts->{"minY"});
+    }
+    if($projOpts->{"minX"} > $projOpts->{"maxX"}){
+      ($projOpts->{"minX"}, $projOpts->{"maxX"})  = ($projOpts->{"maxX"}, $projOpts->{"minX"});
+    }
+    $projOpts->{"centreLn"} = ($projOpts->{"minX"} + $projOpts->{"maxX"}) / 2;
+    $projOpts->{"centreLt"} = ($projOpts->{"minY"} + $projOpts->{"maxY"}) / 2;
+    @tmpPoints = ([$projOpts->{"minX"},$projOpts->{"minY"}],
+                  [$projOpts->{"maxX"},$projOpts->{"maxY"}]);
+    ## Reset scales and adjustments
+    $projOpts->{"xScale"} = 1;
+    $projOpts->{"yScale"} = 1;
+    $projOpts->{"xAdj"} = 0;
+    $projOpts->{"yAdj"} = 0;
     my @projectedPoints = project($projOpts, \@tmpPoints);
-    printf(STDERR "  min: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n", 
+    printf(STDERR "  min: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n",
 	   $tmpPoints[0][0], $tmpPoints[0][1],
-	   $projectedPoints[0][0], $projectedPoints[0][1]);
-    printf(STDERR "  max: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n", 
+	   $projectedPoints[0][0] + $projOpts->{"xAdj"}, $projectedPoints[0][1] + $projOpts->{"yAdj"});
+    printf(STDERR "  max: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n",
 	   $tmpPoints[1][0], $tmpPoints[1][1],
-	   $projectedPoints[1][0], $projectedPoints[1][1]);
+	   $projectedPoints[1][0] + $projOpts->{"xAdj"}, $projectedPoints[1][1] + $projOpts->{"yAdj"});
+    ($projOpts->{"minX"},$projOpts->{"minY"},
+     $projOpts->{"maxX"},$projOpts->{"maxY"}) =
+       ($projectedPoints[0][0], $projectedPoints[0][1],
+        $projectedPoints[1][0], $projectedPoints[1][1]);
+    $projOpts->{"manualZoom"} = 0;
+  } else {
+    @tmpPoints = ([$projOpts->{"minX"},-$projOpts->{"minY"}],
+                  [$projOpts->{"maxX"},-$projOpts->{"maxY"}]);
   }
   printf(STDERR "old SVG width: %0.2f\n", $projOpts->{"svgWidth"});
   printf(STDERR "old SVG height: %0.2f\n", $projOpts->{"svgHeight"});
@@ -1167,12 +1220,14 @@ if ($projOpts->{"zoomed"}) {
   my $width = $projOpts->{"maxX"} - $projOpts->{"minX"};
   my $height = $projOpts->{"maxY"} - $projOpts->{"minY"};
   my $ratio = $width / $height;
-  # requre width to be over 2x height before changing reference dimension
-  my $refDim = ($width > ($height)) ? $width : $height;
+  # requre width to be greater than height before changing reference dimension
+  my $refDim = ($width > $height) ? "width" : "height";
   my $oldW = $projOpts->{"svgWidth"};
   my $oldH = $projOpts->{"svgHeight"};
-  $projOpts->{"svgWidth"} = ($refDim == $width) ? 1100 : 550 * $ratio;
-  $projOpts->{"svgHeight"} = ($refDim == $height) ? 550 : 1100 / $ratio;
+  $projOpts->{"svgWidth"} = ($refDim eq "width") ? 1100 : 550 * $ratio;
+  $projOpts->{"svgHeight"} = ($refDim eq "height") ? 550 : 1100 / $ratio;
+  printf(STDERR "new SVG width: %0.2f\n", $projOpts->{"svgWidth"});
+  printf(STDERR "new SVG height: %0.2f\n", $projOpts->{"svgHeight"});
   $projOpts->{"xScale"} = $oldW / $width;
   $projOpts->{"yScale"} = $oldH / $height;
   my $relMagX = ($projOpts->{"svgWidth"} * $projOpts->{"xScale"}) / $oldW;
@@ -1181,20 +1236,31 @@ if ($projOpts->{"zoomed"}) {
          $relMagX, $relMagY) if ($debugLevel > 0);
   printf(STDERR "[SVG scale is (%0.3f,%0.3f)x]\n",
          $projOpts->{"xScale"}, $projOpts->{"yScale"}) if ($debugLevel > 0);
+  ## Reset scales and adjustments
+  my @projectedPoints = project($projOpts, \@tmpPoints);
+  printf(STDERR "  min: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n",
+         $tmpPoints[0][0], $tmpPoints[0][1],
+         $projectedPoints[0][0] + $projOpts->{"xAdj"}, $projectedPoints[0][1] + $projOpts->{"yAdj"});
+  printf(STDERR "  max: (%0.2f,%0.2f) -> (%0.2f,%0.2f)\n",
+         $tmpPoints[1][0], $tmpPoints[1][1],
+         $projectedPoints[1][0] + $projOpts->{"xAdj"}, $projectedPoints[1][1] + $projOpts->{"yAdj"});
   # modify x/y adjust for new map boundaries plus a bit of padding
   $projOpts->{"padding"} = $projOpts->{"pointSize"} * 11;
-  $projOpts->{"xAdj"} = $projOpts->{"minX"} * -$relMagX
-    + 1.5 + $projOpts->{"padding"};
-  $projOpts->{"yAdj"} = $projOpts->{"minY"} * -$relMagY
-    + 1.5 + $projOpts->{"padding"};
+  $projOpts->{"xAdj"} = -$projectedPoints[0][0] + $projOpts->{"padding"};
+  $projOpts->{"yAdj"} = -$projectedPoints[0][1] + $projOpts->{"padding"};
+  printf(STDERR "Setting adjustment to (%0.3f,%0.3f)\n",
+         $projOpts->{"xAdj"}, $projOpts->{"yAdj"}) if ($debugLevel > 0);
 }
-
 $projOpts->{"minX"} = 1.5 - $projOpts->{"xAdj"};
 $projOpts->{"minY"} = 1.5 - $projOpts->{"yAdj"};
 $projOpts->{"maxX"} = $projOpts->{"minX"} + $projOpts->{"svgWidth"}
   + $projOpts->{"padding"} * 2;
 $projOpts->{"maxY"} = $projOpts->{"minY"} + $projOpts->{"svgHeight"}
   + $projOpts->{"padding"} * 2;
+
+printf(STDERR "Zooming to {(%0.2f,%0.2f)-(%0.2f,%0.2f)}!\n",
+       $projOpts->{"minX"}, $projOpts->{"minY"},
+       $projOpts->{"maxX"}, $projOpts->{"maxY"}) if ($debugLevel> 0);
 
 ## pre-processed variables have been set up, so can now start writing to the SVG
 
@@ -1577,8 +1643,18 @@ foreach my $shpFileBase (@shpFileBases) {
     # iterate through component parts of shape
     for my $partNum (1 .. $partCount) { # 1-based indexing
       my @newPart = $shape->get_part($partNum);
+      if(scalar(@newPart) < 20){
+        my @tmpBoundBox = boundBoxPre(@newPart);
+        printf(STDERR "\nBounding box (pre-transform): %s",
+               join(";",@tmpBoundBox)) if ($debugLevel > 1);
+      }
       @newPart = project($projOpts, \@newPart);
-      @newPart = clip($projOpts, \@newPart);
+      if(scalar(@newPart) < 20){
+        my @tmpBoundBox = boundBox(@newPart);
+        printf(STDERR "\nBounding box (post-transform): %s\n",
+               join(";",@tmpBoundBox)) if ($debugLevel > 1);
+      }
+      ##@newPart = clip($projOpts, \@newPart);
       @newPart = simplify($projOpts, \%addedPoints, \@newPart);
       my @partBoundBox = ();
       if(scalar(@newPart) < 20){
@@ -1784,7 +1860,7 @@ if ($projOpts->{"zoomed"}) {
   $seaPath = chopPoly($projOpts, \@linePoints, 1);
   $seaGroup->path('id' => 'pGlobeBorder', 'd' => $seaPath,
                   'class' => 'mapborder');
-  printf(STDERR "Zoomed to ((%0.2f,%0.2f)-(%0.2f,%0.2f))!\n",
+  printf(STDERR "Zoomed to {(%0.2f,%0.2f)-(%0.2f,%0.2f)}!\n",
          $projOpts->{"minX"}, $projOpts->{"minY"},
          $projOpts->{"maxX"}, $projOpts->{"maxY"}) if ($debugLevel> 0);
 }
