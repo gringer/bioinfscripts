@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.03";
+our $VERSION = "2.05";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -119,6 +119,10 @@ Zoom to projected extents, typically with I<X> = longitude, I<Y> = latitude
 =item B<-nokey>
 
 Don't display heatmap key (if heatmap is used)
+
+=item B<-annotate> I<Text>;I<long>,I<lat>
+
+Add text annotation to a point on the image
 
 =item B<-nohighlights>
 
@@ -765,6 +769,7 @@ my @dataFiles = (); # files containing numerical data
 
 my %subjectNames = ();
 my %politicalNames = ();
+my %annotations = ();
 my %onlyNames = ();
 my %zoomNames = ();
 
@@ -810,6 +815,8 @@ GetOptions($projOpts, 'lines!', 'key!', 'highlights!', 'pointSize|psize=f', 'rou
 				     grep {$subjectNames{$_} = 1} split(/,/, $val)},
            'politicals|pol=s' => sub { my ($opt,$val) = @_;
 				     grep {$politicalNames{$_} = 1} split(/,/, $val)},
+           'annotate=s' => sub { my ($opt,$val) = @_; my @F = split(/[;,]/, $val);
+                                 $annotations{$F[0]} = $F[1].",".$F[2]; },
            'only=s' => sub { my ($opt,$val) = @_;
 			     $onlyNames{$val} = 1},
            'data=s@' => \@dataFiles,
@@ -1797,6 +1804,31 @@ foreach my $shpFileBase (@shpFileBases) {
   }                             # ends for(shapenum)
   print(STDERR " done!\n") if ($debugLevel> 0);
 }
+
+if(keys(%annotations)){
+  my $annotateID = 0;
+  my $annotateGroup = $svg->group('id' => "gAnnotations", 'class' => 'annotations');
+  while(my($text, $pos) = each %annotations){
+    my @F = split(/,/, $pos);
+    print(STDERR "Annotation: $text; '$pos'\n");
+    my @tmpPos = ([$F[0],$F[1]], [$F[0],$F[1]]);
+    my @projPos = project($projOpts, \@tmpPos);
+    $annotateGroup->comment($text);
+    $annotateGroup->circle('cx' => (($projPos[0][0]) + $projOpts->{"xAdj"}),
+                           'cy' => (($projPos[1][1]) + $projOpts->{"yAdj"}),
+                           'r' => $projOpts->{"pointSize"} * 10,
+                           'id' => "annh".$annotateID,
+                           'opacity' => 0.25,
+                           'class' => 'highlightAnn');
+    $annotateGroup->circle('cx' => (($projPos[0][0]) + $projOpts->{"xAdj"}),
+                           'cy' => (($projPos[1][1]) + $projOpts->{"yAdj"}),
+                           'r' => $projOpts->{"pointSize"},
+                           'id' => "annp".$annotateID,
+                           'class' => 'regionAnn');
+    $annotateID++;
+  }
+}
+
 
 $latLimit = 80 unless $latLimit;
 
