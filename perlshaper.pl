@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.01";
+our $VERSION = "2.03";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -1654,7 +1654,7 @@ foreach my $shpFileBase (@shpFileBases) {
         printf(STDERR "\nBounding box (post-transform): %s\n",
                join(";",@tmpBoundBox)) if ($debugLevel > 1);
       }
-      ##@newPart = clip($projOpts, \@newPart);
+      @newPart = clip($projOpts, \@newPart);
       @newPart = simplify($projOpts, \%addedPoints, \@newPart);
       my @partBoundBox = ();
       if(scalar(@newPart) < 20){
