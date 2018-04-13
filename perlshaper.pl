@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.07";
+our $VERSION = "2.08";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -1274,7 +1274,9 @@ printf(STDERR "Zooming to {(%0.2f,%0.2f)-(%0.2f,%0.2f)}!\n",
 my $svg = SVG->new('height' => $projOpts->{"svgHeight"} + $projOpts->{"padding"} * 2 + 3,
                    'width' => $projOpts->{"svgWidth"} + $projOpts->{"padding"} * 2 + 3,
                    -indent => "  ", -standalone => 'no',
-                  -nocredits => 1); # multi-line credits make Inkscape editing harder
+		   'xmlns:sodipodi' => "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd",
+		   'xmlns:inkscape' => "http://www.inkscape.org/namespaces/inkscape",
+		   -nocredits => 1); # multi-line credits make Inkscape editing harder
 $svg->comment("Created using David Eccles' (gringer) perlshaper.pl script, ".
               "version $VERSION, ".
               "http://en.wikipedia.org/wiki/User:Gringer/perlshaper");
@@ -1465,6 +1467,7 @@ _EOCSS_
 # place sea layer beneath image
 
 my $seaPath = "";
+my $layerCount = 1;
 
 if ($mapType =~ /^ortho/ && !$projOpts->{"zoomed"}) {
   my $svgDefs = $svg->defs('id' => 'defSea');
@@ -1477,7 +1480,11 @@ if ($mapType =~ /^ortho/ && !$projOpts->{"zoomed"}) {
                      'style' => 'stop-color:#808080;stop-opacity:0.0625;');
   $seaGradient->stop('id' => 'sCentre', offset => 1,
                      'style' => 'stop-color:#000000;stop-opacity:0.25;');
-  my $seaGroup = $svg->group('id' => "gSeaBase");
+  my $seaGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "SeaBase",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gSeaBase");
   $seaGroup->circle(id => "cSeaBase", 'cx' => 0 + $projOpts->{"xAdj"},
                     'cy' => 0 + $projOpts->{"yAdj"},
                     'r' => ($projOpts->{"svgWidth"} / 2),
@@ -1489,7 +1496,11 @@ if ($mapType =~ /^ortho/ && !$projOpts->{"zoomed"}) {
 if (($mapType =~ /^(location|locator|area|world)/) &&
     !$projOpts->{"zoomed"}) {
   print(STDERR "Finding world edge...") if ($debugLevel> 0);
-  my $seaGroup = $svg->group('id' => "gSeaBase");
+  my $seaGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "SeaBase",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gSeaBase");
   my $minLong = 0;
   my $minLongVal;
   my $maxLong = 0;
@@ -1547,7 +1558,11 @@ if (($mapType =~ /^(location|locator|area|world)/) &&
 
 # place sea -- a rectangle around the image for zoomed maps
 if ($projOpts->{"zoomed"}) {
-  my $seaGroup = $svg->group('id' => "gSeaBase");
+  my $seaGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "SeaBase",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gSeaBase");
   my @linePoints = ([$projOpts->{"minX"},$projOpts->{"minY"},1],
                     [$projOpts->{"maxX"},$projOpts->{"minY"},1],
                     [$projOpts->{"maxX"},$projOpts->{"maxY"},1],
@@ -1556,8 +1571,10 @@ if ($projOpts->{"zoomed"}) {
   $seaGroup->path('id' => 'pSeaBase', 'd' => $seaPath, 'class' => 'seabase');
 }
 
-
-my $globalGroup = $svg->group('id' => "gCountries", 'class' => 'countries');
+my $globalGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "Countries",
+			     'inkscape:groupmode' => "layer",
+			    )->group('id' => "gCountries", 'class' => 'countries');
 
 my $fileNum = 0;
 foreach my $shpFileBase (@shpFileBases) {
@@ -1818,7 +1835,10 @@ foreach my $shpFileBase (@shpFileBases) {
 
 if(keys(%annotations)){
   my $annotateID = 0;
-  my $annotateGroup = $svg->group('id' => "gAnnotations", 'class' => 'annotations');
+  my $annotateGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "Annotations",
+			     'inkscape:groupmode' => "layer",
+			    )->group('id' => "gAnnotations", 'class' => 'annotations');
   while(my($text, $pos) = each %annotations){
     my @F = split(/,/, $pos);
     print(STDERR "Annotation: $text; '$pos'\n");
@@ -1857,7 +1877,11 @@ if ($projOpts->{"lines"} && !$projOpts->{"zoomed"}) {
   # 1: print Latitude [only]
   # 2: print Longitude [only]
   # 2: print both Latitude and Longitude
-  my $lineGroup = $svg->group('id' => "gLatLongLines");
+  my $lineGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "LatLongLines",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gLatLongLines");
   # min and max lat make sure there are no sticks extending below the
   # lines of latitude
   my $minLat = -$latLimit + (($latSep - (-$latLimit % $latSep)) % $latSep);
@@ -1902,7 +1926,11 @@ if ($projOpts->{"lines"} && !$projOpts->{"zoomed"}) {
 }
 
 if ($projOpts->{"zoomed"}) {
-  my $seaGroup = $svg->group('id' => "gGlobeDecoration");
+  my $seaGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "GlobeDecoration",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gGlobeDecoration");
   my @linePoints = ([$projOpts->{"minX"},$projOpts->{"minY"},1],
                     [$projOpts->{"maxX"},$projOpts->{"minY"},1],
                     [$projOpts->{"maxX"},$projOpts->{"maxY"},1],
@@ -1917,7 +1945,11 @@ if ($projOpts->{"zoomed"}) {
 
 if (($mapType =~ /^ortho/) && !$projOpts->{"zoomed"}) {
   print(STDERR "Printing border...") if ($debugLevel> 0);
-  my $seaGroup = $svg->group('id' => "gGlobeDecoration");
+  my $seaGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "GlobeDecoration",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gGlobeDecoration");
   # shading
   $seaGroup->circle('id' => "cGlobeShade", 'cx' => $projOpts->{"xAdj"},
                     'cy' => $projOpts->{"yAdj"}, 'r' => ($projOpts->{"svgWidth"} / 2),
@@ -1931,7 +1963,11 @@ if (($mapType =~ /^ortho/) && !$projOpts->{"zoomed"}) {
 if (($mapType =~ /^(location|locator|area|world)/) &&
     !$projOpts->{"zoomed"}) {
   print(STDERR "Printing border...") if ($debugLevel> 0);
-  my $seaGroup = $svg->group('id' => "gGlobeDecoration");
+  my $seaGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "GlobeDecoration",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => "gGlobeDecoration");
   $seaGroup->path('id' => 'pGlobeBorder', 'd' => $seaPath,
                   'class' => 'mapborder');
   print(STDERR " done!\n") if ($debugLevel> 0);
@@ -1948,7 +1984,11 @@ if (keys(%countryValues) && $printKey) {
                     'style' => 'stop-color:#00FFFF;');
   $hmGradient->stop('id' => 'sMax', offset => 1,
                     'style' => 'stop-color:#FFFF00;');
-  my $gradientGroup = $svg->group('id' => 'gHeatmapScale');
+  my $gradientGroup = $svg->group('id' => "layer".$layerCount++,
+			     'inkscape:label' => "HeatmapScale",
+			     'inkscape:groupmode' => "layer",
+			     'sodipodi:insensitive' => "true",
+			    )->group('id' => 'gHeatmapScale');
   $gradientGroup->rect('id' => 'rHeatmapScale', 'class' => 'heatmap gradient',
                        'x' => ($projOpts->{"svgWidth"} / 2) - 150, 'y' => $projOpts->{"svgHeight"}-40,
                        'width' => 300, 'height' => 35);
