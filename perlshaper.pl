@@ -1357,6 +1357,7 @@ text.heatmap{
 my $styleSheet = $svg->style('id' => 'mapStyle', 'type' => 'text/css');
 my $highlightWidth = $projOpts->{"pointSize"} * 2.5;
 my $riverWidth = $projOpts->{"pointSize"} / 2;
+my $lakeWidth = $projOpts->{"pointSize"} / 4;
 $styleSheet->CDATA( <<_EOCSS_
 /* Cascading Style Sheet (CSS) definitions for region colours */
 
@@ -1418,7 +1419,7 @@ circle.highlight{
 .lake{
    fill: $seaColour;
    stroke: $coastColour;
-   stroke-width: $riverWidth;
+   stroke-width: $lakeWidth;
 }
 
 /* Sea and decoration */
