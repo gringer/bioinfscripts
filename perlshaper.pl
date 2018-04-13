@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.08";
+our $VERSION = "2.09";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -415,7 +415,8 @@ sub simplify {
         $last = $_;
         $lastXRounded = $xRounded;
         $lastYRounded = $yRounded;
-      } elsif(($xRounded != $lastXRounded) || ($yRounded != $lastYRounded)){
+      } elsif((($xRounded != $lastXRounded) && ($yRounded != $lastYRounded)) ||
+	      (($xRounded - $lastXRounded) + ($yRounded - $lastYRounded) > 1.4)){
         $pointHash->{($xRounded,$yRounded)} = 1;
         $last = $_;
         $lastXRounded = $xRounded;
