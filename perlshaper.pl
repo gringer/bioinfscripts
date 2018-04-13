@@ -17,7 +17,7 @@ use POSIX qw(fmod);
 use Carp 'verbose';
 $SIG{ __DIE__ } = \&Carp::confess;
 
-our $VERSION = "2.06";
+our $VERSION = "2.07";
 
 ## Write out version name to standard error
 printf(STDERR "Perlshaper version %s\n", ${VERSION});
@@ -1835,6 +1835,13 @@ if(keys(%annotations)){
                            'r' => $projOpts->{"pointSize"},
                            'id' => "annp".$annotateID,
                            'class' => 'regionAnn');
+    $annotateGroup->text('x' => (($projPos[0][0]) + $projOpts->{"xAdj"}),
+			 'y' => (($projPos[1][1]) + $projOpts->{"yAdj"}),
+			 'id' => "annt".$annotateID,
+			 'dy' => '2.5ex',
+			 'class' => 'textAnn',
+			 'text-anchor' => 'middle',
+			 '-cdata' => $text);
     $annotateID++;
   }
 }
