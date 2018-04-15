@@ -50,10 +50,13 @@ axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
 abline(h=10^(0:drMax), col="#80808050", lwd = 3);
 mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
 legend(x = "bottom",
-    fill=c("#9000a0","#8b0000","#00a090","#0000FF","#a09000","#00A000"),
+       fill=c("#9000a0","#8b0000",
+              "#fdc086","#ff7f00",
+              "#00a090","#0000ff",
+              "#a09000","#00a000"),
     legend=c("Repeat (L)",  "Repeat (R)",
+             "Comp (L)",    "Comp (R)",
              "RevComp (L)", "RevComp (R)",
              "Reverse (L)", "Reverse (R)"),
-    bg="#FFFFFF",
-    horiz=TRUE, inset=0.01);
+    bg="#FFFFFF", horiz=FALSE, inset=0.01, ncol=4);
 invisible(dev.off());
