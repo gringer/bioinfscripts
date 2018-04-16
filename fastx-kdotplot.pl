@@ -48,9 +48,14 @@ my $kmerLength = -1; ## number of bases in hash keys
 my $blockPicture = 0; ## false
 my $hLines = ""; ## horizontal lines
 my $type = "ACGT"; ## search type
+my $catSeps = "";
+my $catStart = 0;
+my $catEnd = 0;
+my %catKmerCounts = ();
 
 GetOptions("kmer=i" => \$kmerLength, "size=s" => \$size,
 	   "hlines=s" => \$hLines, "type=s" => \$type,
+	   "categorise=s" => \$catSeps,
            "region=s" => \$subseq, "altview!" => \$blockPicture ) or
   die("Error in command line arguments");
 
@@ -60,6 +65,11 @@ if($size =~ /^([0-9]+)x([0-9]+)$/){
 } else {
   $sizeX = $size;
   $sizeY = $size;
+}
+
+if($catSeps){
+  ($catStart, $catEnd) = split(/[,;\-]/, $catSeps);
+  ($catStart, $catEnd) = (log($catStart), log($catEnd));
 }
 
 if($kmerLength == -1){ ## Default length
@@ -164,6 +174,9 @@ while(<>){
 	      if($blockPicture){
 		if($x != $y){
 		  $dist = log(abs($x - $y));
+		  if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		    $catKmerCounts{$kmer}++;
+		  }
 		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $red);
 		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $magenta);
 		}
@@ -181,6 +194,9 @@ while(<>){
 	      if($blockPicture){
 		if($x != $y){
 		  $dist = log(abs($x - $y));
+		  if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		    $catKmerCounts{$kmer}++;
+		  }
 		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $salmon);
 		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $orange);
 		}
@@ -192,6 +208,9 @@ while(<>){
 	      if($blockPicture){
 		if($x != $y){
 		  $dist = log(abs($x - $y));
+		  if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		    $catKmerCounts{$kmer}++;
+		  }
 		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $blue);
 		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $cyan);
 		}
@@ -204,6 +223,9 @@ while(<>){
 		if($blockPicture){
 		  if($x != $y){
 		    $dist = log(abs($x - $y));
+		    if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		      $catKmerCounts{$kmer}++;
+		    }
 		    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
 		    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
 		  }
@@ -288,6 +310,9 @@ if($seqID && (length($seq) > $kmerLength)){
 	if($blockPicture){
 	  if($x != $y){
 	    $dist = log(abs($x - $y));
+	    if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+	      $catKmerCounts{$kmer}++;
+	    }
 	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $red);
 	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $magenta);
 	  }
@@ -305,6 +330,9 @@ if($seqID && (length($seq) > $kmerLength)){
 	if($blockPicture){
 	  if($x != $y){
 	    $dist = log(abs($x - $y));
+	    if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+	      $catKmerCounts{$kmer}++;
+	    }
 	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $salmon);
 	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $orange);
 	  }
@@ -316,6 +344,9 @@ if($seqID && (length($seq) > $kmerLength)){
 	if($blockPicture){
 	  if($x != $y){
 	    $dist = log(abs($x - $y));
+	    if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+	      $catKmerCounts{$kmer}++;
+	    }
 	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $blue);
 	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $cyan);
 	  }
@@ -328,6 +359,9 @@ if($seqID && (length($seq) > $kmerLength)){
 	  if($blockPicture){
 	    if($x != $y){
 	      $dist = log(abs($x - $y));
+	      if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		$catKmerCounts{$kmer}++;
+	      }
 	      $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $green);
 	      $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $yellow);
 	    }
@@ -336,6 +370,18 @@ if($seqID && (length($seq) > $kmerLength)){
 	  }
 	}
       }
+    }
+  }
+}
+
+if($catStart){
+  my $catLimit = 10;
+  printf(STDERR "%d most abundant kmers in search band:\n", 
+	 scalar(keys(%catKmerCounts)));
+  foreach my $kmer (sort {$catKmerCounts{$b} <=> $catKmerCounts{$a}} 
+		    keys(%catKmerCounts)){
+    if($catLimit-- > 0){
+      printf(STDERR "%s %d\n", $kmer, $catKmerCounts{$kmer});
     }
   }
 }
