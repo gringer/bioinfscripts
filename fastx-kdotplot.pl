@@ -157,8 +157,8 @@ while(<>){
 	  $seq =~ tr/ACGT/WSSW/;
 	}
 	printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
-	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-	  my $sseq = substr($seq, $p, $kmerLength);
+	for(my $p = $len; $p >= $kmerLength; $p--){
+	  my $sseq = substr($seq, $p-$kmerLength, $kmerLength);
 	  if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
 	    push(@{$posHash{$sseq}}, $p);
 	  }
@@ -291,8 +291,8 @@ if($seqID && (length($seq) > $kmerLength)){
     $seq =~ tr/ACGT/WSSW/;
   }
   printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
-  for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
-    my $sseq = substr($seq, $p, $kmerLength);
+  for(my $p = $len; $p >= $kmerLength; $p--){
+    my $sseq = substr($seq, $p-$kmerLength, $kmerLength);
     if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
       push(@{$posHash{$sseq}}, $p);
     }
