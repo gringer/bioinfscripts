@@ -161,6 +161,7 @@ while(<>){
 	for(my $p = $len; $p >= $kmerLength; $p--){
 	  push(@{$posHash{substr($seq, $p-$kmerLength, $kmerLength)}}, $p);
 	}
+	#printf(STDERR "Done indexing\n");
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
           foreach my $x (@posList){
@@ -293,6 +294,7 @@ if($seqID && (length($seq) > $kmerLength)){
   for(my $p = $len; $p >= $kmerLength; $p--){
     push(@{$posHash{substr($seq, $p-$kmerLength, $kmerLength)}}, $p);
   }
+  #printf(STDERR "Done indexing\n");
   foreach my $kmer (keys(%posHash)){
     my @posList = @{$posHash{$kmer}};
     foreach my $x (@posList){
