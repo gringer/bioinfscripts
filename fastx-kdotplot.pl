@@ -149,22 +149,18 @@ while(<>){
 	my %posHash = ();
         my %gapCounts = ();
         $seq =~ tr/a-z/A-Z/;
+	if($type eq "RY") {
+	  $seq =~ tr/ACGT/RYRY/;
+	} elsif($type eq "KM") {
+	  $seq =~ tr/ACGT/MMKK/;
+	} elsif($type eq "SW") {
+	  $seq =~ tr/ACGT/WSSW/;
+	}
 	printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
 	for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
 	  my $sseq = substr($seq, $p, $kmerLength);
 	  if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
-	    if($type eq "ACGT"){
-	      push(@{$posHash{$sseq}}, $p);
-	    } elsif($type eq "RY") {
-	      my $yrSeq = ($sseq =~ tr/ACGT/RYRY/r);
-	      push(@{$posHash{$yrSeq}}, $p);
-	    } elsif($type eq "KM") {
-	      my $mkSeq = ($sseq =~ tr/ACGT/MMKK/r);
-	      push(@{$posHash{$mkSeq}}, $p);
-	    } elsif($type eq "SW") {
-	      my $swSeq = ($sseq =~ tr/ACGT/WSSW/r);
-	      push(@{$posHash{$swSeq}}, $p);
-	    }
+	    push(@{$posHash{$sseq}}, $p);
 	  }
         }
 	foreach my $kmer (keys(%posHash)){
@@ -190,18 +186,20 @@ while(<>){
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
           foreach my $x (@posList){
-	    foreach my $y (grep {$_ < $x} (@{$posHash{comp($kmer)}})){
-	      if($blockPicture){
-		if($x != $y){
-		  $dist = log(abs($x - $y));
-		  if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
-		    $catKmerCounts{$kmer}++;
+	    if($type ne "SW"){
+	      foreach my $y (grep {$_ < $x} (@{$posHash{comp($kmer)}})){
+		if($blockPicture){
+		  if($x != $y){
+		    $dist = log(abs($x - $y));
+		    if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		      $catKmerCounts{$kmer}++;
+		    }
+		    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $salmon);
+		    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $orange);
 		  }
-		  $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $salmon);
-		  $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $orange);
+		} else {
+		  $im->setPixel($x * $ppb, $y * $ppb, $orange);
 		}
-	      } else {
-		$im->setPixel($x * $ppb, $y * $ppb, $orange);
 	      }
 	    }
 	    foreach my $y (grep {$_ < $x} (@{$posHash{rc($kmer)}})){
@@ -285,22 +283,18 @@ if($seqID && (length($seq) > $kmerLength)){
   my %posHash = ();
   my %gapCounts = ();
   $seq =~ tr/a-z/A-Z/;
+  if($type eq "RY") {
+    $seq =~ tr/ACGT/RYRY/;
+  } elsif($type eq "KM") {
+	  $seq =~ tr/ACGT/MMKK/;
+  } elsif($type eq "SW") {
+    $seq =~ tr/ACGT/WSSW/;
+  }
   printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
   for(my $p = 0; ($p + $kmerLength) <= $len; $p++){
     my $sseq = substr($seq, $p, $kmerLength);
     if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
-      if($type eq "ACGT"){
-	push(@{$posHash{$sseq}}, $p);
-      } elsif($type eq "RY") {
-	my $yrSeq = ($sseq =~ tr/ACGT/RYRY/r);
-	push(@{$posHash{$yrSeq}}, $p);
-      } elsif($type eq "KM") {
-	my $mkSeq = ($sseq =~ tr/ACGT/MMKK/r);
-	push(@{$posHash{$mkSeq}}, $p);
-      } elsif($type eq "SW") {
-	my $swSeq = ($sseq =~ tr/ACGT/WSSW/r);
-	push(@{$posHash{$swSeq}}, $p);
-      }
+      push(@{$posHash{$sseq}}, $p);
     }
   }
   foreach my $kmer (keys(%posHash)){
@@ -326,18 +320,20 @@ if($seqID && (length($seq) > $kmerLength)){
   foreach my $kmer (keys(%posHash)){
     my @posList = @{$posHash{$kmer}};
     foreach my $x (@posList){
-      foreach my $y (grep {$_ < $x} (@{$posHash{comp($kmer)}})){
-	if($blockPicture){
-	  if($x != $y){
-	    $dist = log(abs($x - $y));
-	    if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
-	      $catKmerCounts{$kmer}++;
+      if($type ne "SW"){
+	foreach my $y (grep {$_ < $x} (@{$posHash{comp($kmer)}})){
+	  if($blockPicture){
+	    if($x != $y){
+	      $dist = log(abs($x - $y));
+	      if($catStart && ($dist >= $catStart) && ($dist <= $catEnd)){
+		$catKmerCounts{$kmer}++;
+	      }
+	      $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $salmon);
+	      $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $orange);
 	    }
-	    $im->setPixel($x * $ppb, $sizeY - $dist * $ppl, $salmon);
-	    $im->setPixel($y * $ppb, $sizeY - $dist * $ppl, $orange);
+	  } else {
+	    $im->setPixel($x * $ppb, $y * $ppb, $orange);
 	  }
-	} else {
-	  $im->setPixel($x * $ppb, $y * $ppb, $orange);
 	}
       }
       foreach my $y (grep {$_ < $x} (@{$posHash{rc($kmer)}})){
