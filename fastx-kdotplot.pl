@@ -156,13 +156,11 @@ while(<>){
 	} elsif($type eq "SW") {
 	  $seq =~ tr/ACGT/WSSW/;
 	}
+	$seq =~ tr/ACGTUYRSWMKDVHBXN//cd; # remove any non-base characters
 	printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
 	for(my $p = $len; $p >= $kmerLength; $p--){
-	  my $sseq = substr($seq, $p-$kmerLength, $kmerLength);
-	  if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
-	    push(@{$posHash{$sseq}}, $p);
-	  }
-        }
+	  push(@{$posHash{substr($seq, $p-$kmerLength, $kmerLength)}}, $p);
+	}
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
           foreach my $x (@posList){
@@ -290,12 +288,10 @@ if($seqID && (length($seq) > $kmerLength)){
   } elsif($type eq "SW") {
     $seq =~ tr/ACGT/WSSW/;
   }
+  $seq =~ tr/ACGTUYRSWMKDVHBXN//cd; # remove any non-base characters
   printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
   for(my $p = $len; $p >= $kmerLength; $p--){
-    my $sseq = substr($seq, $p-$kmerLength, $kmerLength);
-    if($sseq =~ /^[ACGTUYRSWMKDVHBXN-]+$/){
-      push(@{$posHash{$sseq}}, $p);
-    }
+    push(@{$posHash{substr($seq, $p-$kmerLength, $kmerLength)}}, $p);
   }
   foreach my $kmer (keys(%posHash)){
     my @posList = @{$posHash{$kmer}};
