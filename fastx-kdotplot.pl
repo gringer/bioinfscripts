@@ -159,7 +159,10 @@ while(<>){
 	$seq =~ tr/ACGTUYRSWMKDVHBXN//cd; # remove any non-base characters
 	printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
 	for(my $p = $len; $p >= $kmerLength; $p--){
-	  push(@{$posHash{substr($seq, $p-$kmerLength, $kmerLength)}}, $p);
+          my $sseq = substr($seq, $p-$kmerLength, $kmerLength);
+          if($sseq !~ /N/){ # ignore kmers containing N
+            push(@{$posHash{$sseq}}, $p);
+          }
 	}
 	#printf(STDERR "Done indexing\n");
 	foreach my $kmer (keys(%posHash)){
@@ -292,7 +295,10 @@ if($seqID && (length($seq) > $kmerLength)){
   $seq =~ tr/ACGTUYRSWMKDVHBXN//cd; # remove any non-base characters
   printf(STDERR "$seqID | Sequence length: %d\n", length($seq));
   for(my $p = $len; $p >= $kmerLength; $p--){
-    push(@{$posHash{substr($seq, $p-$kmerLength, $kmerLength)}}, $p);
+    my $sseq = substr($seq, $p-$kmerLength, $kmerLength);
+    if($sseq !~ /N/){ # ignore kmers containing N
+      push(@{$posHash{$sseq}}, $p);
+    }
   }
   #printf(STDERR "Done indexing\n");
   foreach my $kmer (keys(%posHash)){
