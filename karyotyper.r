@@ -71,12 +71,14 @@ features.df$chr <- sub("^chr","",features.df$Chr);
 #features.df$end <- features.df$tE;
 features.df$start <- features.df$Start;
 features.df$end <- features.df$End;
-features.df$col <- hsv(c(1/3,1/2,0)[sign(features.df$l2fc)+2],
+features.df$col <- hsv(c(1/3,1/2,0)[-sign(features.df$l2fc)+2],
                        alpha=abs(features.df$l2fc)/
                            max(abs(range(features.df$l2fc))));
 
+features.df <- subset(features.df, abs(l2fc) > 2);
+
 ## Create ideogram plot
-png("karyotype_mm10_Differential_Coverage.png",width=1920,height=1080);
+svg("karyotype_mm10_Differential_Coverage.svg",width=19,height=10);
 par(mar=c(0.1,0.1,0.1,0.1), cex = 2);
 ## set up plot extents
 plot(NA, xlim = c(0,chrs.per.line),
@@ -118,11 +120,16 @@ for(l in 1:dim(features.df)[1]){
                                               chrs.per.line));
     y1 <- features.df$start[l]+yadj;
     y2 <- features.df$end[l]+yadj;
-    polygon(col=features.df$col[l],
-            x=c(0.15,0.23,0.23,0.15,NA,0.85,0.77,0.77,0.85) + xadj,
-            y=c(y1-bp.per.line*0.02,y1,y2,y2+bp.per.line*0.02,NA,
-                y1-bp.per.line*0.02,y1,y2,y2+bp.per.line*0.02));
+    if(features.df$l2fc[l] < 0){
+        polygon(col=features.df$col[l],
+                x=c(0.85,0.77,0.77,0.85) + xadj,
+                y=c(y1-bp.per.line*0.02,y1,y2,y2+bp.per.line*0.02));
+    } else {
+        polygon(col=features.df$col[l],
+                x=c(0.15,0.23,0.23,0.15) + xadj,
+                y=c(y1-bp.per.line*0.02,y1,y2,y2+bp.per.line*0.02));
+    }
 }
 legend("topright", legend=c("WT > ρ0", "ρ0 > WT"),
-       fill = c("red","green"), inset=0.025);
+       fill = c("green","red"), inset=0.025);
 graphics.off();
