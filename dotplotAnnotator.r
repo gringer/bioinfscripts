@@ -35,8 +35,10 @@ if(grepl("-", seqLen)){
 
 print(c(seqName, seqLen, seqStart, seqEnd));
 
-svg(sprintf("featurePlot_%s.svg", seqName),
-    width=12.8, height=7.2, pointsize=12);
+png(sprintf("featurePlot_%s.png", seqName),
+    width=1800, height=600, pointsize=12);
+#svg(sprintf("featurePlot_%s.svg", seqName),
+#    width=12.8, height=7.2, pointsize=12);
 par(mar=c(5,6,3,1.5), cex.axis=1.5, cex.lab=1.5, cex.main=2);
 plot(NA, main=sprintf("Feature profile (%s)", seqName),
      xlab="Sequence Location (kbp)",

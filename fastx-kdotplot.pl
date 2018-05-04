@@ -73,7 +73,7 @@ if($catSeps){
 }
 
 if($kmerLength == -1){ ## Default length
-  $kmerLength = ($type eq "ACGT") ? $defaultKmerLength : ($defaultKmerLength+3);
+  $kmerLength = ($type eq "ACGT") ? $defaultKmerLength : ($defaultKmerLength+5);
 }
 
 ## simplify search-type logic searches later on
@@ -164,7 +164,7 @@ while(<>){
             push(@{$posHash{$sseq}}, $p);
           }
 	}
-	#printf(STDERR "Done indexing\n");
+	printf(STDERR "Done indexing\n");
 	foreach my $kmer (keys(%posHash)){
 	  my @posList = @{$posHash{$kmer}};
           foreach my $x (@posList){
@@ -300,8 +300,17 @@ if($seqID && (length($seq) > $kmerLength)){
       push(@{$posHash{$sseq}}, $p);
     }
   }
-  #printf(STDERR "Done indexing\n");
+  printf(STDERR "Done indexing\n");
+  printf(STDERR "Drawing repeated kmers (2 iterations)\n");
+  printf(STDERR "[".("-" x 48)."]\n");
+  my $dones = 0;
+  my $lastPct = 0;
   foreach my $kmer (keys(%posHash)){
+    $dones++;
+    if($lastPct < int($dones / scalar(keys(%posHash)) * 50)){
+      print(STDERR ".");
+      $lastPct = int($dones / scalar(keys(%posHash)) * 50);
+    }
     my @posList = @{$posHash{$kmer}};
     foreach my $x (@posList){
       foreach my $y (@posList){
@@ -320,8 +329,16 @@ if($seqID && (length($seq) > $kmerLength)){
       }
     }
   }
-  ## make sure reverse and reverse complement explicitly overwrite
+  print(STDERR "\n");
+  ## make sure complement, reverse and reverse complement explicitly overwrite
+  $dones = 0;
+  $lastPct = 0;
   foreach my $kmer (keys(%posHash)){
+    $dones++;
+    if($lastPct < int($dones / scalar(keys(%posHash)) * 50)){
+      print(STDERR ".");
+      $lastPct = int($dones / scalar(keys(%posHash)) * 50);
+    }
     my @posList = @{$posHash{$kmer}};
     foreach my $x (@posList){
       if($type ne "SW"){
@@ -372,6 +389,7 @@ if($seqID && (length($seq) > $kmerLength)){
       }
     }
   }
+  print(STDERR "\n");
 }
 
 if($catStart){
