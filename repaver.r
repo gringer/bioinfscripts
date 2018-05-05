@@ -3,7 +3,7 @@
 
 library(reticulate);
 
-outputStyle <- "logplot";
+outputStyle <- "circular";
 kmerLength <- 10;
 
 dnaSeqFile <- if(length(commandArgs(TRUE) > 0)){
@@ -63,7 +63,11 @@ system.time(res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength)));
 
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
-    png(width=1920, height=1080, pointsize=18);
+    if(outputStyle == "dotplot"){
+        png(width=1920, height=1080, pointsize=18);
+    } else {
+        png(width=1920, height=1920, pointsize=24);
+    }
     sLen <- dnaSeqMap$length;
     if(outputStyle == "dotplot"){
         par(mgp=c(2,0.5,0));
@@ -98,6 +102,11 @@ for(dnaSeqMapName in names(res)){
         axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
         abline(h=10^(0:drMax), col="#80808050", lwd = 3);
         mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
+    } else if(outputStyle == "circular"){
+        par(mgp=c(2.5,1,0), mar=c(3,3,3,3),
+            cex.axis=1.5, cex.lab=1.5, cex.main=2);
+        plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE,
+             main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     }
     revNames <- sapply(names(dnaSeqMap), py$rev);
     revCNames <- sapply(names(dnaSeqMap), py$rc);
@@ -170,6 +179,61 @@ for(dnaSeqMapName in names(res)){
         points(plotPointsRC$y, plotPointsRC$dist,
                pch=15, col="#00A09040", cex=0.5); # cyan
         points(plotPointsR$y,  plotPointsR$dist,
+               pch=15, col="#A0900040", cex=0.5); # yellow
+        legend(x = "bottom",
+               fill=c("#9000a0","#8b0000",
+                      "#fdc086","#ff7f00",
+                      "#00a090","#0000ff",
+                      "#a09000","#00a000"),
+               legend=c("Repeat (L)",  "Repeat (R)",
+                        "Comp (L)",    "Comp (R)",
+                        "RevComp (L)", "RevComp (R)",
+                        "Reverse (L)", "Reverse (R)"),
+               bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
+    } else if(outputStyle == "circular"){
+        plotPointsF$dist <- ifelse(plotPointsF$x > plotPointsF$y,
+                                   sLen + (plotPointsF$y - plotPointsF$x),
+                                   pmin(plotPointsF$y - plotPointsF$x));
+        plotPointsC$dist <- ifelse(plotPointsC$x > plotPointsC$y,
+                                   sLen + (plotPointsC$y - plotPointsC$x),
+                                   pmin(plotPointsC$y - plotPointsC$x));
+        plotPointsRC$dist <- ifelse(plotPointsRC$x > plotPointsRC$y,
+                                   sLen + (plotPointsRC$y - plotPointsRC$x),
+                                   pmin(plotPointsRC$y - plotPointsRC$x));
+        plotPointsR$dist <- ifelse(plotPointsR$x > plotPointsR$y,
+                                   sLen + (plotPointsR$y - plotPointsR$x),
+                                   pmin(plotPointsR$y - plotPointsR$x));
+        plotPointsF <-  subset(plotPointsF, dist <= sLen/2);
+        plotPointsC <-  subset(plotPointsC, dist <= sLen/2);
+        plotPointsRC <- subset(plotPointsRC, dist <= sLen/2);
+        plotPointsR <-  subset(plotPointsR, dist <= sLen/2);
+        plotPointsF$r <- 1 * (1 - sqrt(plotPointsF$dist) / sqrt(sLen));
+        plotPointsC$r <- 1 * (1 - sqrt(plotPointsC$dist) / sqrt(sLen));
+        plotPointsRC$r <- 1 * (1 - sqrt(plotPointsRC$dist) / sqrt(sLen));
+        plotPointsR$r <- 1 * (1 - sqrt(plotPointsR$dist) / sqrt(sLen));
+        points(plotPointsF$r*cos(plotPointsF$x/sLen*2*pi),
+               plotPointsF$r*sin(plotPointsF$x/sLen*2*pi),
+               pch=15, col="#8b000040", cex=0.5); # red
+        points(plotPointsF$r*cos(plotPointsF$y/sLen*2*pi),
+               plotPointsF$r*sin(plotPointsF$y/sLen*2*pi),
+               pch=15, col="#9000A040", cex=0.5); # magenta
+        points(plotPointsC$r*cos(plotPointsC$x/sLen*2*pi),
+               plotPointsC$r*sin(plotPointsC$x/sLen*2*pi),
+               pch=15, col="#FDC08640", cex=0.5); # salmon
+        points(plotPointsC$r*cos(plotPointsC$y/sLen*2*pi),
+               plotPointsC$r*sin(plotPointsC$y/sLen*2*pi),
+               pch=15, col="#FF7F0040", cex=0.5); # orange
+        points(plotPointsRC$r*cos(plotPointsRC$x/sLen*2*pi),
+               plotPointsRC$r*sin(plotPointsRC$x/sLen*2*pi),
+               pch=15, col="#0000FF40", cex=0.5); # blue
+        points(plotPointsRC$r*cos(plotPointsRC$y/sLen*2*pi),
+               plotPointsRC$r*sin(plotPointsRC$y/sLen*2*pi),
+               pch=15, col="#00A09040", cex=0.5); # cyan
+        points(plotPointsR$r*cos(plotPointsR$x/sLen*2*pi),
+               plotPointsR$r*sin(plotPointsR$x/sLen*2*pi),
+               pch=15, col="#00A00040", cex=0.5); # green
+        points(plotPointsR$r*cos(plotPointsR$y/sLen*2*pi),
+               plotPointsR$r*sin(plotPointsR$y/sLen*2*pi),
                pch=15, col="#A0900040", cex=0.5); # yellow
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
