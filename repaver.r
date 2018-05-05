@@ -203,14 +203,18 @@ for(dnaSeqMapName in names(res)){
         plotPointsR$dist <- ifelse(plotPointsR$x > plotPointsR$y,
                                    sLen + (plotPointsR$y - plotPointsR$x),
                                    pmin(plotPointsR$y - plotPointsR$x));
-        plotPointsF <-  subset(plotPointsF, dist <= sLen/2);
-        plotPointsC <-  subset(plotPointsC, dist <= sLen/2);
-        plotPointsRC <- subset(plotPointsRC, dist <= sLen/2);
-        plotPointsR <-  subset(plotPointsR, dist <= sLen/2);
-        plotPointsF$r <- 2 * (0.5 - sqrt(plotPointsF$dist) / sqrt(sLen));
-        plotPointsC$r <- 2 * (0.5 - sqrt(plotPointsC$dist) / sqrt(sLen));
-        plotPointsRC$r <- 2 * (0.5 - sqrt(plotPointsRC$dist) / sqrt(sLen));
-        plotPointsR$r <- 2 * (0.5 - sqrt(plotPointsR$dist) / sqrt(sLen));
+        plotPointsF <-  subset(plotPointsF, (dist >= 0) & (dist <= sLen/2));
+        plotPointsC <-  subset(plotPointsC, (dist >= 0) & (dist <= sLen/2));
+        plotPointsRC <- subset(plotPointsRC, (dist >= 0) & (dist <= sLen/2));
+        plotPointsR <-  subset(plotPointsR, (dist >= 0) & (dist <= sLen/2));
+        plotPointsF$r <-
+            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsF$dist) / sqrt(sLen));
+        plotPointsC$r <-
+            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsC$dist) / sqrt(sLen));
+        plotPointsRC$r <-
+            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsRC$dist) / sqrt(sLen));
+        plotPointsR$r <-
+            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsR$dist) / sqrt(sLen));
         points(plotPointsF$r*cos(plotPointsF$x/sLen*2*pi),
                plotPointsF$r*sin(plotPointsF$x/sLen*2*pi),
                pch=15, col="#8b000040", cex=0.5); # red
