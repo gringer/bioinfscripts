@@ -3,11 +3,30 @@
 
 library(reticulate);
 
+outputStyle <- "logplot";
+kmerLength <- 10;
+
 dnaSeqFile <- if(length(commandArgs(TRUE) > 0)){
                   commandArgs(TRUE)[1];
               } else "data/circ-Nb-ec3-mtDNA.fasta";
 
-## Create python function to quickly generate kmer location dictionary
+## helper R functions
+fib.divs <- round(10^((0:4)/5) * 2) * 0.5; ## splits log decades into 5
+
+valToSci <- function(val, unit = ""){
+    sci.prefixes <- c("", "k", "M", "G", "T", "P", "E", "Z", "Y");
+    units <- rep(paste(sci.prefixes,unit,sep=""), each=3);
+    logRegion <- floor(log10(val))+1;
+    conv.units <- units[logRegion];
+    conv.div <- 10^rep(0:(length(sci.prefixes)-1) * 3, each = 3)[logRegion];
+    conv.val <- val / conv.div;
+    conv.val[val == 0] <- 0;
+    conv.units[val == 0] <- unit;
+    return(sprintf("%s %s",conv.val,conv.units));
+}
+
+## Create python function to quickly generate a kmer location
+## dictionary, then filter out unique kmers
 py_run_string("
 from string import maketrans
 from Bio import SeqIO
@@ -39,26 +58,46 @@ def getKmerLocs(seqFile, kSize=17):
    return(fileKmers)
 ");
 
-kmerLength <- 10;
-
-## Generate kmer location dictionary
+## Generate filtered kmer location dictionary
 system.time(res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength)));
 
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
+    png(width=1920, height=1080, pointsize=18);
     sLen <- dnaSeqMap$length;
-    par(mgp=c(2,0.5,0));
-    plot(NA, xlim=c(0,sLen), ylim=c(sLen,0),
-         xlab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
-         ylab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
-         axes=FALSE,
-         main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
-    if(sLen >= 10^6){
-        axis(1, at=axTicks(1), labels=pretty(axTicks(1))/10^6);
-        axis(2, at=rev(axTicks(2)), labels=pretty(axTicks(2))/10^6);
-    } else {
-        axis(1, at=axTicks(1), labels=pretty(axTicks(1))/1000);
-        axis(2, at=rev(axTicks(2)), labels=pretty(axTicks(2))/1000);
+    if(outputStyle == "dotplot"){
+        par(mgp=c(2,0.5,0));
+        plot(NA, xlim=c(0,sLen), ylim=c(sLen,0),
+             xlab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
+             ylab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
+             axes=FALSE,
+             main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
+        if(sLen >= 10^6){
+            axis(1, at=axTicks(1), labels=pretty(axTicks(1))/10^6);
+            axis(2, at=rev(axTicks(2)), labels=pretty(axTicks(2))/10^6);
+        } else {
+            axis(1, at=axTicks(1), labels=pretty(axTicks(1))/1000);
+            axis(2, at=rev(axTicks(2)), labels=pretty(axTicks(2))/1000);
+        }
+    } else if(outputStyle == "logplot"){
+        par(mgp=c(2.5,1,0), mar=c(4,6,3,0.5),
+            cex.axis=1.5, cex.lab=1.5, cex.main=2);
+        plot(NA, xlim=c(0,sLen), ylim=c(1,sLen), log="y",
+             xlab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
+             ylab="",
+             axes=FALSE,
+             main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
+        if(sLen >= 10^6){
+            axis(1, at=axTicks(1), labels=pretty(axTicks(1))/10^6, lwd=3);
+        } else {
+            axis(1, at=axTicks(1), labels=pretty(axTicks(1))/1000, lwd=3);
+        }
+        drMax <- ceiling(log10(sLen));
+        axis(2, at= 10^(0:drMax), las=2, lwd=3, cex.axis=1.5,
+             labels=valToSci(10^(0:drMax)));
+        axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
+        abline(h=10^(0:drMax), col="#80808050", lwd = 3);
+        mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
     }
     revNames <- sapply(names(dnaSeqMap), py$rev);
     revCNames <- sapply(names(dnaSeqMap), py$rc);
@@ -68,42 +107,80 @@ for(dnaSeqMapName in names(res)){
     rKmers <- revNames %in% names(dnaSeqMap);
     cKmers <- compNames %in% names(dnaSeqMap);
     ## f,c,rc,r : red, orange, blue, green
-    plotPoints <- NULL;
+    plotPointsF <- NULL;
+    plotPointsC <- NULL;
+    plotPointsRC <- NULL;
+    plotPointsR <- NULL;
     for(kposs in dnaSeqMap[repeatedKmers]){
-        plotPoints <- rbind(plotPoints, 
+        plotPointsF <- rbind(plotPointsF, 
                             data.frame(x=rep(kposs, length(kposs)),
                                        y=rep(kposs, each=length(kposs))));
     }
-    points(plotPoints, pch=15, col="#8b000040", cex=0.5);
-    plotPoints <- NULL;
     for(kmer in names(dnaSeqMap)[cKmers]){
         kposs <- dnaSeqMap[[kmer]];
         oposs <- dnaSeqMap[[py$comp(kmer)]];
-        plotPoints <- rbind(plotPoints, 
+        plotPointsC <- rbind(plotPointsC,
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
-    points(plotPoints, pch=15, col="#FF7F0040", cex=0.5);
-    plotPoints <- NULL;
     for(kmer in names(dnaSeqMap)[rcKmers]){
         kposs <- dnaSeqMap[[kmer]];
         oposs <- dnaSeqMap[[py$rc(kmer)]];
-        plotPoints <- rbind(plotPoints, 
+        plotPointsRC <- rbind(plotPointsRC,
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
-    points(plotPoints, pch=15, col="#0000FF40", cex=0.5);
-    plotPoints <- NULL;
     for(kmer in names(dnaSeqMap)[rKmers]){
         kposs <- dnaSeqMap[[kmer]];
         oposs <- dnaSeqMap[[py$rev(kmer)]];
-        plotPoints <- rbind(plotPoints, 
+        plotPointsR <- rbind(plotPointsR,
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
-    points(plotPoints, pch=15, col="#00A00040", cex=0.5);
-    legend("bottomleft",
-           legend=c("Forward","Complement","RevComp","Reverse"),
-           fill=c("#8b000040","#FF7F0040","#0000FF40","#00A00040"),
-           bg="#FFFFFFE0", inset=0.05);
+    if(outputStyle == "dotplot"){
+        points(plotPointsF, pch=15, col="#8b000040", cex=0.5);
+        points(plotPointsC, pch=15, col="#FF7F0040", cex=0.5);
+        points(plotPointsRC, pch=15, col="#0000FF40", cex=0.5);
+        points(plotPointsR, pch=15, col="#00A00040", cex=0.5);
+        legend("bottomleft",
+               legend=c("Forward","Complement","RevComp","Reverse"),
+               fill=c("#8b000040","#FF7F0040","#0000FF40","#00A00040"),
+               bg="#FFFFFFE0", inset=0.05);
+    } else if(outputStyle == "logplot"){
+        plotPointsF$dist <-  plotPointsF$y -  plotPointsF$x;
+        plotPointsC$dist <-  plotPointsC$y -  plotPointsC$x;
+        plotPointsRC$dist <- plotPointsRC$y - plotPointsRC$x;
+        plotPointsR$dist <-  plotPointsR$y -  plotPointsR$x;
+        plotPointsF <-  subset(plotPointsF, dist > 0);
+        plotPointsC <-  subset(plotPointsC, dist > 0);
+        plotPointsRC <- subset(plotPointsRC, dist > 0);
+        plotPointsR <-  subset(plotPointsR, dist > 0);
+        points(plotPointsF$x,  plotPointsF$dist,
+               pch=15, col="#8b000040", cex=0.5); # red
+        points(plotPointsC$x,  plotPointsC$dist,
+               pch=15, col="#FDC08640", cex=0.5); # salmon
+        points(plotPointsRC$x, plotPointsRC$dist,
+               pch=15, col="#0000FF40", cex=0.5); # blue
+        points(plotPointsR$x,  plotPointsR$dist,
+               pch=15, col="#00A00040", cex=0.5); # green
+        points(plotPointsF$y,  plotPointsF$dist,
+               pch=15, col="#9000A040", cex=0.5); # magenta
+        points(plotPointsC$y,  plotPointsC$dist,
+               pch=15, col="#FF7F0040", cex=0.5); # orange
+        points(plotPointsRC$y, plotPointsRC$dist,
+               pch=15, col="#00A09040", cex=0.5); # cyan
+        points(plotPointsR$y,  plotPointsR$dist,
+               pch=15, col="#A0900040", cex=0.5); # yellow
+        legend(x = "bottom",
+               fill=c("#9000a0","#8b0000",
+                      "#fdc086","#ff7f00",
+                      "#00a090","#0000ff",
+                      "#a09000","#00a000"),
+               legend=c("Repeat (L)",  "Repeat (R)",
+                        "Comp (L)",    "Comp (R)",
+                        "RevComp (L)", "RevComp (R)",
+                        "Reverse (L)", "Reverse (R)"),
+               bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
+    }
+    invisible(dev.off());
 }
