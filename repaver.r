@@ -4,7 +4,7 @@
 library(reticulate);
 
 outputStyle <- "circular";
-kmerLength <- 10;
+kmerLength <- 25;
 
 dnaSeqFile <- if(length(commandArgs(TRUE) > 0)){
                   commandArgs(TRUE)[1];
@@ -60,6 +60,8 @@ def getKmerLocs(seqFile, kSize=17):
 
 ## Generate filtered kmer location dictionary
 system.time(res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength)));
+
+print(str(res));
 
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
@@ -203,10 +205,18 @@ for(dnaSeqMapName in names(res)){
         plotPointsR$dist <- ifelse(plotPointsR$x > plotPointsR$y,
                                    sLen + (plotPointsR$y - plotPointsR$x),
                                    pmin(plotPointsR$y - plotPointsR$x));
-        plotPointsF <-  subset(plotPointsF, (dist >= 0) & (dist <= sLen/2));
-        plotPointsC <-  subset(plotPointsC, (dist >= 0) & (dist <= sLen/2));
-        plotPointsRC <- subset(plotPointsRC, (dist >= 0) & (dist <= sLen/2));
-        plotPointsR <-  subset(plotPointsR, (dist >= 0) & (dist <= sLen/2));
+        if(nrow(plotPointsF) > 0){
+            plotPointsF <-  subset(plotPointsF, (dist >= 0) & (dist <= sLen/2));
+        }
+        if(nrow(plotPointsC) > 0){
+            plotPointsC <-  subset(plotPointsC, (dist >= 0) & (dist <= sLen/2));
+        }
+        if(nrow(plotPointsRC) > 0){
+            plotPointsRC <- subset(plotPointsRC, (dist >= 0) & (dist <= sLen/2));
+        }
+        if(nrow(plotPointsR) > 0){
+            plotPointsR <-  subset(plotPointsR, (dist >= 0) & (dist <= sLen/2));
+        }
         plotPointsF$r <-
             sqrt(2) * (sqrt(0.5) - sqrt(plotPointsF$dist) / sqrt(sLen));
         plotPointsC$r <-
