@@ -105,7 +105,7 @@ for(dnaSeqMapName in names(res)){
     } else if(outputStyle == "circular"){
         par(mgp=c(2.5,1,0), mar=c(3,3,3,3),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
-        plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE,
+        plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, xlab="", ylab="",
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     }
     revNames <- sapply(names(dnaSeqMap), py$rev);
@@ -207,10 +207,10 @@ for(dnaSeqMapName in names(res)){
         plotPointsC <-  subset(plotPointsC, dist <= sLen/2);
         plotPointsRC <- subset(plotPointsRC, dist <= sLen/2);
         plotPointsR <-  subset(plotPointsR, dist <= sLen/2);
-        plotPointsF$r <- 1 * (1 - sqrt(plotPointsF$dist) / sqrt(sLen));
-        plotPointsC$r <- 1 * (1 - sqrt(plotPointsC$dist) / sqrt(sLen));
-        plotPointsRC$r <- 1 * (1 - sqrt(plotPointsRC$dist) / sqrt(sLen));
-        plotPointsR$r <- 1 * (1 - sqrt(plotPointsR$dist) / sqrt(sLen));
+        plotPointsF$r <- 2 * (0.5 - sqrt(plotPointsF$dist) / sqrt(sLen));
+        plotPointsC$r <- 2 * (0.5 - sqrt(plotPointsC$dist) / sqrt(sLen));
+        plotPointsRC$r <- 2 * (0.5 - sqrt(plotPointsRC$dist) / sqrt(sLen));
+        plotPointsR$r <- 2 * (0.5 - sqrt(plotPointsR$dist) / sqrt(sLen));
         points(plotPointsF$r*cos(plotPointsF$x/sLen*2*pi),
                plotPointsF$r*sin(plotPointsF$x/sLen*2*pi),
                pch=15, col="#8b000040", cex=0.5); # red
