@@ -61,7 +61,7 @@ def getKmerLocs(seqFile, kSize=17):
 ## Generate filtered kmer location dictionary
 system.time(res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength)));
 
-print(str(res));
+print(str(res[[1]]));
 
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
@@ -205,16 +205,16 @@ for(dnaSeqMapName in names(res)){
         plotPointsR$dist <- ifelse(plotPointsR$x > plotPointsR$y,
                                    sLen + (plotPointsR$y - plotPointsR$x),
                                    pmin(plotPointsR$y - plotPointsR$x));
-        if(nrow(plotPointsF) > 0){
+        if(length(plotPointsF$dist) > 0){
             plotPointsF <-  subset(plotPointsF, (dist >= 0) & (dist <= sLen/2));
         }
-        if(nrow(plotPointsC) > 0){
+        if(length(plotPointsC$dist) > 0){
             plotPointsC <-  subset(plotPointsC, (dist >= 0) & (dist <= sLen/2));
         }
-        if(nrow(plotPointsRC) > 0){
+        if(length(plotPointsRC$dist) > 0){
             plotPointsRC <- subset(plotPointsRC, (dist >= 0) & (dist <= sLen/2));
         }
-        if(nrow(plotPointsR) > 0){
+        if(length(plotPointsR$dist) > 0){
             plotPointsR <-  subset(plotPointsR, (dist >= 0) & (dist <= sLen/2));
         }
         plotPointsF$r <-
