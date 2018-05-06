@@ -3,8 +3,8 @@
 
 library(reticulate);
 
-outputStyle <- "circular";
-kmerLength <- 25;
+outputStyle <- "circular"; ## dotplot, circular, logplot
+kmerLength <- 17;
 
 dnaSeqFile <- if(length(commandArgs(TRUE) > 0)){
                   commandArgs(TRUE)[1];
@@ -59,16 +59,19 @@ def getKmerLocs(seqFile, kSize=17):
 ");
 
 ## Generate filtered kmer location dictionary
-system.time(res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength)));
+cat("Generating kmer location dictionary...");
+my.time <- Sys.time();
+res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength));
+cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
 
-print(str(res[[1]]));
+#print(str(res[[1]]));
 
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
     if(outputStyle == "dotplot"){
-        png(width=1920, height=1080, pointsize=18);
+        png(width=1920, height=1080, pointsize=18, antialias="gray");
     } else {
-        png(width=1920, height=1920, pointsize=24);
+        png(width=1920, height=1920, pointsize=24, antialias="gray");
     }
     sLen <- dnaSeqMap$length;
     if(outputStyle == "dotplot"){
@@ -113,20 +116,32 @@ for(dnaSeqMapName in names(res)){
     revNames <- sapply(names(dnaSeqMap), py$rev);
     revCNames <- sapply(names(dnaSeqMap), py$rc);
     compNames <- sapply(names(dnaSeqMap), py$comp);
+    my.time <- Sys.time();
+    cat("Determining kmer validity... repeated...");
     repeatedKmers <- sapply(dnaSeqMap, function(x){length(x) > 1});
+    cat(" reverse complement...");
     rcKmers <- revCNames %in% names(dnaSeqMap);
+    cat(" reverse...");
     rKmers <- revNames %in% names(dnaSeqMap);
+    cat(" complement...");
     cKmers <- compNames %in% names(dnaSeqMap);
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
     ## f,c,rc,r : red, orange, blue, green
     plotPointsF <- NULL;
     plotPointsC <- NULL;
     plotPointsRC <- NULL;
     plotPointsR <- NULL;
-    for(kposs in dnaSeqMap[repeatedKmers]){
-        plotPointsF <- rbind(plotPointsF, 
-                            data.frame(x=rep(kposs, length(kposs)),
-                                       y=rep(kposs, each=length(kposs))));
-    }
+    my.time <- Sys.time();
+    cat("Processing repeats... ");
+    plotPointsF <-
+        Reduce(rbind,sapply(dnaSeqMap[repeatedKmers],
+                            function(kposs){
+                                data.frame(x=rep(kposs, length(kposs)),
+                                           y=rep(kposs, each=length(kposs)))
+                            }, simplify=FALSE),NULL);
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    my.time <- Sys.time();
+    cat("Processing complements... ");
     for(kmer in names(dnaSeqMap)[cKmers]){
         kposs <- dnaSeqMap[[kmer]];
         oposs <- dnaSeqMap[[py$comp(kmer)]];
@@ -134,6 +149,9 @@ for(dnaSeqMapName in names(res)){
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    my.time <- Sys.time();
+    cat("Processing reverse complements... ");
     for(kmer in names(dnaSeqMap)[rcKmers]){
         kposs <- dnaSeqMap[[kmer]];
         oposs <- dnaSeqMap[[py$rc(kmer)]];
@@ -141,6 +159,9 @@ for(dnaSeqMapName in names(res)){
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    my.time <- Sys.time();
+    cat("Processing reverses... ");
     for(kmer in names(dnaSeqMap)[rKmers]){
         kposs <- dnaSeqMap[[kmer]];
         oposs <- dnaSeqMap[[py$rev(kmer)]];
@@ -148,6 +169,9 @@ for(dnaSeqMapName in names(res)){
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    my.time <- Sys.time();
+    cat("Drawing plot... ");
     if(outputStyle == "dotplot"){
         points(plotPointsF, pch=15, col="#8b000040", cex=0.5);
         points(plotPointsC, pch=15, col="#FF7F0040", cex=0.5);
@@ -206,49 +230,65 @@ for(dnaSeqMapName in names(res)){
                                    sLen + (plotPointsR$y - plotPointsR$x),
                                    pmin(plotPointsR$y - plotPointsR$x));
         if(length(plotPointsF$dist) > 0){
-            plotPointsF <-  subset(plotPointsF, (dist >= 0) & (dist <= sLen/2));
+            plotPointsF <-  subset(plotPointsF, (dist > 0) & (dist <= sLen/2));
         }
         if(length(plotPointsC$dist) > 0){
-            plotPointsC <-  subset(plotPointsC, (dist >= 0) & (dist <= sLen/2));
+            plotPointsC <-  subset(plotPointsC, (dist > 0) & (dist <= sLen/2));
         }
         if(length(plotPointsRC$dist) > 0){
-            plotPointsRC <- subset(plotPointsRC, (dist >= 0) & (dist <= sLen/2));
+            plotPointsRC <- subset(plotPointsRC, (dist > 0) & (dist <= sLen/2));
         }
         if(length(plotPointsR$dist) > 0){
-            plotPointsR <-  subset(plotPointsR, (dist >= 0) & (dist <= sLen/2));
+            plotPointsR <-  subset(plotPointsR, (dist > 0) & (dist <= sLen/2));
         }
-        plotPointsF$r <-
-            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsF$dist) / sqrt(sLen));
-        plotPointsC$r <-
-            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsC$dist) / sqrt(sLen));
-        plotPointsRC$r <-
-            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsRC$dist) / sqrt(sLen));
-        plotPointsR$r <-
-            sqrt(2) * (sqrt(0.5) - sqrt(plotPointsR$dist) / sqrt(sLen));
+        ## Convert distance to radius. This is a piecewise function with the following properties
+        ## * Starts off as a log function
+        ## * Remainder is a linear function
+        ## * The transition point is the point where the slope is equal
+        ## * The transition point is 1/3 along the radius
+        ## * The plot ends at (sLen/2, 1)
+        ## * The base of the log is sLen/12
+        ## Note: slope of log[b](x) = 1/(x*log(b))
+        pwFun <- function(d){
+            a <- sLen/12;
+            ifelse(d < a,
+                   log(d) / log(a),
+                   d/(a * log(a)) + (1 - 1/log(a))) / (5 / log(a) + 1) * 0.75 + 0.25;
+        }
+        cat("converting distances... ");
+        plotPointsF$r <- pwFun(plotPointsF$dist);
+        plotPointsC$r <- pwFun(plotPointsC$dist);
+        plotPointsRC$r <- pwFun(plotPointsRC$dist);
+        plotPointsR$r <- pwFun(plotPointsR$dist);
+            ##(plotPointsC$dist / (sLen/2)) * 0.75 + 0.25;
+        ##1 - (log10(plotPointsC$dist+1) / log10(sLen/2));
+        ##(0.5 - (sqrt((plotPointsC$dist+1) / sLen/2))) * 1.5 + 0.25;
+        ##distPoints <- c(plotPointsF$dist,plotPointsC$dist,plotPointsRC$dist,plotPointsR$dist);
+        cat("drawing points... ");
         points(plotPointsF$r*cos(plotPointsF$x/sLen*2*pi),
                plotPointsF$r*sin(plotPointsF$x/sLen*2*pi),
-               pch=15, col="#8b000040", cex=0.5); # red
+               pch=20, col="#8b000040", cex=0.5); # red
         points(plotPointsF$r*cos(plotPointsF$y/sLen*2*pi),
                plotPointsF$r*sin(plotPointsF$y/sLen*2*pi),
-               pch=15, col="#9000A040", cex=0.5); # magenta
+               pch=20, col="#9000A040", cex=0.5); # magenta
         points(plotPointsC$r*cos(plotPointsC$x/sLen*2*pi),
                plotPointsC$r*sin(plotPointsC$x/sLen*2*pi),
-               pch=15, col="#FDC08640", cex=0.5); # salmon
+               pch=20, col="#FDC08640", cex=0.5); # salmon
         points(plotPointsC$r*cos(plotPointsC$y/sLen*2*pi),
                plotPointsC$r*sin(plotPointsC$y/sLen*2*pi),
-               pch=15, col="#FF7F0040", cex=0.5); # orange
+               pch=20, col="#FF7F0040", cex=0.5); # orange
         points(plotPointsRC$r*cos(plotPointsRC$x/sLen*2*pi),
                plotPointsRC$r*sin(plotPointsRC$x/sLen*2*pi),
-               pch=15, col="#0000FF40", cex=0.5); # blue
+               pch=20, col="#0000FF40", cex=0.5); # blue
         points(plotPointsRC$r*cos(plotPointsRC$y/sLen*2*pi),
                plotPointsRC$r*sin(plotPointsRC$y/sLen*2*pi),
-               pch=15, col="#00A09040", cex=0.5); # cyan
+               pch=20, col="#00A09040", cex=0.5); # cyan
         points(plotPointsR$r*cos(plotPointsR$x/sLen*2*pi),
                plotPointsR$r*sin(plotPointsR$x/sLen*2*pi),
-               pch=15, col="#00A00040", cex=0.5); # green
+               pch=20, col="#00A00040", cex=0.5); # green
         points(plotPointsR$r*cos(plotPointsR$y/sLen*2*pi),
                plotPointsR$r*sin(plotPointsR$y/sLen*2*pi),
-               pch=15, col="#A0900040", cex=0.5); # yellow
+               pch=20, col="#A0900040", cex=0.5); # yellow
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#fdc086","#ff7f00",
@@ -261,4 +301,5 @@ for(dnaSeqMapName in names(res)){
                bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
     }
     invisible(dev.off());
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
 }
