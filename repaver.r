@@ -172,9 +172,9 @@ for(dnaSeqMapName in names(res)){
         abline(h=10^(0:drMax), col="#80808050", lwd = 3);
         mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
     } else if(outputStyle == "circular"){
-        par(mgp=c(2.5,1,0), mar=c(3,3,3,3),
+        par(mgp=c(2.5,1,0), mar=c(1.5,1.5,1.5,1.5),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
-        plot(NA, xlim=c(-1.1,1.1), ylim=c(-1.1,1.1),
+        plot(NA, xlim=c(-1.1,1.1), ylim=c(-1.2,1),
              axes=FALSE, xlab="", ylab="",
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     }
@@ -274,29 +274,11 @@ for(dnaSeqMapName in names(res)){
                         "Reverse (L)", "Reverse (R)"),
                bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
     } else if(outputStyle == "circular"){
-        plotPointsF$dist <- ifelse(plotPointsF$x > plotPointsF$y,
-                                   sLen + (plotPointsF$y - plotPointsF$x),
-                                   pmin(plotPointsF$y - plotPointsF$x));
-        plotPointsC$dist <- ifelse(plotPointsC$x > plotPointsC$y,
-                                   sLen + (plotPointsC$y - plotPointsC$x),
-                                   pmin(plotPointsC$y - plotPointsC$x));
-        plotPointsRC$dist <- ifelse(plotPointsRC$x > plotPointsRC$y,
-                                   sLen + (plotPointsRC$y - plotPointsRC$x),
-                                   pmin(plotPointsRC$y - plotPointsRC$x));
-        plotPointsR$dist <- ifelse(plotPointsR$x > plotPointsR$y,
-                                   sLen + (plotPointsR$y - plotPointsR$x),
-                                   pmin(plotPointsR$y - plotPointsR$x));
-        if(length(plotPointsF$dist) > 0){
-            plotPointsF <-  subset(plotPointsF, (dist > 0) & (dist <= sLen/2));
-        }
-        if(length(plotPointsC$dist) > 0){
-            plotPointsC <-  subset(plotPointsC, (dist > 0) & (dist <= sLen/2));
-        }
-        if(length(plotPointsRC$dist) > 0){
-            plotPointsRC <- subset(plotPointsRC, (dist > 0) & (dist <= sLen/2));
-        }
-        if(length(plotPointsR$dist) > 0){
-            plotPointsR <-  subset(plotPointsR, (dist > 0) & (dist <= sLen/2));
+        plotPoints$dist <- ifelse(plotPoints$x > plotPoints$y,
+                                   sLen + (plotPoints$y - plotPoints$x),
+                                   pmin(plotPoints$y - plotPoints$x));
+        if(length(plotPoints$dist) > 0){
+            plotPoints <-  subset(plotPoints, (dist > 0) & (dist <= sLen/2));
         }
         ## Convert distance to radius. This is a piecewise function with the following properties
         ## * Starts off as a log function
@@ -327,16 +309,8 @@ for(dnaSeqMapName in names(res)){
                 ((aProp-1) / log(a) + 1) * 0.75 + 0.25;
         }
         cat("converting distances... ");
-        plotPointsF$r <- pwFun(plotPointsF$dist);
-        plotPointsC$r <- pwFun(plotPointsC$dist);
-        plotPointsRC$r <- pwFun(plotPointsRC$dist);
-        plotPointsR$r <- pwFun(plotPointsR$dist);
-            ##(plotPointsC$dist / (sLen/2)) * 0.75 + 0.25;
-        ##1 - (log10(plotPointsC$dist+1) / log10(sLen/2));
-        ##(0.5 - (sqrt((plotPointsC$dist+1) / sLen/2))) * 1.5 + 0.25;
-        ##distPoints <- c(plotPointsF$dist,plotPointsC$dist,plotPointsRC$dist,plotPointsR$dist);
+        plotPoints$r <- pwFun(plotPoints$dist);
         cat("drawing points... ");
-        plotPointsR$r <- pwFun(plotPointsR$dist);
         drMax <- ceiling(log10(sLen));
         scalePtsMajor <- rep(1, each=drMax+1) * 10^(0:drMax);
         scalePtsMajor <- c(scalePtsMajor[scalePtsMajor < sLen/2], sLen/2);
@@ -361,7 +335,7 @@ for(dnaSeqMapName in names(res)){
         for(dpi in seq_along(distPts)){ # tick labels for base location
             text(x=0.14*cos(distPts[dpi] / sLen * 2*pi),
                  y=0.14*sin(distPts[dpi] / sLen * 2*pi),
-                 labels=valToSci(signif(distPts[dpi],3)), cex=0.75,
+                 labels=valToSci(signif(distPts[dpi],3)), cex=0.5,
                  srt=if((distPts[dpi]/sLen * 360 >= 90) &&
                         (distPts[dpi]/sLen * 360 < 270)){
                          (distPts[dpi]/sLen * 360 + 180);
@@ -375,30 +349,24 @@ for(dnaSeqMapName in names(res)){
                y=0.2*sin(seq(10^(drMax-2)/sLen * 2*pi/2,
                              2*pi, length.out=360)),
                type="l", lwd=3, col="#000000A0"); # tick circle
-        points(plotPointsF$r*cos(plotPointsF$x/sLen*2*pi),
-               plotPointsF$r*sin(plotPointsF$x/sLen*2*pi),
-               pch=20, col="#8b000040", cex=0.5); # red
-        points(plotPointsF$r*cos(plotPointsF$y/sLen*2*pi),
-               plotPointsF$r*sin(plotPointsF$y/sLen*2*pi),
-               pch=20, col="#9000A040", cex=0.5); # magenta
-        points(plotPointsC$r*cos(plotPointsC$x/sLen*2*pi),
-               plotPointsC$r*sin(plotPointsC$x/sLen*2*pi),
-               pch=20, col="#FDC08640", cex=0.5); # salmon
-        points(plotPointsC$r*cos(plotPointsC$y/sLen*2*pi),
-               plotPointsC$r*sin(plotPointsC$y/sLen*2*pi),
-               pch=20, col="#FF7F0040", cex=0.5); # orange
-        points(plotPointsRC$r*cos(plotPointsRC$x/sLen*2*pi),
-               plotPointsRC$r*sin(plotPointsRC$x/sLen*2*pi),
-               pch=20, col="#0000FF40", cex=0.5); # blue
-        points(plotPointsRC$r*cos(plotPointsRC$y/sLen*2*pi),
-               plotPointsRC$r*sin(plotPointsRC$y/sLen*2*pi),
-               pch=20, col="#00A09040", cex=0.5); # cyan
-        points(plotPointsR$r*cos(plotPointsR$x/sLen*2*pi),
-               plotPointsR$r*sin(plotPointsR$x/sLen*2*pi),
-               pch=20, col="#00A00040", cex=0.5); # green
-        points(plotPointsR$r*cos(plotPointsR$y/sLen*2*pi),
-               plotPointsR$r*sin(plotPointsR$y/sLen*2*pi),
-               pch=20, col="#A0900040", cex=0.5); # yellow
+        ## left symbols
+        points(x=plotPoints$x, y=plotPoints$dist, pch=15, col=c(F="#8b000040",C="#FDC08640",
+                                         RC="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
+        ## right symbols
+        points(x=plotPoints$y, y=plotPoints$dist, pch=15, col=c(F="#9000A040",C="#FF7F0040",
+                                         RC="#00A09040",R="#A0900040")[plotPoints$type], cex=0.5);
+        points(plotPoints$r*cos(plotPoints$x/sLen*2*pi),
+               plotPoints$r*sin(plotPoints$x/sLen*2*pi),
+               pch=ifelse(outputType=="png",20,"•"),
+               col=c(F="#8b000040",C="#FDC08640",
+                     RC="#0000FF40",R="#00A00040")[plotPoints$type],
+               cex=ifelse(outputType=="png",0.5,1));
+        points(plotPoints$r*cos(plotPoints$y/sLen*2*pi),
+               plotPoints$r*sin(plotPoints$y/sLen*2*pi),
+               pch=ifelse(outputType=="png",20,"•"),
+               col=c(F="#9000A040",C="#FF7F0040",
+                     RC="#00A09040",R="#A0900040")[plotPoints$type],
+               cex=ifelse(outputType=="png",0.5,1));
         rect(xleft=pwFun(head(scalePtsMajor,1))-0.025,
              xright=pwFun(tail(scalePtsMajor,1))+0.05,
              ytop=0.13, ybottom=-0.13, col="#FFFFFFA0", border=NA);
@@ -409,7 +377,7 @@ for(dnaSeqMapName in names(res)){
                y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
         text(x=pwFun(scalePtsMajor), y=0, col="black",
              labels=valToSci(signif(scalePtsMajor,2)), pos=1, offset=1,
-             cex=ifelse(length(scalePtsMajor) > 5, 0.5, 0.75));
+             cex=0.5);
         text(x=mean(range(pwFun(scalePtsMajor))), y=0, col="black",
              labels="Feature Distance (bases)", pos=3, offset=1, cex=0.75);
         text(x=0, y=0, labels="Sequence\nLocation\n(bases)", col="black",
