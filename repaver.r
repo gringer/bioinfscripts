@@ -71,7 +71,7 @@ for(dnaSeqMapName in names(res)){
     if(outputStyle == "dotplot"){
         png(width=1920, height=1080, pointsize=18, antialias="gray");
     } else {
-        png(width=1920, height=1920, pointsize=24, antialias="gray");
+        png(width=1080, height=1080, pointsize=18, antialias="gray");
     }
     sLen <- dnaSeqMap$length;
     if(outputStyle == "dotplot"){
@@ -110,12 +110,17 @@ for(dnaSeqMapName in names(res)){
     } else if(outputStyle == "circular"){
         par(mgp=c(2.5,1,0), mar=c(3,3,3,3),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
-        plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, xlab="", ylab="",
+        plot(NA, xlim=c(-1.1,1.1), ylim=c(-1.1,1.1),
+             axes=FALSE, xlab="", ylab="",
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     }
+    my.time <- Sys.time();
+    cat("Deriving kmer names... ");
     revNames <- sapply(names(dnaSeqMap), py$rev);
     revCNames <- sapply(names(dnaSeqMap), py$rc);
     compNames <- sapply(names(dnaSeqMap), py$comp);
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
     my.time <- Sys.time();
     cat("Determining kmer validity... repeated...");
     repeatedKmers <- sapply(dnaSeqMap, function(x){length(x) > 1});
@@ -125,7 +130,8 @@ for(dnaSeqMapName in names(res)){
     rKmers <- revNames %in% names(dnaSeqMap);
     cat(" complement...");
     cKmers <- compNames %in% names(dnaSeqMap);
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
     ## f,c,rc,r : red, orange, blue, green
     plotPointsF <- NULL;
     plotPointsC <- NULL;
@@ -139,7 +145,8 @@ for(dnaSeqMapName in names(res)){
                                 data.frame(x=rep(kposs, length(kposs)),
                                            y=rep(kposs, each=length(kposs)))
                             }, simplify=FALSE),NULL);
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
     my.time <- Sys.time();
     cat("Processing complements... ");
     for(kmer in names(dnaSeqMap)[cKmers]){
@@ -159,7 +166,8 @@ for(dnaSeqMapName in names(res)){
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
     my.time <- Sys.time();
     cat("Processing reverses... ");
     for(kmer in names(dnaSeqMap)[rKmers]){
@@ -169,7 +177,8 @@ for(dnaSeqMapName in names(res)){
                             data.frame(x=rep(kposs, length(oposs)),
                                        y=rep(oposs, each=length(kposs))));
     }
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
     my.time <- Sys.time();
     cat("Drawing plot... ");
     if(outputStyle == "dotplot"){
@@ -249,11 +258,25 @@ for(dnaSeqMapName in names(res)){
         ## * The plot ends at (sLen/2, 1)
         ## * The base of the log is sLen/12
         ## Note: slope of log[b](x) = 1/(x*log(b))
+        logFun <- function(d){
+            a <- sLen/50; ## log base; higher == more gradual slope
+            aProp <- (sLen / 2) / a;
+            (log(d) / log(a)) /
+            ((aProp-1) / log(a) + 1) * 0.75 + 0.25;
+        }
+        linFun <- function(d){
+            a <- sLen/50;
+            aProp <- (sLen / 2) / a;
+            (d/(a * log(a)) + (1 - 1/log(a))) /
+            ((aProp-1) / log(a) + 1) * 0.75 + 0.25;
+        }
         pwFun <- function(d){
-            a <- sLen/12;
+            a <- sLen/50;
+            aProp <- (sLen / 2) / a;
             ifelse(d < a,
                    log(d) / log(a),
-                   d/(a * log(a)) + (1 - 1/log(a))) / (5 / log(a) + 1) * 0.75 + 0.25;
+                   d/(a * log(a)) + (1 - 1/log(a))) /
+                ((aProp-1) / log(a) + 1) * 0.75 + 0.25;
         }
         cat("converting distances... ");
         plotPointsF$r <- pwFun(plotPointsF$dist);
@@ -265,6 +288,45 @@ for(dnaSeqMapName in names(res)){
         ##(0.5 - (sqrt((plotPointsC$dist+1) / sLen/2))) * 1.5 + 0.25;
         ##distPoints <- c(plotPointsF$dist,plotPointsC$dist,plotPointsRC$dist,plotPointsR$dist);
         cat("drawing points... ");
+        plotPointsR$r <- pwFun(plotPointsR$dist);
+        drMax <- ceiling(log10(sLen));
+        scalePtsMajor <- rep(1, each=drMax+1) * 10^(0:drMax);
+        scalePtsMajor <- c(scalePtsMajor[scalePtsMajor < sLen/2], sLen/2);
+        scalePts <- rep(1:9, each=drMax+1) * 10^(0:drMax);
+        scalePts <- scalePts[scalePts <= sLen/2];
+        for(p in scalePtsMajor){ # rings for log scale
+            points(x=pwFun(p)*cos(seq(0,2*pi, length.out=360)),
+                   y=pwFun(p)*sin(seq(0,2*pi, length.out=360)),
+                   type="l", lwd=3, col="#808080A0");
+        }
+        distPts <- (1:99)*10^(drMax-2);
+        distPts <- c(head(distPts[distPts < sLen], -1), sLen);
+        if(length(distPts) > 20){
+            distPts <- (1:9)*10^(drMax-1);
+            distPts <- signif(c(distPts[distPts < sLen], sLen),3);
+        }
+        segments(x0=0.18*cos(distPts / sLen * 2*pi), # tick marks
+                 x1=0.2*cos(distPts / sLen * 2*pi),
+                 y0=0.18*sin(distPts / sLen * 2*pi),
+                 y1=0.2*sin(distPts / sLen * 2*pi),
+                 lwd=2, col="#000000A0");
+        for(dpi in seq_along(distPts)){ # tick labels for base location
+            text(x=0.14*cos(distPts[dpi] / sLen * 2*pi),
+                 y=0.14*sin(distPts[dpi] / sLen * 2*pi),
+                 labels=valToSci(signif(distPts[dpi],3)), cex=0.75,
+                 srt=if((distPts[dpi]/sLen * 360 >= 90) &&
+                        (distPts[dpi]/sLen * 360 < 270)){
+                         (distPts[dpi]/sLen * 360 + 180);
+                     } else {
+                         (distPts[dpi]/sLen * 360);
+                     },
+                 col="black");
+        }
+        points(x=0.2*cos(seq(10^(drMax-2)/sLen * 2*pi / 5,
+                             2*pi, length.out=360)),
+               y=0.2*sin(seq(10^(drMax-2)/sLen * 2*pi / 5,
+                             2*pi, length.out=360)),
+               type="l", lwd=3, col="#000000A0"); # tick circle
         points(plotPointsF$r*cos(plotPointsF$x/sLen*2*pi),
                plotPointsF$r*sin(plotPointsF$x/sLen*2*pi),
                pch=20, col="#8b000040", cex=0.5); # red
@@ -289,6 +351,21 @@ for(dnaSeqMapName in names(res)){
         points(plotPointsR$r*cos(plotPointsR$y/sLen*2*pi),
                plotPointsR$r*sin(plotPointsR$y/sLen*2*pi),
                pch=20, col="#A0900040", cex=0.5); # yellow
+        rect(xleft=pwFun(head(scalePtsMajor,1))-0.025,
+             xright=pwFun(tail(scalePtsMajor,1))+0.05,
+             ytop=0.13, ybottom=-0.13, col="#FFFFFFA0", border=NA);
+        arrows(x0=pwFun(head(scalePts,-1)), x1=pwFun(tail(scalePts,-1)),
+               y0=0, angle=90, code=3, length=0.1, lwd=2, col="#80808080");
+        arrows(x0=pwFun(head(scalePtsMajor,-1)),
+               x1=pwFun(tail(scalePtsMajor,-1)),
+               y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
+        text(x=pwFun(scalePtsMajor), y=0, col="black",
+             labels=valToSci(signif(scalePtsMajor,2)), pos=1, offset=1,
+             cex=0.75);
+        text(x=mean(range(pwFun(scalePtsMajor))), y=0, col="black",
+             labels="Feature Distance (bases)", pos=3, offset=1, cex=0.75);
+        text(x=0, y=0, labels="Sequence\nLocation\n(bases)", col="black",
+             cex=0.75);
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#fdc086","#ff7f00",
@@ -301,5 +378,6 @@ for(dnaSeqMapName in names(res)){
                bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
     }
     invisible(dev.off());
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
 }
