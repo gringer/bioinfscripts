@@ -1,7 +1,7 @@
 #!/usr/bin/Rscript
 ## repaver.r - REpetitive PAttern Visualiser for Extremely-long Reads
 
-outputStyle <- "circular"; ## dotplot, circular, logplot
+outputStyle <- "circular"; ## dotplot, circular, profile
 outputType <- "png";
 kmerLength <- 17;
 
@@ -26,9 +26,10 @@ usage <- function(){
   cat("usage: ./repaver.r",
       "<fasta/fastq file> [options]\n");
   cat("\nOther Options:\n");
-  cat("-help          : Only display this help message\n");
-  cat("-k <int>       : Set kmer length\n");
-  cat("-type <string> : Output file type (png|svg)\n");
+  cat("-help           : Only display this help message\n");
+  cat("-k <int>        : Set kmer length\n");
+  cat("-style <string> : Output file style (dotplot|profile|circular)\n");
+  cat("-type <string>  : Output file type (png|svg)\n");
   cat("\n");
 }
 
@@ -53,6 +54,10 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     }
     else if(commandArgs(TRUE)[argLoc] == "-type"){
       outputType <- commandArgs(TRUE)[argLoc+1];
+      argLoc <- argLoc + 1;
+    }
+    else if(commandArgs(TRUE)[argLoc] == "-style"){
+      outputStyle <- commandArgs(TRUE)[argLoc+1];
       argLoc <- argLoc + 1;
     }
     else {
@@ -117,21 +122,21 @@ cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.ti
 
 #print(str(res[[1]]));
 
+if(outputStyle == "profile"){
+    if(outputType == "svg"){
+        svg(width=20, height=11.25, pointsize=18);
+    } else {
+        png(width=1920, height=1080, pointsize=18, antialias="gray");
+    }
+} else {
+    if(outputType == "svg"){
+        svg(width=11.25, height=11.25, pointsize=18);
+    } else {
+        png(width=1080, height=1080, pointsize=18, antialias="gray");
+    }
+}
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
-    if(outputStyle == "dotplot"){
-        if(outputType == "svg"){
-            svg(width=20, height=11.25, pointsize=18);
-        } else {
-            png(width=1920, height=1080, pointsize=18, antialias="gray");
-        }
-    } else {
-        if(outputType == "svg"){
-            svg(width=11.25, height=11.25, pointsize=18);
-        } else {
-            png(width=1080, height=1080, pointsize=18, antialias="gray");
-        }
-    }
     sLen <- dnaSeqMap$len;
     if(outputStyle == "dotplot"){
         par(mgp=c(2,0.5,0));
@@ -147,7 +152,7 @@ for(dnaSeqMapName in names(res)){
             axis(1, at=axTicks(1), labels=pretty(axTicks(1))/1000);
             axis(2, at=rev(axTicks(2)), labels=pretty(axTicks(2))/1000);
         }
-    } else if(outputStyle == "logplot"){
+    } else if(outputStyle == "profile"){
         par(mgp=c(2.5,1,0), mar=c(4,6,3,0.5),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
         plot(NA, xlim=c(0,sLen), ylim=c(1,sLen), log="y",
@@ -214,7 +219,7 @@ for(dnaSeqMapName in names(res)){
                   Reduce(rbind,sapply(names(dnaSeqMap$rc),
                                       function(kmer){
                                           kposs <- dnaSeqMap$rc[[kmer]];
-                                          oposs <- dnaSeqMap$rc[[py$comp(kmer)]];
+                                          oposs <- dnaSeqMap$rc[[py$rc(kmer)]];
                                           data.frame(x=rep(kposs, length(oposs)),
                                                      y=rep(oposs, each=length(kposs)),
                                                      type=rep("RC",length(kposs)))
@@ -231,7 +236,7 @@ for(dnaSeqMapName in names(res)){
                   Reduce(rbind,sapply(names(dnaSeqMap$rev),
                                       function(kmer){
                                           kposs <- dnaSeqMap$rev[[kmer]];
-                                          oposs <- dnaSeqMap$rev[[py$comp(kmer)]];
+                                          oposs <- dnaSeqMap$rev[[py$rev(kmer)]];
                                           data.frame(x=rep(kposs, length(oposs)),
                                                      y=rep(oposs, each=length(kposs)),
                                                      type=rep("R",length(kposs)))
@@ -241,51 +246,23 @@ for(dnaSeqMapName in names(res)){
     cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
                 attr(Sys.time() - my.time, "units")));
     my.time <- Sys.time();
-    print(str(plotPointsF));
-    print(str(plotPointsC));
-    print(str(plotPointsRC));
-    print(str(plotPointsR));
     cat("Drawing plot... ");
     if(outputStyle == "dotplot"){
-        points(plotPointsF, pch=15, col="#8b000040", cex=0.5);
-        points(plotPointsC, pch=15, col="#FF7F0040", cex=0.5);
-        points(plotPointsRC, pch=15, col="#0000FF40", cex=0.5);
-        points(plotPointsR, pch=15, col="#00A00040", cex=0.5);
+        points(plotPoints, pch=15, col=c(F="#8b000040",C="#FF7F0040",
+                                         RC="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
         legend("bottomleft",
                legend=c("Forward","Complement","RevComp","Reverse"),
                fill=c("#8b000040","#FF7F0040","#0000FF40","#00A00040"),
                bg="#FFFFFFE0", inset=0.05);
-    } else if(outputStyle == "logplot"){
-        plotPointsF$dist <-  plotPointsF$y -  plotPointsF$x;
-        plotPointsC$dist <-  plotPointsC$y -  plotPointsC$x;
-        plotPointsRC$dist <- plotPointsRC$y - plotPointsRC$x;
-        plotPointsR$dist <-  plotPointsR$y -  plotPointsR$x;
-        plotPointsF <-  subset(plotPointsF, dist > 0);
-        plotPointsC <-  subset(plotPointsC, dist > 0);
-        plotPointsRC <- subset(plotPointsRC, dist > 0);
-        plotPointsR <-  subset(plotPointsR, dist > 0);
-        plotPoints <- NULL;
-        plotPoints <- rbind(plotPoints,
-                            data.frame(plotPointsF, type="f"),
-                            data.frame(plotPointsC, type="c"),
-                            data.frame(plotPointsRC, type="rc"),
-                            data.frame(plotPointsR, type="r"));
-        points(plotPointsF$x,  plotPointsF$dist,
-               pch=15, col="#8b000040", cex=0.5); # red
-        points(plotPointsC$x,  plotPointsC$dist,
-               pch=15, col="#FDC08640", cex=0.5); # salmon
-        points(plotPointsRC$x, plotPointsRC$dist,
-               pch=15, col="#0000FF40", cex=0.5); # blue
-        points(plotPointsR$x,  plotPointsR$dist,
-               pch=15, col="#00A00040", cex=0.5); # green
-        points(plotPointsF$y,  plotPointsF$dist,
-               pch=15, col="#9000A040", cex=0.5); # magenta
-        points(plotPointsC$y,  plotPointsC$dist,
-               pch=15, col="#FF7F0040", cex=0.5); # orange
-        points(plotPointsRC$y, plotPointsRC$dist,
-               pch=15, col="#00A09040", cex=0.5); # cyan
-        points(plotPointsR$y,  plotPointsR$dist,
-               pch=15, col="#A0900040", cex=0.5); # yellow
+    } else if(outputStyle == "profile"){
+        plotPoints$dist <-  plotPoints$y -  plotPoints$x;
+        plotPoints <-  subset(plotPoints, dist > 0);
+        ## left symbols
+        points(x=plotPoints$x, y=plotPoints$dist, pch=15, col=c(F="#8b000040",C="#FDC08640",
+                                         RC="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
+        ## right symbols
+        points(x=plotPoints$y, y=plotPoints$dist, pch=15, col=c(F="#9000A040",C="#FF7F0040",
+                                         RC="#00A09040",R="#A0900040")[plotPoints$type], cex=0.5);
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#fdc086","#ff7f00",
