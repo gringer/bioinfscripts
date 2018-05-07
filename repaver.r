@@ -89,12 +89,19 @@ def rc(seq):
 def getKmerLocs(seqFile, kSize=17):
    fileKmers = dict()
    for record in SeqIO.parse(seqFile, \"fasta\"):
-      kmers = defaultdict(list)
+      kmers = defaultdict(set)
+      chunks = defaultdict(set)
       seq = str(record.seq)
+      seqLen = len(seq) ## add in length, because it's cheap
+      baseBlockSize = int(seqLen / 5000) ## limit to 5000 position slots
+      if(baseBlockSize < 1):
+         baseBlockSize = 1
       for k, v in zip([seq[d:d+kSize] for d in
             xrange(len(seq)-kSize+1)], xrange(len(seq)-kSize+1)):
-         kmers[k].append(v)
-      kmers = {k:v for k, v in kmers.iteritems() if (
+         chunkID = int(v / baseBlockSize) * baseBlockSize
+         kmers[k].add(chunkID)
+         chunks[chunkID].add(k)
+      kmers = {k:list(v) for k, v in kmers.iteritems() if (
         (not 'N' in k) and (
            (len(v) > 1) or             ## repeated
            (k[::-1] in kmers) or       ## reverse
@@ -108,17 +115,17 @@ def getKmerLocs(seqFile, kSize=17):
            ((comp(k) in kmers)))}
       kmersRevComp = {k:v for k, v in kmers.iteritems() if (
            ((comp(k[::-1]) in kmers)))}
-      seqLen = len(seq) ## add in length, because it's cheap
-      fileKmers[record.id] = dict({'len':seqLen, 'fwd':kmersFwd, 'rev':kmersRev,
-                                  'comp':kmersComp, 'rc':kmersRevComp})
+      fileKmers[record.id] = dict({'len':seqLen, 'blockSize':baseBlockSize, 'chunks':chunks, 'fwd':kmersFwd,
+                                   'rev':kmersRev, 'comp':kmersComp, 'rc':kmersRevComp})
    return(fileKmers)
 ");
 
 ## Generate filtered kmer location dictionary
-cat("Generating kmer location dictionary...");
+cat("Generating kmer location dictionary... ");
 my.time <- Sys.time();
 res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength));
-cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
+cat(sprintf("done in %0.2f %s\n",
+            Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
 
 #print(str(res[[1]]));
 
@@ -138,6 +145,8 @@ if(outputStyle == "profile"){
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
     sLen <- dnaSeqMap$len;
+    sBS <- dnaSeqMap$b;
+    cat(sprintf("Processing %s [length: %d; %d bases per block]\n", dnaSeqMapName, sLen, sBS));
     if(outputStyle == "dotplot"){
         par(mgp=c(2,0.5,0));
         plot(NA, xlim=c(0,sLen), ylim=c(sLen,0),
