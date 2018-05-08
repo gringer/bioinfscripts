@@ -87,10 +87,14 @@ def rev(seq):
 def rc(seq):
   return(seq.translate(compTransTable)[::-1])
 def getKmerLocs(seqFile, kSize=17):
-   fileKmers = dict()
+   fileChunks = dict()
    for record in SeqIO.parse(seqFile, \"fasta\"):
       kmers = defaultdict(set)
-      chunks = defaultdict(set)
+      chunks = dict()
+      chunks['F'] = defaultdict(set)
+      chunks['R'] = defaultdict(set)
+      chunks['RC'] = defaultdict(set)
+      chunks['C'] = defaultdict(set)
       seq = str(record.seq)
       seqLen = len(seq) ## add in length, because it's cheap
       baseBlockSize = int(seqLen / 5000) ## limit to 5000 position slots
@@ -98,30 +102,25 @@ def getKmerLocs(seqFile, kSize=17):
          baseBlockSize = 1
       for k, v in zip([seq[d:d+kSize] for d in
             xrange(len(seq)-kSize+1)], xrange(len(seq)-kSize+1)):
-         chunkID = int(v / baseBlockSize) * baseBlockSize
-         kmers[k].add(chunkID)
-         chunks[chunkID].add(k)
-      kmers = {k:list(v) for k, v in kmers.iteritems() if (
-        (not 'N' in k) and (
-           (len(v) > 1) or             ## repeated
-           (k[::-1] in kmers) or       ## reverse
-           (comp(k) in kmers) or       ## complement
-           (comp(k[::-1]) in kmers)))} ## reverse complement
-      kmersFwd = {k:v for k, v in kmers.iteritems() if (
-           (len(v) > 1))}
-      kmersRev = {k:v for k, v in kmers.iteritems() if (
-           ((k[::-1] in kmers)))}
-      kmersComp = {k:v for k, v in kmers.iteritems() if (
-           ((comp(k) in kmers)))}
-      kmersRevComp = {k:v for k, v in kmers.iteritems() if (
-           ((comp(k[::-1]) in kmers)))}
-      fileKmers[record.id] = dict({'len':seqLen, 'blockSize':baseBlockSize, 'chunks':chunks, 'fwd':kmersFwd,
-                                   'rev':kmersRev, 'comp':kmersComp, 'rc':kmersRevComp})
-   return(fileKmers)
+         krev = k[::-1]
+         kcomp = comp(k)
+         krc = kcomp[::-1]
+         checkstr = {'F': k, 'R': krev, 'C': kcomp, 'RC':krc}
+         chunkID = 'b' + str(int(v / baseBlockSize) * baseBlockSize)
+         for type,ko in checkstr.iteritems():
+            if(ko in kmers):
+               for p in kmers[ko]:
+                  chunks[type][chunkID].add(v-p)
+         kmers[k].add(v)
+      for k, v in chunks.iteritems():
+          chunks[k] = {kv:list(vv) for kv,vv in chunks[k].iteritems()}
+      fileChunks[record.id] = dict({'len':seqLen, 'blockSize':baseBlockSize,
+                                   'chunks':chunks})
+   return(fileChunks)
 ");
 
 ## Generate filtered kmer location dictionary
-cat("Generating kmer location dictionary... ");
+cat("Generating chunk difference dictionary... ");
 my.time <- Sys.time();
 res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength));
 cat(sprintf("done in %0.2f %s\n",
@@ -181,7 +180,7 @@ for(dnaSeqMapName in names(res)){
         abline(h=10^(0:drMax), col="#80808050", lwd = 3);
         mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
     } else if(outputStyle == "circular"){
-        par(mgp=c(2.5,1,0), mar=c(1.5,1.5,1.5,1.5),
+        par(mgp=c(2.5,1,0), mar=c(2.5,2,1.5,2),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
         plot(NA, xlim=c(-1.1,1.1), ylim=c(-1.2,1),
              axes=FALSE, xlab="", ylab="",
@@ -189,71 +188,31 @@ for(dnaSeqMapName in names(res)){
     }
     ## f,c,rc,r : red, orange, blue, green
     plotPoints <- NULL;
-    my.time <- Sys.time();
-    cat("Processing repeats... ");
-    if(length(dnaSeqMap$fwd) > 0){
+    dc <- dnaSeqMap$chunks;
+    for(type in as.character(names(dnaSeqMap$chunks)[sapply(dc,length)>0])){
+        if(length(dc[[type]]) == 0){
+            next;
+        }
+        my.time <- Sys.time();
+        cat(sprintf("Processing %s... ",
+            c(F="repeats", C="complements",
+              RC="reverse complements", R="reverses")[type]));
         plotPoints <-
             rbind(plotPoints,
-                  Reduce(rbind,sapply(dnaSeqMap$fwd,
-                                      function(kposs){
-                                          data.frame(x=rep(kposs, length(kposs)),
-                                                     y=rep(kposs, each=length(kposs)),
-                                                     type=rep("F",length(kposs)))
-                                      }, simplify=FALSE),NULL)
-                  );
+                  Reduce(rbind,
+                         sapply(names(dc[[type]]), simplify=FALSE,
+                                function(kposs){
+                                    vals=dc[[type]][[kposs]];
+                                    data.frame(y=rep(as.numeric(substring(kposs,2)),
+                                                     length(vals)),
+                                               dist=vals,
+                                               type=rep(type, length(vals)),
+                                               stringsAsFactors=FALSE);
+                                })));
+        cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
+                    attr(Sys.time() - my.time, "units")));
     }
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
-                attr(Sys.time() - my.time, "units")));
-    my.time <- Sys.time();
-    cat("Processing complements... ");
-    if(length(dnaSeqMap$comp) > 0){
-        plotPoints <-
-            rbind(plotPoints,
-                  Reduce(rbind,sapply(names(dnaSeqMap$comp),
-                                      function(kmer){
-                                          kposs <- dnaSeqMap$comp[[kmer]];
-                                          oposs <- dnaSeqMap$comp[[py$comp(kmer)]];
-                                          data.frame(x=rep(kposs, length(oposs)),
-                                                     y=rep(oposs, each=length(kposs)),
-                                                     type=rep("C",length(kposs)))
-                                      }, simplify=FALSE),NULL)
-                  );
-    }
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
-    my.time <- Sys.time();
-    cat("Processing reverse complements... ");
-    if(length(dnaSeqMap$rc) > 0){
-        plotPoints <-
-            rbind(plotPoints,
-                  Reduce(rbind,sapply(names(dnaSeqMap$rc),
-                                      function(kmer){
-                                          kposs <- dnaSeqMap$rc[[kmer]];
-                                          oposs <- dnaSeqMap$rc[[py$rc(kmer)]];
-                                          data.frame(x=rep(kposs, length(oposs)),
-                                                     y=rep(oposs, each=length(kposs)),
-                                                     type=rep("RC",length(kposs)))
-                                      }, simplify=FALSE),NULL)
-                  );
-    }
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
-                attr(Sys.time() - my.time, "units")));
-    my.time <- Sys.time();
-    cat("Processing reverses... ");
-    if(length(dnaSeqMap$rev) > 0){
-        plotPoints <-
-            rbind(plotPoints,
-                  Reduce(rbind,sapply(names(dnaSeqMap$rev),
-                                      function(kmer){
-                                          kposs <- dnaSeqMap$rev[[kmer]];
-                                          oposs <- dnaSeqMap$rev[[py$rev(kmer)]];
-                                          data.frame(x=rep(kposs, length(oposs)),
-                                                     y=rep(oposs, each=length(kposs)),
-                                                     type=rep("R",length(kposs)))
-                                      }, simplify=FALSE),NULL)
-                  );
-    }
-    cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
-                attr(Sys.time() - my.time, "units")));
+    plotPoints$x <- plotPoints$y - plotPoints$dist;
     my.time <- Sys.time();
     cat("Drawing plot... ");
     if(outputStyle == "dotplot"){
@@ -283,13 +242,12 @@ for(dnaSeqMapName in names(res)){
                         "Reverse (L)", "Reverse (R)"),
                bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
     } else if(outputStyle == "circular"){
-        plotPoints$dist <- ifelse(plotPoints$x > plotPoints$y,
-                                   sLen + (plotPoints$y - plotPoints$x),
-                                   pmin(plotPoints$y - plotPoints$x));
-        if(length(plotPoints$dist) > 0){
-            plotPoints <-  subset(plotPoints, (dist > 0) & (dist <= sLen/2));
-        }
-        ## Convert distance to radius. This is a piecewise function with the following properties
+        distFlips <- (plotPoints$dist > sLen/2);
+        plotPoints[distFlips,c("x","y","dist")] <-
+            plotPoints[distFlips,c("y","x","dist")];
+        plotPoints$dist[distFlips] <- (sLen - plotPoints$dist[distFlips]);
+        ## Convert distance to radius. This is a piecewise function
+        ## with the following properties:
         ## * Starts off as a log function
         ## * Remainder is a linear function
         ## * The transition point is the point where the slope is equal
