@@ -223,7 +223,7 @@ for(dnaSeqMapName in names(res)){
              axes=FALSE, xlab="", ylab="",
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     } else if(outputStyle == "semicircular"){
-        par(mgp=c(2.5,1,0), mar=c(2.5,2,2.5,2),
+        par(mgp=c(2.5,1,0), mar=c(2.5,2,2.5,2), bg="#202080",
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
         xMul <- (1.2 / par()$pin[2]) * par()$pin[1];
         plot(NA, xlim=c(-xMul/2, xMul/2), ylim=c(-0.2, 1),
@@ -461,31 +461,31 @@ for(dnaSeqMapName in names(res)){
                      C="#0000FF40",R="#00A00040")[plotPoints$type],
                cex=ifelse(outputType=="png",0.5,1));
         ## tick marks (left)
-        arrows(x0=-pwFun(head(scalePts,-1)),
-               x1=-pwFun(tail(scalePts,-1)),
-               y0=0, angle=90, code=3, length=0.1, lwd=2, col="#80808080");
         arrows(x0=-pwFun(head(scalePtsMajor,-1)),
                x1=-pwFun(tail(scalePtsMajor,-1)),
                y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
-        ## tick marks (right)
-        arrows(x0=pwFun(head(scalePts,-1)),
-               x1=pwFun(tail(scalePts,-1)),
+        arrows(x0=-pwFun(head(scalePts,-1)),
+               x1=-pwFun(tail(scalePts,-1)),
                y0=0, angle=90, code=3, length=0.1, lwd=2, col="#80808080");
+        ## tick marks (right)
         arrows(x0=pwFun(head(scalePtsMajor,-1)),
                x1=pwFun(tail(scalePtsMajor,-1)),
                y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
+        arrows(x0=pwFun(head(scalePts,-1)),
+               x1=pwFun(tail(scalePts,-1)),
+               y0=0, angle=90, code=3, length=0.1, lwd=2, col="#80808080");
         text(x=pwFun(scalePtsMajor), y=0, col="black",
              labels=valToSci(signif(scalePtsMajor,2)), pos=1, offset=1,
-             cex=0.5); # tick labels for distance axis
+             cex=0.65); # tick labels for distance axis
         text(x=-pwFun(scalePtsMajor), y=0, col="black",
              labels=valToSci(signif(scalePtsMajor,2)), pos=1, offset=1,
-             cex=0.5); # tick labels for distance axis
+             cex=0.65); # tick labels for distance axis
         text(x=-mean(range(pwFun(scalePtsMajor))), y=-0.05, col="black",
-             labels="Feature Distance (bases)", pos=1, offset=1, cex=0.75);
+             labels="Feature Distance (bases)", pos=1, offset=1, cex=1);
         text(x=mean(range(pwFun(scalePtsMajor))), y=-0.05, col="black",
-             labels="Feature Distance (bases)", pos=1, offset=1, cex=0.75);
+             labels="Feature Distance (bases)", pos=1, offset=1, cex=1);
         text(x=0, y=0, labels="Sequence\nLocation\n(bases)", col="black",
-             cex=0.75);
+             cex=1);
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#00a090","#0000ff",
@@ -495,7 +495,7 @@ for(dnaSeqMapName in names(res)){
                         "Comp (L)",    "Comp (R)",
                         "RevComp (L)", "RevComp (R)",
                         "Reverse (L)", "Reverse (R)"),
-               bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
+               bg="#FFFFFF80", horiz=FALSE, inset=0.01, ncol=4);
     }
     cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
                 attr(Sys.time() - my.time, "units")));
