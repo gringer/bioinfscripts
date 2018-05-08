@@ -5,6 +5,7 @@ outputStyle <- "semicircular"; ## dotplot, circular, semicircular, profile
 outputType <- "png";
 kmerLength <- 17;
 filePrefix <- "repaver";
+fileName <- "";
 
 dnaSeqFile <- "data/circ-Nb-ec3-mtDNA.fasta";
 
@@ -29,7 +30,8 @@ usage <- function(){
   cat("\nOther Options:\n");
   cat("-help            : Only display this help message\n");
   cat("-k <int>         : Set kmer length\n");
-  cat("-style <string>  : Output file style (dotplot|profile|circular|semicircular)\n");
+  cat("-style <string>  : Output file style",
+      "(dotplot|profile|circular|semicircular)\n");
   cat("-type <string>   : Output file type (png|svg)\n");
   cat("-prefix <string> : Output file prefix (default: 'repaver')\n");
   cat("\n");
@@ -77,7 +79,15 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
 }
 
 if(!(outputStyle %in% c("dotplot","profile","circular","semicircular"))){
-    cat("Error: Plot style should be one of '(dotplot|profile|circular|semicircular)'\n");
+    cat("Error: Plot style should be one of ",
+        "'(dotplot|profile|circular|semicircular)'\n");
+    usage();
+    quit(save = "no", status=0);
+}
+
+if(!(outputType %in% c("svg","png"))){
+    cat("Error: File output type should be one of ",
+        "'(svg|png)'\n");
     usage();
     quit(save = "no", status=0);
 }
@@ -140,31 +150,43 @@ res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength));
 cat(sprintf("done in %0.2f %s\n",
             Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
 
+
+fileName <- sprintf("%s_k%d.%s",filePrefix, kmerLength, outputType);
+if(length(names(res)) > 1){
+    fileName <- sprintf("%s_k%d_%%03d.%s",filePrefix, kmerLength, outputType);
+}
+fileCounter <- 1;
+
 #print(str(res[[1]]));
 
-if(outputStyle == "profile"){
+if(outputStyle %in% c("profile", "semicircular")){
     if(outputType == "svg"){
-        svg(width=20, height=11.25, pointsize=18);
+        svg(filename=fileName, width=20, height=11.25, pointsize=22);
     } else {
-        png(width=1920, height=1080, pointsize=18, antialias="gray");
+        png(filename=fileName, width=1920, height=1080,
+            pointsize=22, antialias="gray");
     }
 } else {
     if(outputType == "svg"){
-        svg(width=11.25, height=11.25, pointsize=18);
+        svg(filename=fileName, width=11.25, height=11.25, pointsize=18);
     } else {
-        png(width=1080, height=1080, pointsize=18, antialias="gray");
+        png(filename=fileName, width=1080, height=1080,
+            pointsize=18, antialias="gray");
     }
 }
 for(dnaSeqMapName in names(res)){
     dnaSeqMap <- res[[dnaSeqMapName]];
     sLen <- dnaSeqMap$len;
     sBS <- dnaSeqMap$b;
-    cat(sprintf("Processing %s [length: %d; %d bases per block]\n", dnaSeqMapName, sLen, sBS));
+    cat(sprintf("Processing %s [length: %d; %d bases per block]\n",
+                dnaSeqMapName, sLen, sBS));
     if(outputStyle == "dotplot"){
         par(mgp=c(2,0.5,0));
         plot(NA, xlim=c(0,sLen), ylim=c(sLen,0),
-             xlab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
-             ylab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
+             xlab=ifelse(sLen >= 10^6, "Base Location (Mb)",
+                         "Base Location (kb)"),
+             ylab=ifelse(sLen >= 10^6, "Base Location (Mb)",
+                         "Base Location (kb)"),
              axes=FALSE,
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
         if(sLen >= 10^6){
@@ -178,7 +200,8 @@ for(dnaSeqMapName in names(res)){
         par(mgp=c(2.5,1,0), mar=c(4,6,3,0.5),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
         plot(NA, xlim=c(0,sLen), ylim=c(1,sLen), log="y",
-             xlab=ifelse(sLen >= 10^6, "Base Location (Mb)", "Base Location (kb)"),
+             xlab=ifelse(sLen >= 10^6,
+                         "Base Location (Mb)", "Base Location (kb)"),
              ylab="",
              axes=FALSE,
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
@@ -193,10 +216,17 @@ for(dnaSeqMapName in names(res)){
         axis(2, at= rep(1:9, each=drMax+1) * 10^(0:drMax), labels=FALSE);
         abline(h=10^(0:drMax), col="#80808050", lwd = 3);
         mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
-    } else if(outputStyle %in% c("circular","semicircular")){
+    } else if(outputStyle == "circular"){
         par(mgp=c(2.5,1,0), mar=c(2.5,2,1.5,2),
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
         plot(NA, xlim=c(-1.1,1.1), ylim=c(-1.2,1),
+             axes=FALSE, xlab="", ylab="",
+             main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
+    } else if(outputStyle == "semicircular"){
+        par(mgp=c(2.5,1,0), mar=c(2.5,2,2.5,2),
+            cex.axis=1.5, cex.lab=1.5, cex.main=2);
+        xMul <- (1.2 / par()$pin[2]) * par()$pin[1];
+        plot(NA, xlim=c(-xMul/2, xMul/2), ylim=c(-0.2, 1),
              axes=FALSE, xlab="", ylab="",
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     }
@@ -211,18 +241,19 @@ for(dnaSeqMapName in names(res)){
         cat(sprintf("Processing %s... ",
             c(F="repeats", C="complements",
               RC="reverse complements", R="reverses")[type]));
+        collectFunc <- function(kposs){
+            vals=dc[[type]][[kposs]];
+            data.frame(y=rep(as.numeric(substring(kposs,2)),
+                             length(vals)),
+                       dist=vals,
+                       type=rep(type, length(vals)),
+                       stringsAsFactors=FALSE);
+        }
         plotPoints <-
             rbind(plotPoints,
                   Reduce(rbind,
                          sapply(names(dc[[type]]), simplify=FALSE,
-                                function(kposs){
-                                    vals=dc[[type]][[kposs]];
-                                    data.frame(y=rep(as.numeric(substring(kposs,2)),
-                                                     length(vals)),
-                                               dist=vals,
-                                               type=rep(type, length(vals)),
-                                               stringsAsFactors=FALSE);
-                                })));
+                                collectFunc)));
         cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
                     attr(Sys.time() - my.time, "units")));
     }
@@ -231,25 +262,25 @@ for(dnaSeqMapName in names(res)){
     cat("Drawing plot... ");
     if(outputStyle == "dotplot"){
         points(plotPoints, pch=15,
-               col=c(F="#8b000040",C="#FF7F0040",
-                     RC="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
+               col=c(F="#8b000040",RC="#FF7F0040",
+                     C="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
         legend("bottomleft",
                legend=c("Forward","Complement","RevComp","Reverse"),
-               fill=c("#8b000040","#FF7F0040","#0000FF40","#00A00040"),
+               fill=c("#8b000040","#0000FF40","#FF7F0040","#00A00040"),
                bg="#FFFFFFE0", inset=0.05);
     } else if(outputStyle == "profile"){
         ## left symbols
         points(x=plotPoints$x, y=plotPoints$dist, pch=15,
-               col=c(F="#8b000040",C="#FDC08640",
-                     RC="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
+               col=c(F="#9000A040",RC="#FF7F0040",
+                     C="#00A09040",R="#A0900040")[plotPoints$type], cex=0.5);
         ## right symbols
         points(x=plotPoints$y, y=plotPoints$dist, pch=15,
-               col=c(F="#9000A040",C="#FF7F0040",
-                     RC="#00A09040",R="#A0900040")[plotPoints$type], cex=0.5);
+               col=c(F="#8b000040",RC="#FDC08640",
+                     C="#0000FF40",R="#00A00040")[plotPoints$type], cex=0.5);
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
-                      "#fdc086","#ff7f00",
                       "#00a090","#0000ff",
+                      "#fdc086","#ff7f00",
                       "#a09000","#00a000"),
                legend=c("Repeat (L)",  "Repeat (R)",
                         "Comp (L)",    "Comp (R)",
@@ -323,15 +354,15 @@ for(dnaSeqMapName in names(res)){
         points(plotPoints$r*cos(plotPoints$x/sLen*2*pi),
                plotPoints$r*sin(plotPoints$x/sLen*2*pi),
                pch=ifelse(outputType=="png",20,"•"),
-               col=c(F="#8b000040",C="#FDC08640",
-                     RC="#0000FF40",R="#00A00040")[plotPoints$type],
+               col=c(F="#9000A040",RC="#FF7F0040",
+                     C="#00A09040",R="#A0900040")[plotPoints$type],
                cex=ifelse(outputType=="png",0.5,1));
         ## right symbols
         points(plotPoints$r*cos(plotPoints$y/sLen*2*pi),
                plotPoints$r*sin(plotPoints$y/sLen*2*pi),
                pch=ifelse(outputType=="png",20,"•"),
-               col=c(F="#9000A040",C="#FF7F0040",
-                     RC="#00A09040",R="#A0900040")[plotPoints$type],
+               col=c(F="#8b000040",RC="#FDC08640",
+                     C="#0000FF40",R="#00A00040")[plotPoints$type],
                cex=ifelse(outputType=="png",0.5,1));
         rect(xleft=pwFun(head(scalePtsMajor,1))-0.025,
              xright=pwFun(tail(scalePtsMajor,1))+0.05,
@@ -350,8 +381,8 @@ for(dnaSeqMapName in names(res)){
              cex=0.75);
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
-                      "#fdc086","#ff7f00",
                       "#00a090","#0000ff",
+                      "#fdc086","#ff7f00",
                       "#a09000","#00a000"),
                legend=c("Repeat (L)",  "Repeat (R)",
                         "Comp (L)",    "Comp (R)",
@@ -391,11 +422,11 @@ for(dnaSeqMapName in names(res)){
         }
         distPts <- (0:99)*10^(drMax-2);
         distPts <- c(head(distPts[distPts < sLen], -1), sLen);
-        if(length(distPts) > 20){
+        if(length(distPts) > 25){
             distPts <- (1:9)*10^(drMax-1);
             distPts <- signif(c(distPts[distPts < sLen], sLen),3);
         }
-        segments(x0=-0.18*cos(distPts / sLen * pi), # tick marks on base location circle
+        segments(x0=-0.18*cos(distPts / sLen * pi), # tick marks for circle
                  x1=-0.2*cos(distPts / sLen * pi),
                  y0=0.18*sin(distPts / sLen * pi),
                  y1=0.2*sin(distPts / sLen * pi),
@@ -419,15 +450,15 @@ for(dnaSeqMapName in names(res)){
         points(-plotPoints$r*cos(plotPoints$x/sLen*pi),
                plotPoints$r*sin(plotPoints$x/sLen*pi),
                pch=ifelse(outputType=="png",20,"•"),
-               col=c(F="#8b000040",C="#FDC08640",
-                     RC="#0000FF40",R="#00A00040")[plotPoints$type],
+               col=c(F="#9000A040",RC="#FF7F0040",
+                     C="#00A09040",R="#A0900040")[plotPoints$type],
                cex=ifelse(outputType=="png",0.5,1));
         ## right symbols
         points(-plotPoints$r*cos(plotPoints$y/sLen*pi),
                plotPoints$r*sin(plotPoints$y/sLen*pi),
                pch=ifelse(outputType=="png",20,"•"),
-               col=c(F="#9000A040",C="#FF7F0040",
-                     RC="#00A09040",R="#A0900040")[plotPoints$type],
+               col=c(F="#8b000040",RC="#FDC08640",
+                     C="#0000FF40",R="#00A00040")[plotPoints$type],
                cex=ifelse(outputType=="png",0.5,1));
         ## tick marks (left)
         arrows(x0=-pwFun(head(scalePts,-1)),
@@ -457,8 +488,8 @@ for(dnaSeqMapName in names(res)){
              cex=0.75);
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
-                      "#fdc086","#ff7f00",
                       "#00a090","#0000ff",
+                      "#fdc086","#ff7f00",
                       "#a09000","#00a000"),
                legend=c("Repeat (L)",  "Repeat (R)",
                         "Comp (L)",    "Comp (R)",
@@ -466,7 +497,9 @@ for(dnaSeqMapName in names(res)){
                         "Reverse (L)", "Reverse (R)"),
                bg="#FFFFFFE0", horiz=FALSE, inset=0.01, ncol=4);
     }
-    invisible(dev.off());
     cat(sprintf(" done in %0.2f %s\n", Sys.time() - my.time,
                 attr(Sys.time() - my.time, "units")));
+    cat("Written to '",sprintf(fileName,fileCounter),"'\n",sep="");
+    fileCounter <- fileCounter+1;
 }
+invisible(dev.off());
