@@ -255,20 +255,8 @@ for(dnaSeqMapName in names(res)){
         ## * The plot ends at (sLen/2, 1)
         ## * The base of the log is sLen/12
         ## Note: slope of log[b](x) = 1/(x*log(b))
-        logFun <- function(d){
-            a <- sLen/50; ## log base; higher == more gradual slope
-            aProp <- (sLen / 2) / a;
-            (log(d) / log(a)) /
-            ((aProp-1) / log(a) + 1) * 0.75 + 0.25;
-        }
-        linFun <- function(d){
-            a <- sLen/50;
-            aProp <- (sLen / 2) / a;
-            (d/(a * log(a)) + (1 - 1/log(a))) /
-            ((aProp-1) / log(a) + 1) * 0.75 + 0.25;
-        }
         pwFun <- function(d){
-            a <- sLen/50;
+            a <- sLen/50; ## changes to linear approximately 1/3 of the way in
             aProp <- (sLen / 2) / a;
             ifelse(d < a,
                    log(d) / log(a),
