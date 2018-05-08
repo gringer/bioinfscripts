@@ -461,19 +461,19 @@ for(dnaSeqMapName in names(res)){
                      C="#0000FF40",R="#00A00040")[plotPoints$type],
                cex=ifelse(outputType=="png",0.5,1));
         ## tick marks (left)
-        arrows(x0=-pwFun(head(scalePtsMajor,-1)),
-               x1=-pwFun(tail(scalePtsMajor,-1)),
-               y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
         arrows(x0=-pwFun(head(scalePts,-1)),
                x1=-pwFun(tail(scalePts,-1)),
                y0=0, angle=90, code=3, length=0.1, lwd=2, col="#80808080");
-        ## tick marks (right)
-        arrows(x0=pwFun(head(scalePtsMajor,-1)),
-               x1=pwFun(tail(scalePtsMajor,-1)),
+        arrows(x0=-pwFun(head(scalePtsMajor,-1)),
+               x1=-pwFun(tail(scalePtsMajor,-1)),
                y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
+        ## tick marks (right)
         arrows(x0=pwFun(head(scalePts,-1)),
                x1=pwFun(tail(scalePts,-1)),
                y0=0, angle=90, code=3, length=0.1, lwd=2, col="#80808080");
+        arrows(x0=pwFun(head(scalePtsMajor,-1)),
+               x1=pwFun(tail(scalePtsMajor,-1)),
+               y0=0, angle=90, code=3, length=0.15, lwd=3, col="#00000080");
         text(x=pwFun(scalePtsMajor), y=0, col="black",
              labels=valToSci(signif(scalePtsMajor,2)), pos=1, offset=1,
              cex=0.65); # tick labels for distance axis
