@@ -6,6 +6,7 @@ outputType <- "png";
 kmerLength <- 17;
 filePrefix <- "repaver";
 fileName <- "";
+bgcolour <- "#FFFFFF"; # dusk: '#202080'
 
 dnaSeqFile <- "data/circ-Nb-ec3-mtDNA.fasta";
 
@@ -30,6 +31,7 @@ usage <- function(){
   cat("\nOther Options:\n");
   cat("-help            : Only display this help message\n");
   cat("-k <int>         : Set kmer length\n");
+  cat("-bg <string>     : Background colour\n");
   cat("-style <string>  : Output file style",
       "(dotplot|profile|circular|semicircular)\n");
   cat("-type <string>   : Output file type (png|svg)\n");
@@ -62,6 +64,10 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
     }
     else if(commandArgs(TRUE)[argLoc] == "-style"){
       outputStyle <- commandArgs(TRUE)[argLoc+1];
+      argLoc <- argLoc + 1;
+    }
+    else if(commandArgs(TRUE)[argLoc] == "-bg"){
+      bgColour <- commandArgs(TRUE)[argLoc+1];
       argLoc <- argLoc + 1;
     }
     else if(commandArgs(TRUE)[argLoc] == "-prefix"){
@@ -181,7 +187,7 @@ for(dnaSeqMapName in names(res)){
     cat(sprintf("Processing %s [length: %d; %d bases per block]\n",
                 dnaSeqMapName, sLen, sBS));
     if(outputStyle == "dotplot"){
-        par(mgp=c(2,0.5,0));
+        par(mgp=c(2,0.5,0), bg=bgColour);
         plot(NA, xlim=c(0,sLen), ylim=c(sLen,0),
              xlab=ifelse(sLen >= 10^6, "Base Location (Mb)",
                          "Base Location (kb)"),
@@ -198,7 +204,7 @@ for(dnaSeqMapName in names(res)){
         }
     } else if(outputStyle == "profile"){
         par(mgp=c(2.5,1,0), mar=c(4,6,3,0.5),
-            cex.axis=1.5, cex.lab=1.5, cex.main=2);
+            cex.axis=1.5, cex.lab=1.5, cex.main=2, bg=bgColour);
         plot(NA, xlim=c(0,sLen), ylim=c(1,sLen), log="y",
              xlab=ifelse(sLen >= 10^6,
                          "Base Location (Mb)", "Base Location (kb)"),
@@ -218,12 +224,12 @@ for(dnaSeqMapName in names(res)){
         mtext("Feature distance (bp)", 2, line=4.5, cex=1.5);
     } else if(outputStyle == "circular"){
         par(mgp=c(2.5,1,0), mar=c(2.5,2,1.5,2),
-            cex.axis=1.5, cex.lab=1.5, cex.main=2);
+            cex.axis=1.5, cex.lab=1.5, cex.main=2, bg=bgColour);
         plot(NA, xlim=c(-1.1,1.1), ylim=c(-1.2,1),
              axes=FALSE, xlab="", ylab="",
              main=sprintf("%s (k=%d)", dnaSeqMapName, kmerLength));
     } else if(outputStyle == "semicircular"){
-        par(mgp=c(2.5,1,0), mar=c(2.5,2,2.5,2), bg="#202080",
+        par(mgp=c(2.5,1,0), mar=c(2.5,2,2.5,2), bg=bgColour,
             cex.axis=1.5, cex.lab=1.5, cex.main=2);
         xMul <- (1.2 / par()$pin[2]) * par()$pin[1];
         plot(NA, xlim=c(-xMul/2, xMul/2), ylim=c(-0.2, 1),
