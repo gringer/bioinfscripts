@@ -6,7 +6,7 @@ outputType <- "png";
 kmerLength <- 17;
 filePrefix <- "repaver";
 fileName <- "";
-bgcolour <- "#FFFFFF"; # dusk: '#202080'
+bgColour <- "#FFFFFF"; # dusk: '#202080'
 
 dnaSeqFile <- "data/circ-Nb-ec3-mtDNA.fasta";
 
