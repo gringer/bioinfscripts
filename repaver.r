@@ -429,7 +429,7 @@ for(dnaSeqMapName in names(res)){
         distPts <- (0:99)*10^(drMax-2);
         distPts <- c(head(distPts[distPts < sLen], -1), sLen);
         if(length(distPts) > 25){
-            distPts <- (1:9)*10^(drMax-1);
+            distPts <- (0:9)*10^(drMax-1);
             distPts <- signif(c(distPts[distPts < sLen], sLen),3);
         }
         segments(x0=-0.18*cos(distPts / sLen * pi), # tick marks for circle
