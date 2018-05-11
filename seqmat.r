@@ -6,7 +6,7 @@ usage <- function(){
   cat("usage: ./seqmat.r <fasta file> <repeat unit size> [options]\n");
   cat("\nOther Options:\n");
   cat("-help               : Only display this help message\n");
-  cat("-type (png/pdf)     : Image type (default 'png')\n");
+  cat("-type (png/pdf/svg) : Image type (default 'png')\n");
   cat("-ps <factor>        : Magnification factor for points\n");
   cat("-title <string>     : Title for image\n");
   cat("-solid              : Make colours solid (not translucent)\n");
@@ -152,7 +152,7 @@ if(type == "png"){
     if(sizeY == -1){
         sizeY <- 1200;
     }
-} else if(type == "pdf"){
+} else if((type == "pdf") || (type == "svg")){
     if(sizeX == -1){
         sizeX <- 12;
     }
@@ -174,7 +174,11 @@ if(type == "png"){
         pointsize=24 * sizeX/1000);
 } else if(type == "pdf"){
     pdf("sequence_matrix.pdf", width=sizeX, height=sizeY,
-        pointsize=16 * sizeX/1000);
+        pointsize=16 * sizeX/10);
+} else if(type == "svg"){
+    print(16 * sizeX/1000);
+    svg("sequence_matrix.svg", width=sizeX, height=sizeY,
+        pointsize=16 * sizeX/10);
 }
 lis <- length(inSeq);
 numLines <- floor(lis/rptSize + 1);
@@ -208,7 +212,11 @@ if(type == "png"){
 } else if(type == "pdf"){
     pdf("sequence_circle.pdf", width=max(sizeX,sizeY),
         height=max(sizeX,sizeY),
-        pointsize=16 * max(sizeX,sizeY)/1000);
+        pointsize=16 * max(sizeX,sizeY)/10);
+} else if(type == "svg"){
+    svg("sequence_circle.svg", width=max(sizeX,sizeY),
+        height=max(sizeX,sizeY),
+        pointsize=16 * max(sizeX,sizeY)/10);
 }
 if(nchar(plotTitle) > 0){
     par(mar=c(2.5,2.5,2.5,2.5));
