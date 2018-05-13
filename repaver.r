@@ -512,4 +512,4 @@ while(!is.null(dnaSeqMap <- iter_next(getLocsIter))){
     cat("Generating chunk difference dictionary... ");
 }
 invisible(dev.off());
-cat("finished!");
+cat("finished!\n");
