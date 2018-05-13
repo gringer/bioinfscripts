@@ -5,8 +5,8 @@ outputStyle <- "semicircular"; ## dotplot, circular, semicircular, profile
 outputType <- "png";
 kmerLength <- 17;
 filePrefix <- "repaver";
-fileName <- "";
 bgColour <- "#FFFFFF"; # dusk: '#202080'
+fileName <- "";
 
 dnaSeqFile <- "data/circ-Nb-ec3-mtDNA.fasta";
 
@@ -173,10 +173,11 @@ if(outputStyle %in% c("profile", "semicircular")){
     }
 }
 
+getLocsIter <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength));
+
 my.time <- Sys.time();
 cat("Generating chunk difference dictionary... ");
-while(!is.null(dnaSeqMap <- iter_next(py$getKmerLocs(dnaSeqFile,
-                                            as.integer(kmerLength))))){
+while(!is.null(dnaSeqMap <- iter_next(getLocsIter))){
     dnaSeqMapName <- dnaSeqMap$name;
     cat(sprintf(" done [%s] in %0.2f %s\n",
                 dnaSeqMapName,
