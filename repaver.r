@@ -75,7 +75,7 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
       argLoc <- argLoc + 1;
     }
     else {
-      cat("Error: Argument '",commandArgs()[argLoc],
+      cat("Error: Argument '",commandArgs(TRUE)[argLoc],
           "' is not understood by this program\n\n", sep="");
       usage();
       quit(save = "no", status=0);
@@ -144,23 +144,15 @@ def getKmerLocs(seqFile, kSize=17):
          kmers[k].add(v)
       for k, v in chunks.iteritems():
           chunks[k] = {kv:list(vv) for kv,vv in chunks[k].iteritems()}
-      fileChunks[record.id] = dict({'len':seqLen, 'blockSize':baseBlockSize,
-                                   'chunks':chunks})
-   return(fileChunks)
+      yield(dict({'name': record.id, 'len':seqLen,
+                 'blockSize':baseBlockSize,
+                 'chunks':chunks}))
 ");
 
 ## Generate filtered kmer location dictionary
-cat("Generating chunk difference dictionary... ");
-my.time <- Sys.time();
-res <- py$getKmerLocs(dnaSeqFile, as.integer(kmerLength));
-cat(sprintf("done in %0.2f %s\n",
-            Sys.time() - my.time, attr(Sys.time() - my.time, "units")));
 
 
-fileName <- sprintf("%s_k%d.%s",filePrefix, kmerLength, outputType);
-if(length(names(res)) > 1){
-    fileName <- sprintf("%s_k%d_%%03d.%s",filePrefix, kmerLength, outputType);
-}
+fileName <- sprintf("%s_k%d_%%03d.%s",filePrefix, kmerLength, outputType);
 fileCounter <- 1;
 
 #print(str(res[[1]]));
@@ -180,8 +172,16 @@ if(outputStyle %in% c("profile", "semicircular")){
             pointsize=18, antialias="gray");
     }
 }
-for(dnaSeqMapName in names(res)){
-    dnaSeqMap <- res[[dnaSeqMapName]];
+
+my.time <- Sys.time();
+cat("Generating chunk difference dictionary... ");
+while(!is.null(dnaSeqMap <- iter_next(py$getKmerLocs(dnaSeqFile,
+                                            as.integer(kmerLength))))){
+    dnaSeqMapName <- dnaSeqMap$name;
+    cat(sprintf(" done [%s] in %0.2f %s\n",
+                dnaSeqMapName,
+                Sys.time() - my.time,
+                attr(Sys.time() - my.time, "units")));
     sLen <- dnaSeqMap$len;
     sBS <- dnaSeqMap$b;
     cat(sprintf("Processing %s [length: %d; %d bases per block]\n",
@@ -507,5 +507,8 @@ for(dnaSeqMapName in names(res)){
                 attr(Sys.time() - my.time, "units")));
     cat("Written to '",sprintf(fileName,fileCounter),"'\n",sep="");
     fileCounter <- fileCounter+1;
+    my.time <- Sys.time();
+    cat("Generating chunk difference dictionary... ");
 }
 invisible(dev.off());
+cat("finished!");
