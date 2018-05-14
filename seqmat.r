@@ -270,7 +270,7 @@ polygon(x=c(rbind(
 if(spiral){
     sps <- rev(seq(0,length(subSeq)+d))+1;
     points(x=r[sps] * cos(theta[sps]), y=r[sps] * sin(theta[sps]),
-           type="l", col="white", lwd=3);
+           type="l", col="white", lwd=3*sizeX/1000);
 }
 if(useKey){
     legend("bottomright", legend=c("A","C","G","T"), inset=0.05,
