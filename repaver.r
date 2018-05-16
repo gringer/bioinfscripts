@@ -132,16 +132,17 @@ def getKmerLocs(seqFile, kSize=17):
          baseBlockSize = 1
       for k, v in zip([seq[d:d+kSize] for d in
             xrange(len(seq)-kSize+1)], xrange(len(seq)-kSize+1)):
-         krev = k[::-1]
-         kcomp = comp(k)
-         krc = kcomp[::-1]
-         checkstr = {'F': k, 'R': krev, 'C': kcomp, 'RC':krc}
-         chunkID = 'b' + str(int(v / baseBlockSize) * baseBlockSize)
-         for type,ko in checkstr.iteritems():
-            if(ko in kmers):
-               for p in kmers[ko]:
-                  chunks[type][chunkID].add(v-p)
-         kmers[k].add(v)
+         if((not 'N' in k) and (not 'n' in k)):
+            krev = k[::-1]
+            kcomp = comp(k)
+            krc = kcomp[::-1]
+            checkstr = {'F': k, 'R': krev, 'C': kcomp, 'RC':krc}
+            chunkID = 'b' + str(int(v / baseBlockSize) * baseBlockSize)
+            for type,ko in checkstr.iteritems():
+               if(ko in kmers):
+                  for p in kmers[ko]:
+                     chunks[type][chunkID].add(v-p)
+            kmers[k].add(v)
       for k, v in chunks.iteritems():
           chunks[k] = {kv:list(vv) for kv,vv in chunks[k].iteritems()}
       yield(dict({'name': record.id, 'len':seqLen,
@@ -287,7 +288,7 @@ while(!is.null(dnaSeqMap <- iter_next(getLocsIter))){
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#00a090","#0000ff",
-                      "#fdc086","#ff7f00",
+                      "#ff7f00","#fdc086",
                       "#a09000","#00a000"),
                legend=c("Repeat (L)",  "Repeat (R)",
                         "Comp (L)",    "Comp (R)",
@@ -389,7 +390,7 @@ while(!is.null(dnaSeqMap <- iter_next(getLocsIter))){
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#00a090","#0000ff",
-                      "#fdc086","#ff7f00",
+                      "#ff7f00","#fdc086",
                       "#a09000","#00a000"),
                legend=c("Repeat (L)",  "Repeat (R)",
                         "Comp (L)",    "Comp (R)",
@@ -496,7 +497,7 @@ while(!is.null(dnaSeqMap <- iter_next(getLocsIter))){
         legend(x = "bottom",
                fill=c("#9000a0","#8b0000",
                       "#00a090","#0000ff",
-                      "#fdc086","#ff7f00",
+                      "#ff7f00","#fdc086",
                       "#a09000","#00a000"),
                legend=c("Repeat (L)",  "Repeat (R)",
                         "Comp (L)",    "Comp (R)",
