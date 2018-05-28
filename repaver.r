@@ -118,7 +118,7 @@ def rc(seq):
   return(seq.translate(compTransTable)[::-1])
 def getKmerLocs(seqFile, kSize=17):
    fileChunks = dict()
-   for record in SeqIO.parse(seqFile, \"fasta\"):
+   for record in SeqIO.parse(seqFile, \"fastq\" if (('.fq' in seqFile) or ('.fastq' in seqFile)) else \"fasta\"):
       kmers = defaultdict(set)
       chunks = dict()
       chunks['F'] = defaultdict(set)
@@ -155,8 +155,6 @@ def getKmerLocs(seqFile, kSize=17):
 
 fileName <- sprintf("%s_k%d_%%03d.%s",filePrefix, kmerLength, outputType);
 fileCounter <- 1;
-
-#print(str(res[[1]]));
 
 if(outputStyle %in% c("profile", "semicircular")){
     if(outputType == "svg"){
