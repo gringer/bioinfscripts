@@ -133,14 +133,17 @@ function spreadError(a, adj, acc = []) =
 function getRotationNormals(polyPath, merge = false, acc=[], aDone = 0) =
     (aDone >= len(polyPath)) ? acc :
         getRotationNormals(polyPath = polyPath, merge=merge, 
-            acc=concat(acc, [arrMod(polyPath, acc, ((!merge) && (aDone>=(len(polyPath)-1)))?0:1) - 
+            acc=concat(acc, [arrMod(polyPath, acc, 
+                ((!merge) && (aDone>=(len(polyPath)-1)))?0:1) - 
                 arrMod(polyPath,acc,((!merge) && (aDone==0))?0:-1)]),
             aDone=aDone+1);
 
 // set up massive point array for polyhedron
-function makePolyPoints(polyPath, polyForm, polyAngles, polyNormals, merge = false, acc = [], aDone = 0) =
+function makePolyPoints(polyPath, polyForm, polyAngles, polyNormals, 
+                        merge = false, acc = [], aDone = 0) =
   (aDone >= len(polyPath)) ? acc :
-    makePolyPoints(polyPath=polyPath, polyForm=polyForm, polyAngles=polyAngles, polyNormals=polyNormals,
+    makePolyPoints(polyPath=polyPath, polyForm=polyForm, 
+                   polyAngles=polyAngles, polyNormals=polyNormals,
         merge = merge,
         acc=concat(acc,  
             [myTranslate(arrMod(polyPath,acc,0),
@@ -166,36 +169,47 @@ function makeTriAdjs(pathLen, formLen, i, acc = [], aDone = 0) =
               (i*formLen + wrapMod(formLen, aDone, 0) + formLen) % (pathLen*formLen)]]]),
             aDone = aDone+1);
 
-myPath = [ for(t = [0:(360 / 51):359]) [ // trefoil knot
-    5*(.41*cos(t) - .18*sin(t) - .83*cos(2*t) - .83*sin(2*t) - .11*cos(3*t) + .27*sin(3*t)),
-    5*(.36*cos(t) + .27*sin(t) - 1.13*cos(2*t) + .30*sin(2*t) + .11*cos(3*t) - .27*sin(3*t)),
-    5*(.45*sin(t) - .30*cos(2*t) +1.13*sin(2*t) - .11*cos(3*t) + .27*sin(3*t))] ];
+myPathTrefoil = [ for(t = [0:(360 / 51):359]) [ // trefoil knot
+    5*(.41*cos(t) - .18*sin(t) - .83*cos(2*t) - .83*sin(2*t) - 
+       .11*cos(3*t) + .27*sin(3*t)),
+    5*(.36*cos(t) + .27*sin(t) - 1.13*cos(2*t) + .30*sin(2*t) + 
+       .11*cos(3*t) - .27*sin(3*t)),
+    5*(.45*sin(t) - .30*cos(2*t) +1.13*sin(2*t) - 
+       .11*cos(3*t) + .27*sin(3*t))] ];
 
-//myPath = [[-1,0,0],[1,0,0],[2,1,0.5],[2,3,1.5],
-//    [1,4,2],[-1,4,3],[-2,3,3.5],[-2,1,4.5],[-1,0,5]]; // pentagon spiral
+myPathSpiral = [ for(t = [-90:(360/30):(360+90)]) 
+    [(12/2)*cos(t),(12/2)*sin(t), 5.2*(t)/360] ];
 
-//myPath = [ for(t = [0:(360/20):359]) 8 * [cos(t+45),sin(t+45),0] ]; // octagon
+
+myPathPentagon = [[-1,0,0],[1,0,0],[2,1,0.5],[2,3,1.5],
+    [1,4,2],[-1,4,3],[-2,3,3.5],[-2,1,4.5],[-1,0,5]]; // pentagon spiral
 
 ofs1=15;
     
-myPoints = [ for(t = [0:(360/8):359]) ((t==90)?1:2) * [cos(t+ofs1),sin(t+ofs1)]];
-myPointsChunk = [ for(t = [45:(360/8):136]) ((t==90)?1.5:1.9) * [cos(t+ofs1),sin(t+ofs1)]];
+myPointsTriangle = [ for(t = [0:(360/3):359]) 
+             2 * [cos(t+30),sin(t+30)]];
+myPointsOctagon = [ for(t = [0:(360/8):359]) 
+             ((t==90)?1:2) * [cos(t+ofs1),sin(t+ofs1)]];
+myPointsChunkOctagon = [ for(t = [45:(360/8):136]) 
+                  ((t==90)?1.5:1.9) * [cos(t+ofs1),sin(t+ofs1)]];
 //myPoints = [ for(t = [0:(360/8):359]) 2 * [cos(t+45),sin(t+45)]];
 
-module path_extrude(exPath = myPath, exShape = myPoints, exRots = [0], merge=false){
+module path_extrude(exPath, exShape, exRots = [0], merge=false, preRotate=true){
     if((exShape == undef) || (exPath == undef)){
-        echo("Path or shape not defined");
+        echo("Extrusion path [exPath] or extrusion shape [exShape] has not been defined");
     } else {
         rPlanes = getRotationNormals(exPath, merge=merge);
         // calculate rotations to reorient polygons to best match consecutive copies
-        rawPreRots = getPreRotations(extrudePath=exPath, refPt=c3D(exShape[0]),
-                   polyNormals=rPlanes, merge=merge, prs=exRots);
+        rawPreRots = (!preRotate) ? [for(i = [0:(len(exPath)-1)]) 0] :
+            getPreRotations(extrudePath=exPath, refPt=c3D(exShape[0]),
+                       polyNormals=rPlanes, merge=merge, prs=exRots);
         // calculate rotation between last polygon and first polygon
         pp1 = exPath[1];
         p0 = exPath[0];
         pm1 = exPath[len(exPath)-1];
         pm2 = exPath[len(exPath)-2];
-        t0 = p0 + myRotate(rToS(rPlanes[0]), myRotate([0,0,-rawPreRots[0]], c3D(exShape[0])));
+        t0 = p0 + myRotate(rToS(rPlanes[0]), 
+                           myRotate([0,0,-rawPreRots[0]], c3D(exShape[0])));
         tm1 = pm1 + myRotate(rToS(rPlanes[len(rPlanes)-1]), 
                 myRotate([0,0,-rawPreRots[len(rawPreRots)-1]], c3D(exShape[0])));
         pt0 = project(p1=t0, c1=pm1, n1=rPlanes[len(rPlanes)-1]);
@@ -219,10 +233,19 @@ module path_extrude(exPath = myPath, exShape = myPoints, exRots = [0], merge=fal
 }
 
 translate([-20,0]) {
-    path_extrude(exRots = [$t*360], merge=false);
-    color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunk, merge=false);
+    path_extrude(exRots = [$t*360], exShape=myPointsOctagon, 
+                 exPath=myPathTrefoil, merge=false);
+    color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunkOctagon, 
+                                    exPath = myPathTrefoil, merge=false);
 }
 translate([20,0]) {
-    path_extrude(exRots = [$t*360], merge=true);
-    color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunk, merge=true);
+    path_extrude(exRots = [$t*360], exShape=myPointsOctagon, 
+                 exPath=myPathTrefoil, merge=true);
+    color("lightblue") path_extrude(exRots = [$t*360], exShape=myPointsChunkOctagon, 
+                                    exPath = myPathTrefoil, merge=true);
+}
+
+translate([0,20]) {
+    path_extrude(exRots = [$t*360], exShape=myPointsTriangle, 
+                 exPath=myPathSpiral, merge=false, preRotate=false);
 }
