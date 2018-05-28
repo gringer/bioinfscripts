@@ -210,7 +210,6 @@ myPointsOctagon = [ for(t = [0:(360/8):359])
              ((t==90)?1:2) * [cos(t+ofs1),sin(t+ofs1)]];
 myPointsChunkOctagon = [ for(t = [45:(360/8):136]) 
                   ((t==90)?1.5:1.9) * [cos(t+ofs1),sin(t+ofs1)]];
-//myPoints = [ for(t = [0:(360/8):359]) 2 * [cos(t+45),sin(t+45)]];
 
 module path_extrude(exPath, exShape, exRots = [0], merge=false, preRotate=true){
     if((exShape == undef) || (exPath == undef)){
