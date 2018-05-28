@@ -1,12 +1,30 @@
+//  path_extrude.scad -- Extrude a path in 3D space
+//  usage: add "use <path_extrude.scad>;" to the top of your OpenSCAD source code
+
+//  Copyright (C) 2014-2018  David Eccles (gringer) <bioinformatics@gringene.org>
+
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 // Determine the projection of a point on a plane centered at c1 with normal n1
 function project(p1, c1, n1) =
     p1 - (n1 * (p1 - c1)) * n1 / (n1 * n1);
 
-// Determine the angle between two points and a centre in 3D space    
+// Determine the angle between two points and a centre in 3D space
 // c^2 = a^2 + b^2 -2ab * cos(C)
 // <=> cos(C) = (a^2 + b^2 -c^2) / (2ab)
 function getAngle(p1, c1, p2) =
-    acos(((p1-c1)*(p1-c1) + (p2-c1)*(p2-c1) - (p1-p2)*(p1-p2)) / 
+    acos(((p1-c1)*(p1-c1) + (p2-c1)*(p2-c1) - (p1-p2)*(p1-p2)) /
         (2*norm(p1-c1)*norm(p2-c1)));
 
 // Generate a line between two points in 3D space
