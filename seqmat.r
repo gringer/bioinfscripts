@@ -9,23 +9,27 @@ usage <- function(){
   cat("-type (png/pdf/svg) : Image type (default 'png')\n");
   cat("-ps <factor>        : Magnification factor for points\n");
   cat("-title <string>     : Title for image\n");
+  cat("-prefix <string>    : Prefix for output file (default 'sequence_')\n");
   cat("-solid              : Make colours solid (not translucent)\n");
   cat("-spiral             : Add a white spiral to the plot\n");
+  cat("-rev                : reverse the spiral direction\n");
   cat("-min                : Set minimum circle radius\n");
   cat("-max                : Set maximum circle radius\n");
   cat("-nokey              : Remove key\n");
   cat("-size <x>x<y>       : Image size (default 1200x1200 for png, 12x12 for PDF)\n");
-  cat("-col (ef|cb)     : Colour palette (electrophoresis [default], colour-blind)\n");
+  cat("-col (ef|cb)        : Colour palette (electrophoresis [default], colour-blind)\n");
  cat("\n");
 }
 
 fileName <- "";
+filePrefix <- "sequence";
 rptSize <- -1;
 type <- "png";
 sizeX <- -1;
 sizeY <- -1;
 colType <- "ef";
 pointFactor <- 1;
+revSeq <- FALSE;
 useKey <- TRUE;
 solid <- FALSE;
 minRad <- 0.3;
@@ -59,6 +63,10 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         arg <- commandArgs(TRUE)[argLoc];
         plotTitle <- arg;
         argLoc <- argLoc + 1;
+    } else if(arg == "-prefix"){
+        arg <- commandArgs(TRUE)[argLoc];
+        filePrefix <- arg;
+        argLoc <- argLoc + 1;
     } else if(arg == "-min"){
         arg <- commandArgs(TRUE)[argLoc];
         minRad <- as.numeric(arg);
@@ -71,6 +79,8 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         arg <- commandArgs(TRUE)[argLoc];
         argLoc <- argLoc + 1;
         type <- arg;
+    } else if(arg == "-rev"){
+        revSeq <- TRUE;
     } else if(arg == "-solid"){
         solid <- TRUE;
     } else if(arg == "-spiral"){
@@ -82,11 +92,13 @@ while(!is.na(commandArgs(TRUE)[argLoc])){
         argLoc <- argLoc + 1;
         colType <- arg;
     } else {
-        if(grepl(":[0-9]+\\-[0-9]+$",arg)){
+        if(grepl(":\\-?[0-9]+\\-[0-9]+$",arg)){
             prefix <- sub(":[^:]+$","",arg);
             suffix <- sub("^.*:","",arg);
             arg <- prefix;
-            seqRange <- unlist(strsplit(suffix,"[\\-]"));
+            r1 <- as.numeric(sub("^(.*)\\-(.*)$", "\\1", suffix));
+            r2 <- as.numeric(sub("^(.*)\\-(.*)$", "\\2", suffix));
+            seqRange <- c(r1,r2);
         }
         if(file.exists(arg)){
             fileName <- arg;
@@ -116,34 +128,25 @@ if(substring(inLines[1],1,1) == "@"){
     inLines <- inLines[c(-seq(3,length(inLines), by=4),
                          -seq(4,length(inLines), by=4))];
 }
-inSeq <- c(A=1, C=2, G=3, T=4)[unlist(strsplit(paste(inLines[-1],collapse=""),""))];
+inSeq <- c(A=1, C=2, G=3, T=4, N=5, "-"=5,
+           a=1, c=2, g=3, t=4, n=5)[unlist(strsplit(paste(inLines[-1],collapse=""),""))];
 cat(" done\n");
 
 if(seqRange[1] != FALSE){
-    inSeq <- inSeq[seqRange[1]:seqRange[2]];
+    if(seqRange[2] > length(inSeq)){
+        inSeq <- c(inSeq, rep(5,seqRange[2] - length(inSeq)));
+    }
+    if(seqRange[1] < 0){
+        inSeq <- c(rep(5,-seqRange[1]+1), inSeq);
+        inSeq <- inSeq[(seqRange[1]:seqRange[2]) + -seqRange[1] + 1];
+    } else {
+        inSeq <- inSeq[seqRange[1]:seqRange[2]];
+    }
 }
 
-## rptVal <-
-##     sapply(12:rptSize, function(ofs){
-##         sum(head(inSeq, -ofs) == tail(inSeq, -ofs)) / (length(inSeq) - ofs);
-##     });
-
-## rptMat <-
-##     sapply(12:rptSize, function(ofs){
-##         c((head(inSeq, -ofs) == tail(inSeq, -ofs)), rep(NA,ofs));
-##     });
-
-## pdf(sprintf("rptSummary_%s%s.pdf", sub(" .*$","",inName),
-##             ifelse(seqRange[1] == FALSE,"",
-##                    paste0("_",seqRange[1],"-",seqRange[2]))
-##             ));
-## plot(12:rptSize, rptVal);
-## text((12:rptSize)[rptVal == max(rptVal)], max(rptVal),
-##      labels=sprintf("%d = %0.2f",
-##      (12:rptSize)[rptVal == max(rptVal)],
-##      max(rptVal)), pos=2);
-## invisible(dev.off());
-
+if(revSeq){
+    inSeq <- rev(inSeq);
+}
 
 if(type == "png"){
     if(sizeX == -1){
@@ -170,14 +173,14 @@ colPal <-
 
 cat("Creating matrix plot...");
 if(type == "png"){
-    png("sequence_matrix.png", width=sizeX, height=sizeY,
+    png(sprintf("%s_matrix.png", filePrefix), width=sizeX, height=sizeY,
         pointsize=24 * sizeX/1000);
 } else if(type == "pdf"){
-    pdf("sequence_matrix.pdf", width=sizeX, height=sizeY,
+    pdf(sprintf("%s_matrix.pdf", filePrefix), width=sizeX, height=sizeY,
         pointsize=16 * sizeX/10);
 } else if(type == "svg"){
     print(16 * sizeX/1000);
-    svg("sequence_matrix.svg", width=sizeX, height=sizeY,
+    svg(sprintf("%s_matrix.svg", filePrefix), width=sizeX, height=sizeY,
         pointsize=16 * sizeX/10);
 }
 lis <- length(inSeq);
@@ -188,7 +191,7 @@ par(mar=c(0.5,5,1,0.5), mgp=c(3.5,1,0));
 image(x=1:rptSize, y=1:numLines-1, matrix(subSeq,nrow=rptSize),
       main=sprintf("%s%s (%0.3f kb, %d bases / line)", sub(" .*$","",inName),
                    ifelse(seqRange[1] == FALSE,"",
-                          paste0(":",seqRange[1],"-",seqRange[2])),
+                          paste0(": ",seqRange[1]," .. ",seqRange[2])),
                    lis/1000, rptSize), ylab="Base location",
       cex.main=0.8, xaxt="n", yaxt="n", useRaster=TRUE,
       col=colPal);
@@ -207,14 +210,14 @@ cat(" done\n");
 
 cat("Creating spiral plot...");
 if(type == "png"){
-    png("sequence_circle.png", width=max(sizeX,sizeY),
+    png(sprintf("%s_spiral.png", filePrefix), width=max(sizeX,sizeY),
         height=max(sizeX,sizeY), pointsize=24 * max(sizeX,sizeY)/1000);
 } else if(type == "pdf"){
-    pdf("sequence_circle.pdf", width=max(sizeX,sizeY),
+    pdf(sprintf("%s_spiral.pdf", filePrefix), width=max(sizeX,sizeY),
         height=max(sizeX,sizeY),
         pointsize=16 * max(sizeX,sizeY)/10);
 } else if(type == "svg"){
-    svg("sequence_circle.svg", width=max(sizeX,sizeY),
+    svg(sprintf("%s_spiral.svg", filePrefix), width=max(sizeX,sizeY),
         height=max(sizeX,sizeY),
         pointsize=16 * max(sizeX,sizeY)/10);
 }
@@ -226,7 +229,7 @@ if(nchar(plotTitle) > 0){
 plot(NA, xlim=c(-1,1), ylim=c(-1,1), axes=FALSE, ann=FALSE);
 mtext(sprintf("%s%s\n(%0.3f kb, %d bases / ring)", sub(" .*$","",inName),
               ifelse(seqRange[1] == FALSE,"",
-                     paste0(":",seqRange[1],"-",seqRange[2])),
+                     paste0(": ",seqRange[1]," .. ",seqRange[2])),
               lis/1000, rptSize), side=3, cex=1, line=0);
 mtext(plotTitle, side=1, cex=2, line=0);
 ## Pre-population plot variables
